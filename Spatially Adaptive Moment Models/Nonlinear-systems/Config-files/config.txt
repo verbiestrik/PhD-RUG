@@ -3,7 +3,6 @@
 ##############################
 
 [pde_information]
-
 ### True: one-dimensional, False: two-dimensional
 1D = True
 

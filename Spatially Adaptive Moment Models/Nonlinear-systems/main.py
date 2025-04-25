@@ -11,7 +11,7 @@ import timeit
 def main():
 
     config = configparser.ConfigParser()
-    config.read('Config-files/config.txt')
+    config.read('/Users/vildarozek/Files/Fork/Untitled/Spatially Adaptive Moment Models/Nonlinear-systems/Config-files/config.txt')
     pde_information = config['pde_information']
     grid_information = config['grid_information']
     numerical_method_information = config['numerical_method_information']
