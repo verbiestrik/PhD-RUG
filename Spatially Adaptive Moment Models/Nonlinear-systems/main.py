@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import configparser
 import timeit
 
+# delete this line
 def main():
 
     config = configparser.ConfigParser()
