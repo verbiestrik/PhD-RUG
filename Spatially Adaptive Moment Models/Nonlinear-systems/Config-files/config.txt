@@ -56,7 +56,11 @@ y2boundary = 2
 t_end = 1.5
 
 # True: spatially adaptive simulation, False: classical simulation
-spatiallyAdaptive = False
+#spatiallyAdaptive = False
+
+#method = spatially_adaptive
+#method = classical
+method = micro_macro
 
     ### SPATIALLYADAPTIVE ###
     # List of the physical position of the boundary interfaces

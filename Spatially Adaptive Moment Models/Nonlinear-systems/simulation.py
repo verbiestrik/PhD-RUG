@@ -195,7 +195,7 @@ class ClassicalSimulation1D(Simulation):
 
             # update boundary conditions
             values[0,:] = self._update_boundary_conditions(values,'left')
-            values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values,'right')
+            values[-1,:] = self._update_boundary_conditions(values,'right')
             
             wave_speed_sqrt = values[:,0]*int(g)
             for i in range(self.order):
@@ -205,7 +205,7 @@ class ClassicalSimulation1D(Simulation):
             max_speed = max(max_wave_speed_plus,max_wave_speed_min)
 
             delta_t = CFL*delta_x/max_speed #TODO implement CFL condition
-
+            
             previous_values = np.copy(values)
 
             for i in range(1,self.mesh.resolution+1):
@@ -834,4 +834,243 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
 
         print(self.orders)
         
+        return data_array
+    
+class Micro_macro(Simulation):
+
+    """
+    This interface represents a classical (not spatially adaptive) simulation in 1D.
+
+    ...
+
+    Attributes
+    ----------
+    order: int
+        order of the moment model
+    pde_type : str
+        the partial differential equations that is simulated
+    number_of_variables : int
+        number of state variables
+    mesh : RectangularMesh
+        the used mesh
+    boundary_condition: str
+        the used boundary condition
+    initial_condition: str
+        the initial condition for the simulation
+    spatial_discretization: spatial_discretization
+        the numerical method for the spatial discretization
+
+    
+    Implemented methods from interface Simulation
+    -------
+    def run_simulation(self,t_end):
+        runs the simulation and outputs the end values
+    def _get_initial_conditions(self,cell_centers_x):
+        constructs the initial values in each grid cell
+    def _update_boundary_conditions(self,values_boundary):
+        updates the boundary conditions
+    def _post_processing(self,values):
+        post processed the end data of the simulation and prepares it for plotting
+    """
+
+    def __init__(self,
+                 order: int,
+                 pde_type: pde.PDE,
+                 mesh: mesh.RectangularMesh,
+                 boundary_condition: str,
+                 initial_condition: str,
+                 spatial_discretization: spatialDiscretization.SpatialDiscretization):
+        """
+        Constructs all the necessary attributes for the ClassicalSimulation1D object.
+
+        Parameters
+        ----------
+        order: int
+            order of the moment model
+        pde_type : str
+            the partial differential equations that is simulated
+        number_of_variables : int
+            number of state variables
+        mesh : RectangularMesh
+            the used mesh
+        boundary_condition: str
+            the used boundary condition
+        initial_condition: str
+            the initial condition for the simulation
+        spatial_discretization: spatial_discretization
+            the numerical method for the spatial discretization
+
+        """
+        self.order = order
+        self.pde_type = pde_type
+        self.number_of_variables = pde_type.compute_number_of_variables(self.order)
+        self.mesh = mesh
+        self.boundary_condition = boundary_condition
+        self.initial_condition = initial_condition
+        self.spatial_discretization = spatial_discretization
+
+    def run_simulation(self,
+                       t_end: float,
+                       g = 1) -> np.array:
+
+        delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution #TODO: include the possibility of nonuniform grids
+
+        micro_moments = self._get_initial_conditions(self.mesh.cell_center_positions)
+        macro_moments = np.zeros((self.mesh.resolution+2, 2))
+
+        #CFL = 0.5
+
+        def micro_system_matrix(cell_values):
+            return self.pde_type.compute_system_matrix(self.order,cell_values)
+
+        def micro_source_term(cell_values):
+            return self.pde_type.compute_source_term(self.order,cell_values)
+        
+        def macro_system_matrix(cell_values):
+            return self.pde_type.compute_system_matrix(0, cell_values)
+
+        def macro_source_term(cell_values):
+            return self.pde_type.compute_source_term(0, cell_values)
+ 
+        micro_delta_t = 0.005
+        macro_delta_t = 0.05
+
+        t = 0
+        step = 0
+
+        while t < t_end:
+
+            # MICRO STEP
+            micro_moments[0,:] = self._update_boundary_conditions(micro_moments,'left')
+            micro_moments[-1,:] = self._update_boundary_conditions(micro_moments,'right')
+            
+            previous_values = np.copy(micro_moments)
+
+            for i in range(1,self.mesh.resolution+1):
+                fluctuation_plus = self.spatial_discretization.compute_fluctuation(
+                    previous_values[i-1,:],
+                    previous_values[i,:],
+                    micro_system_matrix,
+                    'positive',
+                    micro_delta_t,
+                    delta_x) 
+                fluctuation_minus = self.spatial_discretization.compute_fluctuation(
+                    previous_values[i,:],
+                    previous_values[i+1,:],
+                    micro_system_matrix,
+                    'negative',
+                    micro_delta_t,
+                    delta_x) 
+                source_term_value = micro_source_term(previous_values[i,:]) 
+                micro_moments[i,:] = previous_values[i,:] - micro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + micro_delta_t*source_term_value # solve FVM equations
+
+            t += micro_delta_t
+
+            # RESTRICTION
+            macro_moments = micro_moments[:, :2]
+
+            # MACRO STEP
+            macro_moments[0,:] = self._update_boundary_conditions(macro_moments,'left')
+            macro_moments[-1,:] = self._update_boundary_conditions(macro_moments,'right')
+
+            previous_values = np.copy(macro_moments)
+
+            for i in range(1,self.mesh.resolution+1):
+                fluctuation_plus = self.spatial_discretization.compute_fluctuation(
+                    previous_values[i-1,:],
+                    previous_values[i,:],
+                    macro_system_matrix,
+                    'positive',
+                    macro_delta_t,
+                    delta_x) 
+                fluctuation_minus = self.spatial_discretization.compute_fluctuation(
+                    previous_values[i,:],
+                    previous_values[i+1,:],
+                    macro_system_matrix,
+                    'negative',
+                    macro_delta_t,
+                    delta_x) 
+                source_term_value = macro_source_term(previous_values[i,:]) 
+                macro_moments[i,:] = previous_values[i,:] - macro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + macro_delta_t*source_term_value # solve FVM equations
+
+            t += macro_delta_t
+
+            # MATCHING
+            micro_moments[:, :2] = macro_moments
+
+            step+=1
+
+        simulation_data = self._post_processing(micro_moments)
+        return simulation_data
+
+    def _get_initial_conditions(self,
+                               cell_centers_x: np.array) -> np.array:
+
+        """
+        construct the initial values for the variables
+
+        Parameters
+        ----------
+        cell_centers_x : numpy 1D array
+            the centers of the cells
+        
+        Returns
+        -------
+        initial_values: numpy 2D array
+            initial values of the variables in each grid cell
+
+        """
+        
+        initial_values = np.zeros((self.mesh.resolution+2,self.number_of_variables))
+
+        for i in range(0,self.mesh.resolution):
+            initial_values[i+1,:] = self.pde_type.get_initial_values(self.order,self.initial_condition,cell_centers_x[i])            
+        
+        return initial_values
+    
+    def _update_boundary_conditions(self,
+                                   values: np.array,
+                                   boundary) -> np.array:
+        """
+        update the boundary conditions
+
+        Parameters
+        ----------
+        values : numpy 2D array
+            values of the variables in each mesh cell
+        boundary : str
+            the boundary at which we are prescribing a boundary condition
+        
+        Returns
+        -------
+        values_ghost: numpy 1D array
+            the values of the variables in the ghost cell
+
+        """
+
+        if self.boundary_condition == 'INFLOW_OUTFLOW':
+            if boundary == 'left':
+                values_ghost = values[1,:]
+            else:
+                values_ghost = values[-2,:]
+        elif self.boundary_condition == 'PERIODIC':
+            if boundary == 'left':
+                values_ghost = values[-2,:]
+            else:
+                values_ghost = values[1,:]
+
+        return values_ghost 
+    
+    def _post_processing(self,
+                         values) -> np.array:
+
+        data_array = np.zeros((self.mesh.resolution,self.number_of_variables+1)) # rewrite this such that it can be generalized to other PDE models
+
+        for i in range(self.mesh.resolution):
+            data_array[i,0] = self.mesh.cell_center_positions[i]
+        data_array[:,1] = values[1:-1,0]
+        data_array[:,2] = np.divide(values[1:-1,1],data_array[:,1])
+        for j in range(self.order): #TODO: this is unnecessary routine here
+            data_array[:,j+3] = np.divide(values[1:-1,j+2],data_array[:,1])
+
         return data_array

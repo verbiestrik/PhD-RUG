@@ -2,7 +2,7 @@ import configparser
 
 config = configparser.ConfigParser()
 
-config.read('config.txt')
+config.read('/Users/vildarozek/Files/Fork/Untitled/Spatially Adaptive Moment Models/Nonlinear-systems/Config-files/config.txt')
 print(config.sections())
 
 numerical_method_information = config['numerical_method_information']

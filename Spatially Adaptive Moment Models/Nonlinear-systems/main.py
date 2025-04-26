@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import configparser
 import timeit
 
-# delete this line
 def main():
 
     config = configparser.ConfigParser()
@@ -58,7 +57,7 @@ def main():
         _mesh = mesh.UniformRectangularMesh1D([grid_information.getfloat('x1boundary'),grid_information.getfloat('x2boundary')],
                                                grid_information.getint('resolutionX')) #TODO: Implement different grids
 
-        if numerical_method_information.getboolean('spatiallyAdaptive'):
+        if numerical_method_information['method'] == 'spatially_adaptive':
             boundaryInterfaces = numerical_method_information['boundaryInterfaces']
             boundaryInterfaces = [float(boundaryInterface) for boundaryInterface in boundaryInterfaces.split(',')]
             orders = numerical_method_information['orders']
@@ -75,9 +74,19 @@ def main():
                 _spatialDiscretization
             )
         
-        else:
-
+        elif numerical_method_information['method'] == 'classical':
+            
             _simulation = simulation.ClassicalSimulation1D(
+                numerical_method_information.getint('order'),
+                _pde,
+                _mesh,
+                numerical_method_information['boundaryCondition'],
+                pde_information['initialCondition'],
+                _spatialDiscretization)
+            
+        elif numerical_method_information['method'] == 'micro_macro':
+            
+            _simulation = simulation.Micro_macro(
                 numerical_method_information.getint('order'),
                 _pde,
                 _mesh,
@@ -128,10 +137,12 @@ def main():
         plt.subplot(2,3,6)
         plt.plot(_mesh.cell_center_positions,_pde.compute_breakdown_criterion(data_array[:,1:],number_of_variables,'last_moment',_mesh.resolution))
         plt.title('Absolute value last moment')
-
+        
         plt.show()
+        
     else:
         print('2D not implemented yet')
+    
 
 if __name__ == '__main__':
     main()
