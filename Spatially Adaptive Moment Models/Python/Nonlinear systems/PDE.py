@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
+import scipy
 
 #TODO: implement MomentModel as a subclass of PDE and include the possibility of simulating PDEs that are not moment models (and don't have an order)
 class PDE(ABC):
@@ -19,7 +20,7 @@ class PDE(ABC):
     def compute_system_matrix(self,order,values):
         computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
     def compute_source_term(self,order,values):
-        computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
+        computes the source term of the partial differential equation evaluated in the given values, for the given order.
     def get_initial_values(self,order,initial_condition,position):
         calculates the initial values for one specific physical position
     def compute_number_of_variables(self,order):
@@ -155,7 +156,7 @@ class PDE(ABC):
         values : list of numpy 1D arrays
             the values of the variables in each mesh cell
         breakdown_criterion : str
-            the breakdwon criterion that is considered
+            the breakdon criterion that is considered
         
         Returns
         -------
@@ -165,6 +166,7 @@ class PDE(ABC):
         """
 
         pass
+
 
 class SWME1D(PDE):
 
@@ -190,11 +192,13 @@ class SWME1D(PDE):
     def compute_system_matrix(self,order,values):
         computes the system matrix of the SWME1D evaluated in the given values, for the given order. 
     def compute_source_term(self,order,values):
-        computes the system matrix of the SWME1D evaluated in the given values, for the given order.
+        computes the source term of the SWME1D evaluated in the given values, for the given order.
     def get_initial_values(self,order,initial_condition,position):
         calculates the initial values for one specific physical position
     def compute_number_of_variables(self,order):
         computes the number of state variables in the PDE given the order of the moment model
+    def compute_all_breakdown_criteria(self,values,n,max_n_variables)
+        computes the values of all breakdown criterion in each mesh cell
     def compute_breakdown_criterion(self,values,breakdown_criterion,n)
         computes the values of the given breakdown criterion in each mesh cell
 
@@ -232,7 +236,9 @@ class SWME1D(PDE):
     def compute_system_matrix(self,
                               order: int,
                               values: np.array,
-                              g = 9.81) -> np.array:
+                              **kwargs) -> np.array:
+        
+        g = kwargs["g"] if "g" in kwargs else 9.81
         A=np.zeros((order+2,order+2)) 
         h = values[0]
         um = values[1]/values[0]
@@ -540,38 +546,42 @@ class SWME1D(PDE):
     def compute_source_term(self,
                             order: int,
                             values: np.array,
-                            g = 9.81) -> np.array:
+                            **kwargs) -> np.array:
         
+        viscosity   = kwargs["viscosity"]   if "viscosity"      in kwargs else self.viscosity
+        slip_length = kwargs["slip_length"] if "slip_length"    in kwargs else self.slip_length
+        g           = kwargs["g"]           if "g"              in kwargs else 9.81
+
         S = np.zeros(order+2) 
         h = values[0]
         um = values[1]/values[0]
         if order == 0:
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*um
+            S[1] = -viscosity/slip_length*um
         if order == 1:
             alpha1 = values[2]/values[0]
 
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*(um + alpha1)
-            S[2] = -3*self.viscosity/self.slip_length*(um + (1 + 4*self.slip_length/h)*alpha1)
+            S[1] = -viscosity/slip_length*(um + alpha1)
+            S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1)
         if order == 2:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
 
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*(um + alpha1 + alpha2)
-            S[2] = -3*self.viscosity/self.slip_length*(um + (1 + 4*self.slip_length/h)*alpha1 + alpha2)
-            S[3] = -5*self.viscosity/self.slip_length*(um + alpha1 + (1 + 12*self.slip_length/h)*alpha2)
+            S[1] = -viscosity/slip_length*(um + alpha1 + alpha2)
+            S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1 + alpha2)
+            S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2)
         if order == 3:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
 
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*(um + alpha1 + alpha2 + alpha3)
-            S[2] = -3*self.viscosity/self.slip_length*((h + 4*self.slip_length)*alpha1 + h*(um + alpha2) + (h + 4*self.slip_length)*alpha3)/h
-            S[3] = -5*self.viscosity/self.slip_length*(um + alpha1 + (1 + 12*self.slip_length/h)*alpha2 + alpha3)
-            S[4] = -7*self.viscosity/self.slip_length*((h + 4*self.slip_length)*alpha1 + h*(um + alpha2) + (h + 24*self.slip_length)*alpha3)/h
+            S[1] = -viscosity/slip_length*(um + alpha1 + alpha2 + alpha3)
+            S[2] = -3*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 4*slip_length)*alpha3)/h
+            S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2 + alpha3)
+            S[4] = -7*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 24*slip_length)*alpha3)/h
         if order == 4:
 
             alpha1 = values[2]/values[0]
@@ -580,20 +590,20 @@ class SWME1D(PDE):
             alpha4 = values[5]/values[0]
 
             S[0] = 0
-            S[1] = -((self.viscosity*(um + alpha1 + alpha2 + alpha3 + \
-            alpha4))/self.slip_length)
-            S[2] = (-3*self.viscosity*(um + alpha2 + alpha3 + ((h + \
-            4*self.slip_length)*alpha1 + 4*self.slip_length*alpha3)/h + \
-            alpha4))/self.slip_length
-            S[3] = (-5*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + \
-            12*self.slip_length*alpha4)/h))/self.slip_length
-            S[4] = (-7*self.viscosity*(um + alpha2 + alpha3 + ((h + \
-            4*self.slip_length)*alpha1 + 24*self.slip_length*alpha3)/h + \
-            alpha4))/self.slip_length
-            S[5] = (-9*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + \
-            40*self.slip_length*alpha4)/h))/self.slip_length
+            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + \
+            alpha4))/slip_length)
+            S[2] = (-3*viscosity*(um + alpha2 + alpha3 + ((h + \
+            4*slip_length)*alpha1 + 4*slip_length*alpha3)/h + \
+            alpha4))/slip_length
+            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + \
+            12*slip_length*alpha4)/h))/slip_length
+            S[4] = (-7*viscosity*(um + alpha2 + alpha3 + ((h + \
+            4*slip_length)*alpha1 + 24*slip_length*alpha3)/h + \
+            alpha4))/slip_length
+            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + \
+            40*slip_length*alpha4)/h))/slip_length
 
         if order == 5:
 
@@ -604,23 +614,23 @@ class SWME1D(PDE):
             alpha5 = values[6]/values[0]
 
             S[0] = 0
-            S[1] = -((self.viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
-            alpha5))/self.slip_length)
-            S[2] = (-3*self.viscosity*(h*um + (h + 4*self.slip_length)*alpha1 + \
-            h*alpha2 + (h + 4*self.slip_length)*alpha3 + h*alpha4 + (h + \
-            4*self.slip_length)*alpha5))/(h*self.slip_length)
-            S[3] = (-5*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + 12*self.slip_length*alpha4)/h + \
-            alpha5))/self.slip_length
-            S[4] = (-7*self.viscosity*(h*um + (h + 4*self.slip_length)*alpha1 + \
-            h*alpha2 + (h + 24*self.slip_length)*alpha3 + h*alpha4 + (h + \
-            24*self.slip_length)*alpha5))/(h*self.slip_length)
-            S[5] = (-9*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + 40*self.slip_length*alpha4)/h + \
-            alpha5))/self.slip_length
-            S[6] = (-11*self.viscosity*(h*um + (h + 4*self.slip_length)*alpha1 + \
-            h*alpha2 + (h + 24*self.slip_length)*alpha3 + h*alpha4 + (h + \
-            60*self.slip_length)*alpha5))/(h*self.slip_length)
+            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
+            alpha5))/slip_length)
+            S[2] = (-3*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+            h*alpha2 + (h + 4*slip_length)*alpha3 + h*alpha4 + (h + \
+            4*slip_length)*alpha5))/(h*slip_length)
+            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + 12*slip_length*alpha4)/h + \
+            alpha5))/slip_length
+            S[4] = (-7*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+            h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
+            24*slip_length)*alpha5))/(h*slip_length)
+            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + 40*slip_length*alpha4)/h + \
+            alpha5))/slip_length
+            S[6] = (-11*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+            h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
+            60*slip_length)*alpha5))/(h*slip_length)
 
         if order == 6:
 
@@ -632,27 +642,27 @@ class SWME1D(PDE):
             alpha6 = values[7]/values[0]
 
             S[0] = 0
-            S[1] = -((self.viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
-            alpha5 + alpha6))/self.slip_length)
-            S[2] = (-3*self.viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*self.slip_length)*alpha1 + 4*self.slip_length*(alpha3 + \
-            alpha5))/h + alpha6))/self.slip_length
-            S[3] = (-5*self.viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*self.slip_length)*alpha2 + \
-            12*self.slip_length*(alpha4 + alpha6))/h))/self.slip_length
-            S[4] = (-7*self.viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*self.slip_length)*alpha1 + 24*self.slip_length*(alpha3 + \
-            alpha5))/h + alpha6))/self.slip_length
-            S[5] = (-9*self.viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*self.slip_length)*alpha2 + \
-            40*self.slip_length*(alpha4 + alpha6))/h))/self.slip_length
-            S[6] = (-11*self.viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*self.slip_length)*alpha1 + 12*self.slip_length*(2*alpha3 + \
-            5*alpha5))/h + alpha6))/self.slip_length
-            S[7] = (-13*self.viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*self.slip_length)*alpha2 + \
-            40*self.slip_length*alpha4 + \
-            84*self.slip_length*alpha6)/h))/self.slip_length
+            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
+            alpha5 + alpha6))/slip_length)
+            S[2] = (-3*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+            ((h + 4*slip_length)*alpha1 + 4*slip_length*(alpha3 + \
+            alpha5))/h + alpha6))/slip_length
+            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*slip_length)*alpha2 + \
+            12*slip_length*(alpha4 + alpha6))/h))/slip_length
+            S[4] = (-7*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+            ((h + 4*slip_length)*alpha1 + 24*slip_length*(alpha3 + \
+            alpha5))/h + alpha6))/slip_length
+            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*slip_length)*alpha2 + \
+            40*slip_length*(alpha4 + alpha6))/h))/slip_length
+            S[6] = (-11*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+            ((h + 4*slip_length)*alpha1 + 12*slip_length*(2*alpha3 + \
+            5*alpha5))/h + alpha6))/slip_length
+            S[7] = (-13*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*slip_length)*alpha2 + \
+            40*slip_length*alpha4 + \
+            84*slip_length*alpha6)/h))/slip_length
 
         return S
     
@@ -679,6 +689,21 @@ class SWME1D(PDE):
         elif initial_condition == 'constantHeight_constantVelocity':
             initial_values[0] = 1
             initial_values[1] = 1*initial_values[0]
+            if order > 0:
+                initial_values[2] = 0 
+            if order > 1:
+                initial_values[3] = 0 
+            if order > 2:
+                initial_values[4] = 0 
+            if order > 3:
+                initial_values[5] = 0 
+            if order > 4:
+                initial_values[6] = 0 
+            if order > 5:
+                initial_values[7] = 0
+        elif initial_condition == 'linearHeight_noVelocity':
+            initial_values[0] = 1 + 0.1*position
+            initial_values[1] = 0*initial_values[0]
             if order > 0:
                 initial_values[2] = 0 
             if order > 1:
@@ -723,21 +748,72 @@ class SWME1D(PDE):
                     initial_values[6] = 0 
                 if order > 5:
                     initial_values[7] = 0
-        elif initial_condition == 'linearHeight_noVelocity':
-            initial_values[0] = 1 + 0.1*position
-            initial_values[1] = 0*initial_values[0]
-            if order > 0:
-                initial_values[2] = 0 
-            if order > 1:
-                initial_values[3] = 0 
-            if order > 2:
-                initial_values[4] = 0 
-            if order > 3:
-                initial_values[5] = 0 
-            if order > 4:
-                initial_values[6] = 0 
-            if order > 5:
-                initial_values[7] = 0
+        elif initial_condition == 'lowDamBreak_withVelocity':
+            x0 = 0
+            if position < x0:
+                initial_values[0] = 1.5
+                initial_values[1] = 0.25*initial_values[0]
+                if order > 0:
+                    initial_values[2] = -0.25*initial_values[0] 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+            else:
+                initial_values[0] = 1
+                initial_values[1] = 0.25*initial_values[0]
+                if order > 0:
+                    initial_values[2] = -0.25*initial_values[0] 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0
+        elif initial_condition == 'highDamBreak_withVelocity':
+            x0 = 0
+            if position < x0:
+                initial_values[0] = 5
+                initial_values[1] = 0.25*initial_values[0]
+                if order > 0:
+                    initial_values[2] = -0.25*initial_values[0] 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+            else:
+                initial_values[0] = 1
+                initial_values[1] = 0.25*initial_values[0]
+                if order > 0:
+                    initial_values[2] = -0.25*initial_values[0] 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+        else:
+            print("This initial condition is not implemented yet for the SWME1D")
         return initial_values
     
     def compute_number_of_variables(self, order) -> int:
@@ -846,6 +922,7 @@ class SWME1D(PDE):
 
         return breakdown_criterion_values
     
+
 class VegetationSWME1D(SWME1D):
     """
     This class represents the SWME1D with vegetation drag term in the momentum equation.
@@ -1735,4 +1812,1438 @@ class VegetationSWME1D(SWME1D):
 
         S = S + self.compute_drag_force(order, values, h_v, stem_diam, n_stems, drag_coeff)
         return S
+
+
+class SGSWME1D(PDE):
+
+    """
+    This class represents the one-dimensional stochastic Galerkin Shallow Water Moment Equations (SGSWME1D).
+
+    ...
+
+    Attributes
+    ----------
+    initial_condition : str
+        initial condition for the SGSWME1D
+    distr : str
+        distribution of viscosity parameter
+    mu : float
+        mean of distribution of viscosity parameter
+    sigma : float
+        standard deviation of distribution of viscosity parameter
+    slip_length : float
+        value for the slip length
+    hyperbolic : boolean
+        whether the model is hyperbolic, true (HSGSWME1D) or false (SGSWME1D)
+
     
+    Implemented methods from interface PDE
+    ---------------------------------
+    def compute_system_matrix(self, mom_order, SG_order, values):
+        computes the system matrix of the SGSWME1D evaluated in the given values, for the given moment order and stochastic Galerkin order. 
+    def compute_source_term(self, mom_order, SG_order, values):
+        computes the source term of the SWME1D evaluated in the given values, for the given moment order and stochastic Galerkin order.
+    def get_initial_values(self, mom_order, SG_order, initial_condition, position):
+        calculates the initial values for one specific physical position
+    def compute_number_of_variables(self, mom_order, SG_order):
+        computes the number of state variables in the PDE given the moment order and stochastic Galerkin order of the model
+
+    Instance methods
+    ----------------
+    def compute_exp_and_var(self, mom_order, SG_order, values, primitive)
+        computes the expectation and variance of h, um and alpha1 or of h, h*um and h*alpha1
+    def compute_vertical_velocity_profile(self, mom_order, SG_order, values, z_points):
+        reconstruct the expectation and variance of the vertical velocity profiles from the model values
+    """
+
+    def __init__(self, 
+                initial_condition: str,
+                distr: str,
+                mu: float,
+                sigma: float,
+                slip_length: float,
+                hyperbolic: bool):
+        """
+        Constructs all the necessary attributes for the SWME1D object.
+
+        Parameters
+        ----------
+        initial_condition : str
+            initial condition of the PDE
+        distr : str
+            distribution of viscosity parameter name
+        mu : float
+            mean of distribution of viscosity parameter value
+        sigma : float
+            standard deviation of distribution of viscosity parameter value
+        slip_length : float
+            slip length value
+        hyperbolic : boolean
+            true if hyperbolic, false if not hyperbolic
+        """
+
+        self.initial_condition = initial_condition
+        self.distr = distr
+        self.mu = mu 
+        self.sigma = sigma
+        self.slip_length = slip_length
+        self.hyperbolic = hyperbolic
+
+
+    def compute_system_matrix(self,
+                              mom_order: int,
+                              SG_order: int,
+                              values: np.array,
+                              g = 9.81) -> np.array:
+        
+        A = np.zeros(((mom_order + 2)*(SG_order + 1), (mom_order + 2)*(SG_order + 1))) 
+        
+        if mom_order == 0:
+            if SG_order == 0:
+                h0 = values[0]
+                q0 = values[1]
+
+                A[0][0] = 0
+                A[0][1] = 1
+                A[1][0] = g*h0 - (q0/h0)**2
+                A[1][1] = 2.*q0/h0
+            
+            elif SG_order == 1:
+                h0 = values[0]
+                h1 = values[1]
+                q0 = values[2]
+                q1 = values[3]
+
+                if self.distr == "normal" or self.distr == "uniform":
+                    A[0][0] = 0
+                    A[0][1] = 0
+                    A[0][2] = 1
+                    A[0][3] = 0
+                    A[1][0] = 0
+                    A[1][1] = 0
+                    A[1][2] = 0
+                    A[1][3] = 1
+                    A[2][0] = g*h0 - (-((h1*q0)/(h0**2 - h1**2)) + (h0*q1)/(h0**2 - h1**2))**2 - ((h0*q0)/(h0**2 - h1**2) - (h1*q1)/(h0**2 - h1**2))**2
+                    A[2][1] = g*h1 - 2*(-((h1*q0)/(h0**2 - h1**2)) + (h0*q1)/(h0**2 - h1**2))*((h0*q0)/(h0**2 - h1**2) - (h1*q1)/(h0**2 - h1**2))
+                    A[2][2] = (2*h0*q0)/(h0**2 - h1**2) - (2*h1*q1)/(h0**2 - h1**2)
+                    A[2][3] = (-2*h1*q0)/(h0**2 - h1**2) + (2*h0*q1)/(h0**2 - h1**2)
+                    A[3][0] = g*h1 - 2*(-((h1*q0)/(h0**2 - h1**2)) + (h0*q1)/(h0**2 - h1**2))*((h0*q0)/(h0**2 - h1**2) - (h1*q1)/(h0**2 - h1**2))
+                    A[3][1] = g*h0 - (-((h1*q0)/(h0**2 - h1**2)) + (h0*q1)/(h0**2 - h1**2))**2 - ((h0*q0)/(h0**2 - h1**2) - (h1*q1)/(h0**2 - h1**2))**2
+                    A[3][2] = (-2*h1*q0)/(h0**2 - h1**2) + (2*h0*q1)/(h0**2 - h1**2)
+                    A[3][3] = (2*h0*q0)/(h0**2 - h1**2) - (2*h1*q1)/(h0**2 -  h1**2)
+                
+                else:
+                    print("This distribution is not implemented yet for mom_order=0 and SG_order=1")
+
+            elif SG_order == 2:
+                h0 = values[0]
+                h1 = values[1]
+                h2 = values[2]
+                q0 = values[3]
+                q1 = values[4]
+                q2 = values[5]
+
+                if self.distr == "normal":
+                    denominator = h0**3 - 3*h0*h1**2 + 3*np.sqrt(2)*h0**2*h2 + 3*h0*h2**2 - np.sqrt(2)*h2**3
+                    A[0][0] = 0
+                    A[0][1] = 0
+                    A[0][2] = 0
+                    A[0][3] = 1
+                    A[0][4] = 0
+                    A[0][5] = 0
+                    A[1][0] = 0
+                    A[1][1] = 0
+                    A[1][2] = 0
+                    A[1][3] = 0
+                    A[1][4] = 1
+                    A[1][5] = 0
+                    A[2][0] = 0
+                    A[2][1] = 0
+                    A[2][2] = 0
+                    A[2][3] = 0
+                    A[2][4] = 0
+                    A[2][5] = 1
+                    A[3][0] = g*h0                                                                                      \
+                            - (((np.sqrt(2)*h1**2 - h0*h2 -   np.sqrt(2)*h2**2)                 *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)**2    \
+                            - (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)**2    \
+                            - (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator)**2
+                    A[3][1] = g*h1                                                                                      \
+                            - np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)        *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)       \
+                            * (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            - (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator)       \
+                            - (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            *(((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)        *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator))
+                    A[3][2] = g*h2                                                                                      \
+                            - np.sqrt(2)*(((-(h0*h1) - np.sqrt(2)*h1*h2)                        *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)**2    \
+                            - (((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                   *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator)       \
+                            - (((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                   *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + 2*np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)      *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator))
+                    A[3][3] = (2*(h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)               *q0)/denominator        \
+                            + (2*(-(h0*h1) - np.sqrt(2)*h1*h2)                                  *q1)/denominator        \
+                            + (2*(np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                  *q2)/denominator
+                    A[3][4] = (2*(-(h0*h1) - np.sqrt(2)*h1*h2)                                  *q0)/denominator        \
+                            + (2*(h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                           *q1)/denominator        \
+                            + (2*(-(np.sqrt(2)*h0*h1) + h1*h2)                                  *q2)/denominator
+                    A[3][5] = (2*(np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                  *q0)/denominator        \
+                            + (2*(-(np.sqrt(2)*h0*h1) + h1*h2)                                  *q1)/denominator        \
+                            + (2*(h0**2 - h1**2 + np.sqrt(2)*h0*h2)                             *q2)/denominator
+                    A[4][0] = g*h1                                                                                      \
+                            - (((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                   *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)       \
+                            * ((np.sqrt(2)*(h0**2 - h1**2 + np.sqrt(2)*h0*h2)                   *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            - (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q1)/denominator        \
+                            + (np.sqrt(2)*(np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)         *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            - (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * ((np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                        *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)           *(q0 + np.sqrt(2)*q2))/denominator)
+                    A[4][1] = g*(h0 + np.sqrt(2)*h2)                                                                    \
+                            - np.sqrt(2)*(((-(h0*h1) - np.sqrt(2)*h1*h2)                        *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            *((np.sqrt(2)*(h0**2 - h1**2 + np.sqrt(2)*h0*h2)                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            - (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q1)/denominator        \
+                            + (np.sqrt(2)*(np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)         *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            - ((np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                        *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)           *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)        *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator))
+                    A[4][2] = np.sqrt(2)*g*h1                                                                           \
+                            - (((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                   *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q1)/denominator        \
+                            + (np.sqrt(2)*(np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)         *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            - np.sqrt(2)*(((-(h0*h1) - np.sqrt(2)*h1*h2)                        *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * ((np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                        *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)           *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            - ((np.sqrt(2)*(h0**2 - h1**2 + np.sqrt(2)*h0*h2)                   *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + 2*np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)      *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator))
+                    A[4][3] = ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q1)/denominator        \
+                            + (np.sqrt(2)*(np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)         *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator
+                    A[4][4] = ((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q0)/denominator        \
+                            + (np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                         *q1)/denominator        \
+                            + (2*(-(h0*h1) - np.sqrt(2)*h1*h2)                                  *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)           *(q0 + np.sqrt(2)*q2))/denominator        \
+                            + np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)        *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)
+                    A[4][5] = (np.sqrt(2)*(h0**2 - h1**2 + np.sqrt(2)*h0*h2)                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                  *(q0 + np.sqrt(2)*q2))/denominator        \
+                            + np.sqrt(2)*(((-(h0*h1) - np.sqrt(2)*h1*h2)                        *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)
+                    A[5][0] = g*h2                                                                                      \
+                            - (((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                   *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)       \
+                            * ((np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                        *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)           *(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            - (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * ((np.sqrt(2)*(h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                 *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q2)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                *(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            - (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator)       \
+                            * ((np.sqrt(2)*(-(h0*h1) - np.sqrt(2)*h1*h2)                        *q1)/denominator        \
+                            + ((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q2)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)*(q0 + 2*np.sqrt(2)*q2))/denominator)
+                    A[5][1] = np.sqrt(2)*g*h1                                                                           \
+                            - np.sqrt(2)*(((-(h0*h1) - np.sqrt(2)*h1*h2)                        *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * ((np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                        *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)           *(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            - (((-(h0*h1) - np.sqrt(2)*h1*h2)                                   *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * ((np.sqrt(2)*(-(h0*h1) - np.sqrt(2)*h1*h2)                        *q1)/denominator        \
+                            + ((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q2)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)*(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            - ((np.sqrt(2)*(h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                 *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q2)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                *(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)        *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator))
+                    A[5][2] = g*(h0 + 2*np.sqrt(2)*h2)                                                                  \
+                            - np.sqrt(2)*(((-(h0*h1) - np.sqrt(2)*h1*h2)                        *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)       \
+                            * ((np.sqrt(2)*(h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                 *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q2)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                *(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            - (((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                   *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)       \
+                            * ((np.sqrt(2)*(-(h0*h1) - np.sqrt(2)*h1*h2)                        *q1)/denominator        \
+                            + ((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q2)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)*(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            - ((np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                        *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)           *(q0 + 2*np.sqrt(2)*q2))/denominator)       \
+                            * (((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                *q0)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q2)/denominator        \
+                            + 2*np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)      *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator))
+                    A[5][3] = ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                    *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + (np.sqrt(2)*(-(h0*h1) - np.sqrt(2)*h1*h2)                         *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator        \
+                            + ((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q2)/denominator        \
+                            + ((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)*(q0 + 2*np.sqrt(2)*q2))/denominator
+                    A[5][4] = (np.sqrt(2)*(h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                  *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q2)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                *(q0 + 2*np.sqrt(2)*q2))/denominator        \
+                            + np.sqrt(2)*(((-(h0*h1) - np.sqrt(2)*h1*h2)                        *q0)/denominator        \
+                            + ((h0**2 + 2*np.sqrt(2)*h0*h2 - h2**2)                             *q1)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q2)/denominator)
+                    A[5][5] = ((h0**2 - 2*h1**2 + 3*np.sqrt(2)*h0*h2 + 4*h2**2)                 *q0)/denominator        \
+                            + (np.sqrt(2)*(-(np.sqrt(2)*h0*h1) + h1*h2)                         *q1)/denominator        \
+                            + ((-(h0*h1) - np.sqrt(2)*h1*h2)                                    *q1)/denominator        \
+                            + (2*(np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)                  *q2)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)           *(q0 + 2*np.sqrt(2)*q2))/denominator        \
+                            + 2*np.sqrt(2)*(((np.sqrt(2)*h1**2 - h0*h2 - np.sqrt(2)*h2**2)      *q0)/denominator        \
+                            + ((-(np.sqrt(2)*h0*h1) + h1*h2)                                    *q1)/denominator        \
+                            + ((h0**2 - h1**2 + np.sqrt(2)*h0*h2)                               *q2)/denominator)
+
+                elif self.distr == "uniform":
+                    denominator = h0**3 - (9*h0*h1**2)/5. + (24*h0**2*h2)/(7.*np.sqrt(5)) + (18*h1**2*h2)/(7.*np.sqrt(5)) - (3*h0*h2**2)/7. - (2*h2**3)/np.sqrt(5)
+                    
+                    A[0][0] = 0
+                    A[0][1] = 0
+                    A[0][2] = 0
+                    A[0][3] = 1
+                    A[0][4] = 0
+                    A[0][5] = 0
+                    A[1][0] = 0
+                    A[1][1] = 0
+                    A[1][2] = 0
+                    A[1][3] = 0
+                    A[1][4] = 1
+                    A[1][5] = 0
+                    A[2][0] = 0
+                    A[2][1] = 0
+                    A[2][2] = 0
+                    A[2][3] = 0
+                    A[2][4] = 0
+                    A[2][5] = 1
+                    A[3][0] = g*h0                                                                                                              \
+                            - ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)**2            \
+                            - (((-h0*h1 + (4*h1*h2)/(7.*np.sqrt(5)))                                            *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)**2            \
+                            - ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q0)/denominator                \
+                            + ((-h0*h1 + (4*h1*h2)/(7.*np.sqrt(5)))                                             *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*(h2**2)/np.sqrt(5))                           *q2)/denominator)**2
+                    A[3][1] = g*h1                                                                                                              \
+                            - (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)               \
+                            * (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                \
+                            + ((h0**2 +  (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                       *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator))/ np.sqrt(5)  \
+                            - (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator)               \
+                            - (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/np.sqrt(5))
+                    A[3][2] = g*h2                                                                                                              \
+                            - (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)**2)/np.sqrt(5)\
+                            - ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator)               \
+                            - ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + (2*np.sqrt(5)*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))             *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/7.)
+                    A[3][3] = (2*(h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)             *q0)/denominator                \
+                            + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q1)/denominator                \
+                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q2)/denominator                 
+                    A[3][4] = (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q0)/denominator                \
+                            + (2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                      *q1)/denominator                \
+                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q2)/denominator                 
+                    A[3][5] = (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q0)/denominator                \
+                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q1)/denominator                \
+                            + (2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                         *q2)/denominator
+                    A[4][0] = g*h1                                                                                                              \
+                            - ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)               \
+                            * ((2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                        *q1)/(np.sqrt(5)*denominator)   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator)               \
+                            - (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q1)/denominator                \
+                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                     *(q0 + (2*q2)/np.sqrt(5)))/denominator)               \
+                            - (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * ((2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                               *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                  *(q0 + (2*q2)/np.sqrt(5)))/denominator)        
+                    A[4][1] = g*(h0 + (2*h2)/np.sqrt(5))                                                                                        \
+                            - (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * ((2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                        *q1)/(np.sqrt(5)*denominator)   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator))/np.sqrt(5)   \
+                            - (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q1)/denominator                \
+                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                     *(q0 + (2*q2)/np.sqrt(5)))/denominator)               \
+                            - ((2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                               *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                  *(q0 + (2*q2)/np.sqrt(5)))/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/np.sqrt(5))
+                    A[4][2] = (2*g*h1)/np.sqrt(5)                                                                                               \
+                            - ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q1)/denominator                \
+                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                     *(q0 + (2*q2)/np.sqrt(5)))/denominator)               \
+                            - (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * ((2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                               *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                  *(q0 + (2*q2)/np.sqrt(5)))/denominator))/np.sqrt(5)   \
+                            - ((2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                        *q1)/(np.sqrt(5)*denominator)   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + (2*np.sqrt(5)*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))             *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/7.)
+                    A[4][3] = ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q1)/denominator                \
+                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q1)/(np.sqrt(5)*denominator)   \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                     *(q0 + (2*q2)/np.sqrt(5)))/denominator
+                    A[4][4] = ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q0)/denominator                \
+                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q1)/(np.sqrt(5)*denominator)   \
+                            + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                  *(q0 + (2*q2)/np.sqrt(5)))/denominator                \
+                            + (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/np.sqrt(5)
+                    A[4][5] = (2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                         *q1)/(np.sqrt(5)*denominator)   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator                \
+                            + (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator))/np.sqrt(5)
+                    A[5][0] = g*h2                                                                                                              \
+                            - ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)               \
+                            * ((2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                               *q1)/(np.sqrt(5)*denominator)   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)               \
+                            - (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * ((2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                     *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q2)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                         *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)               \
+                            - (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator)               \
+                            * ((2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                        *q1)/(np.sqrt(5)*denominator)   \
+                            + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q2)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))   *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)
+                    A[5][1] = (2*g*h1)/np.sqrt(5)                                                                                               \
+                            - (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * ((2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                               *q1)/(np.sqrt(5)*denominator)   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator))/np.sqrt(5)   \
+                            - (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * ((2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                        *q1)/(np.sqrt(5)*denominator)   \
+                            + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q2)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))   *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)               \
+                            - ((2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                     *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q2)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                         *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/np.sqrt(5))  
+                    A[5][2] = g*(h0 + (2*np.sqrt(5)*h2)/7.)                                                                                     \
+                            - (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator)               \
+                            * ((2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                     *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q2)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                         *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator))/np.sqrt(5)   \
+                            - ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator)               \
+                            * ((2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                        *q1)/(np.sqrt(5)*denominator)   \
+                            + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q2)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))   *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)               \
+                            - ((2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                               *q1)/(np.sqrt(5)*denominator)   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)               \
+                            * (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                \
+                            + (2*np.sqrt(5)*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))             *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/7.)
+                    A[5][3] = (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q1)/(np.sqrt(5)*denominator)   \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator                \
+                            + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q2)/denominator                \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))   *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator
+                    A[5][4] = (2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                      *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q2)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                         *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator                \
+                            + (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator))/np.sqrt(5)
+                    A[5][5] = ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q0)/denominator                \
+                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q1)/(np.sqrt(5)*denominator)   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                \
+                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q2)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator                \
+                            + (2*np.sqrt(5)*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))             *q0)/denominator                \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/7.
+                
+                else:
+                    print("This distribution is not implemented yet for mom_order=0 and SG_order=2")
+            
+            else:
+                print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+
+        elif mom_order == 1:
+            if SG_order == 0:
+                h0 = values[0]
+                q0 = values[1]
+                r0 = values[2]
+
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[1][0] = g*h0 - (q0/h0)**2 - 1/3*(r0/h0)**2
+                A[1][1] = 2.*q0/h0
+                A[1][2] = 2/3*r0/h0
+                A[2][0] = -2.*(q0*r0)/h0**2
+                A[2][1] = 2.*r0/h0     
+                A[2][2] = q0/h0
+
+            elif SG_order == 1:
+                if self.distr == "normal" or self.distr == "uniform":
+                    h0 = values[0]
+                    h1 = values[1]
+                    q0 = values[2]
+                    q1 = values[3]
+                    r0 = values[4]
+                    r1 = values[5]
+
+                    A[0][0] = 0
+                    A[0][1] = 0
+                    A[0][2] = 1
+                    A[0][3] = 0
+                    A[0][4] = 0
+                    A[0][5] = 0
+
+                    A[1][0] = 0
+                    A[1][1] = 0
+                    A[1][2] = 0
+                    A[1][3] = 1
+                    A[1][4] = 0
+                    A[1][5] = 0
+
+                    A[2][0] = -1*(-3*g*h0**5 + 6*g*h0**3*h1**2 - h0*h1*(3*g*h1**3 + 12*q0*q1 + 4*r0*r1) + h0**2*(3*q0**2 + 3*q1**2 + r0**2 + r1**2) + h1**2*(3*q0**2 + 3*q1**2 + r0**2 + r1**2))/(3*(h0**2 - h1**2)**2)
+                    A[2][1] = (3*g*h0**4*h1 + h1**2*(3*g*h1**3 - 6*q0*q1 - 2*r0*r1) - 2*h0**2*(3*g*h1**3 + 3*q0*q1 + r0*r1) + 2*h0*h1*(3*q0**2 + 3*q1**2 + r0**2 + r1**2))/(3*(h0**2 - h1**2)**2)
+                    A[2][2] = (2*(h0*q0 - h1*q1))/(h0**2 - h1**2)
+                    A[2][3] = (2*(h0*q1 - h1*q0))/(h0**2 - h1**2)
+                    A[2][4] = (2*(h0*r0 - h1*r1))/(3*(h0**2 - h1**2))
+                    A[2][5] = (2*(h0*r1 - h1*r0))/(3*(h0**2 - h1**2))
+
+                    A[3][0] = (3*g*h0**4*h1 + h1**2*(3*g*h1**3 - 6*q0*q1 - 2*r0*r1) - 2*h0**2*(3*g*h1**3 + 3*q0*q1 + r0*r1) + 2*h0*h1*(3*q0**2 + 3*q1**2 + r0**2 + r1**2))/(3*(h0**2 - h1**2)**2)
+                    A[3][1] = -1*(-3*g*h0**5 + 6*g*h0**3*h1**2 - h0*h1*(3*g*h1**3 + 12*q0*q1 + 4*r0*r1) + h0**2*(3*q0**2 + 3*q1**2 + r0**2 + r1**2) + h1**2*(3*q0**2 + 3*q1**2 + r0**2 + r1**2))/(3*(h0**2 - h1**2)**2)
+                    A[3][2] = (2*(h0*q1 - h1*q0))/(h0**2 - h1**2)
+                    A[3][3] = (2*(h0*q0 - h1*q1))/(h0**2 - h1**2)
+                    A[3][4] = (2*(h0*r1 - h1*r0))/(3*(h0**2 - h1**2))
+                    A[3][5] = (2*(h0*r0 - h1*r1))/(3*(h0**2 - h1**2))
+                    
+                    A[4][0] = (-2*((h0**2 + h1**2)*q0 - 2*h0*h1*q1)*r0 - 2*((h0**2 + h1**2)*q1 - 2*h0*h1*q0)*r1)/((h0**2 - h1**2)**2)
+                    A[4][1] = (-2*((h0**2 + h1**2)*q1 - 2*h0*h1*q0)*r0 - 2*((h0**2 + h1**2)*q0 - 2*h0*h1*q1)*r1)/((h0**2 - h1**2)**2)
+                    A[4][2] = (2*(h0*r0 - h1*r1))/(h0**2 - h1**2)
+                    A[4][3] = (h0*q0 - h1*q1)/(h0**2 - h1**2)
+                    A[4][4] = (2*(h0*r1 - h1*r0))/(h0**2 - h1**2)
+                    A[4][5] = (h0*q1 - h1*q0)/(h0**2 - h1**2)
+                    
+                    A[5][0] = (-2*((h0**2 + h1**2)*q1 - 2*h0*h1*q0)*r0 - 2*((h0**2 + h1**2)*q0 - 2*h0*h1*q1)*r1)/((h0**2 - h1**2)**2)
+                    A[5][1] = (-2*((h0**2 + h1**2)*q0 - 2*h0*h1*q1)*r0 - 2*((h0**2 + h1**2)*q1 - 2*h0*h1*q0)*r1)/((h0**2 - h1**2)**2)
+                    A[5][2] = (2*(h0*r1 - h1*r0))/(h0**2 - h1**2)
+                    A[5][3] = (2*(h0*r0 - h1*r1))/(h0**2 - h1**2)
+                    A[5][4] = (h0*q1 - h1*q0)/(h0**2 - h1**2)
+                    A[5][5] = (h0*q0 - h1*q1)/(h0**2 - h1**2)
+                
+                else:
+                    print("This distribution is not implemented yet for mom_order=1 and SG_order=1")
+            
+            else:
+                print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+        
+        else:
+            print("This moment order is not implemented yet for the SGSWME1D")
+        
+        return A
+
+
+    def compute_source_term(self,
+                            mom_order: int,
+                            SG_order: int,
+                            values: np.array,
+                            g = 9.81) -> np.array:
+        
+        mu = self.mu
+        sigma = self.sigma
+        slip_length = self.slip_length
+        S = np.zeros((mom_order+2)*(SG_order+1))
+
+        if mom_order == 0:
+            if SG_order == 0:
+                h0 = values[0]
+                q0 = values[1]
+
+                S[0] = 0
+                S[1] = -((mu*q0)/(slip_length*h0))
+            
+            elif SG_order == 1:
+                h0 = values[0]
+                h1 = values[1]
+                q0 = values[2]
+                q1 = values[3]
+
+                if self.distr == "normal":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = (h1*(sigma*q0 + mu*q1) - h0*(mu*q0 + sigma*q1))/(slip_length*(h0**2 - h1**2))
+                    S[3] = (-(h0*(sigma*q0 + mu*q1)) + h1*(mu*q0 + sigma*q1))/(slip_length*(h0**2 - h1**2))
+
+                elif self.distr == "uniform":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = (h1*(np.sqrt(3)*sigma*q0 + 3*mu*q1) - h0*(3*mu*q0 + np.sqrt(3)*sigma*q1))/(3.*slip_length*(h0**2 - h1**2))
+                    S[3] = (-(h0*(np.sqrt(3)*sigma*q0 + 3*mu*q1)) + h1*(3*mu*q0 + np.sqrt(3)*sigma*q1))/(3.*slip_length*(h0**2 - h1**2))
+                
+                else:
+                    print("This distribution is not implemented yet for mom_order=0 and SG_order=1")
+            
+            elif SG_order == 2:
+                h0 = values[0]
+                h1 = values[1]
+                h2 = values[2]
+                q0 = values[3]
+                q1 = values[4]
+                q2 = values[5]
+                
+                if self.distr == "normal":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = 0
+                    S[3] = (-(h0**2*(mu*q0 + sigma*q1)) + mu*h1**2*(2*q0 - np.sqrt(2)*q2) + h2**2*(-4*mu*q0 + sigma*q1 + np.sqrt(2)*mu*q2) \
+                         + h1*h2*(np.sqrt(2)*sigma*q0 + np.sqrt(2)*mu*q1 - sigma*q2) + h0*(h2*(-3*np.sqrt(2)*mu*q0 - 2*np.sqrt(2)*sigma*q1 + mu*q2) \
+                         + h1*(sigma*q0 + mu*q1 + np.sqrt(2)*sigma*q2)))/(slip_length*(h0**3 + 3*np.sqrt(2)*h0**2*h2 - np.sqrt(2)*h2**3 + 3*h0*(-h1**2 + h2**2)))
+                    S[4] = (-(h0**2*(sigma*q0 + mu*q1 + np.sqrt(2)*sigma*q2)) + h0*(h1*(mu*q0 + 3*sigma*q1 + np.sqrt(2)*mu*q2) \
+                         - h2*(2*np.sqrt(2)*sigma*q0 + 2*np.sqrt(2)*mu*q1 + sigma*q2)) + h2*(mu*h1*(np.sqrt(2)*q0 - q2) + h2*(-2*sigma*q0 + mu*q1 \
+                         + np.sqrt(2)*sigma*q2)))/(slip_length*(h0**3 + 3*np.sqrt(2)*h0**2*h2 - np.sqrt(2)*h2**3 + 3*h0*(-h1**2 + h2**2)))
+                    S[5] = ((2*sigma*h1*h2 + np.sqrt(2)*mu*(-h1**2 + h2**2))*q0 - h0**2*(np.sqrt(2)*sigma*q1 + mu*q2) + (mu*h1 \
+                         - np.sqrt(2)*sigma*h2)*(-(h2*q1) + h1*q2) + h0*(h2*(mu*q0 - 4*sigma*q1 - np.sqrt(2)*mu*q2) + h1*(np.sqrt(2)*sigma*q0 + np.sqrt(2)*mu*q1 \
+                         + 2*sigma*q2)))/(slip_length*(h0**3 + 3*np.sqrt(2)*h0**2*h2 - np.sqrt(2)*h2**3 + 3*h0*(-h1**2 + h2**2)))
+                
+                elif self.distr == "uniform":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = 0
+                    S[3] = (-35*h0**2*(3*mu*q0 + np.sqrt(3)*sigma*q1) + 42*mu*h1**2*(2*q0 - np.sqrt(5)*q2) + h2**2*(-60*mu*q0 + 35*np.sqrt(3)*sigma*q1 + 42*np.sqrt(5)*mu*q2) \
+                         - h1*h2*(4*np.sqrt(15)*sigma*q0 + 12*np.sqrt(5)*mu*q1 + 35*np.sqrt(3)*sigma*q2) + h0*(h2*(-72*np.sqrt(5)*mu*q0 - 10*np.sqrt(15)*sigma*q1 + 105*mu*q2) + 7*h1*(5*np.sqrt(3)*sigma*q0 \
+                         + 15*mu*q1 + 2*np.sqrt(15)*sigma*q2)))/(3.*slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2)))
+                    S[4] = (-7*h0**2*(5*np.sqrt(3)*sigma*q0 + 15*mu*q1 + 2*np.sqrt(15)*sigma*q2) + h0*(21*h1*(5*mu*q0 + 3*np.sqrt(3)*sigma*q1 + 2*np.sqrt(5)*mu*q2) + h2*(-10*np.sqrt(15)*sigma*q0 \
+                         - 30*np.sqrt(5)*mu*q1 + 7*np.sqrt(3)*sigma*q2)) + h2*(-3*h1*(4*np.sqrt(5)*mu*q0 + 6*np.sqrt(15)*sigma*q1 + 35*mu*q2) + h2*(8*np.sqrt(3)*sigma*q0 + 105*mu*q1 \
+                         + 14*np.sqrt(15)*sigma*q2)))/(3.*slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2)))
+                    S[5] = -(21*mu*(h1*(-2*np.sqrt(5)*h0 + 5*h2)*q1 + h1**2*(2*np.sqrt(5)*q0 - 5*q2) + (5*h0 + 2*np.sqrt(5)*h2)*(-(h2*q0) + h0*q2)) + 2*np.sqrt(3)*sigma*(7*np.sqrt(5)*h0**2*q1 \
+                         + h0*(10*h2*q1 - 7*h1*(np.sqrt(5)*q0 + 2*q2)) + h2*(-7*np.sqrt(5)*h2*q1 + h1*(4*q0 + 7*np.sqrt(5)*q2))))/(3.*slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 \
+                         - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2)))
+                
+                else:
+                    print("This distribution is not implemented yet for mom_order=0 and SG_order=2")
+            
+            else:
+                print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+        
+        elif mom_order == 1:
+            if SG_order == 0:
+                h0 = values[0]
+                q0 = values[1]
+                r0 = values[2]
+
+                S[0] = 0
+                S[1] = -((mu*(q0 + r0))/(slip_length*h0))
+                S[2] = (-3*mu*(4*slip_length*r0 + h0*(q0 + r0)))/(slip_length*h0**2)
+
+            elif SG_order == 1:
+                h0 = values[0]
+                h1 = values[1]
+                q0 = values[2]
+                q1 = values[3]
+                r0 = values[4]
+                r1 = values[5]
+
+                if self.distr == "normal":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = (h1*(sigma*(q0 + r0) + mu*(q1 + r1)) - h0*(mu*(q0 + r0) + sigma*(q1 + r1)))/(slip_length*(h0**2 - h1**2))
+                    S[3] = (-(h0*(sigma*(q0 + r0) + mu*(q1 + r1))) + h1*(mu*(q0 + r0) + sigma*(q1 + r1)))/(slip_length*(h0**2 - h1**2))
+                    S[4] = (3*(-(h0**3*(mu*(q0 + r0) + sigma*(q1 + r1))) + h0**2*(-4*slip_length*(mu*r0 + sigma*r1) + h1*(sigma*(q0 + r0) \
+                         + mu*(q1 + r1))) - h1**2*(4*slip_length*(mu*r0 + sigma*r1) + h1*(sigma*(q0 + r0) + mu*(q1 + r1))) + h0*h1*(8*slip_length*(sigma*r0 \
+                         + mu*r1) + h1*(mu*(q0 + r0) + sigma*(q1 + r1)))))/(slip_length*(h0**2 - h1**2)**2)
+                    S[5] = (3*(-(h0**3*(sigma*(q0 + r0) + mu*(q1 + r1))) + h0*h1*(8*slip_length*(mu*r0 + sigma*r1) + h1*(sigma*(q0 + r0) \
+                         + mu*(q1 + r1))) + h0**2*(-4*slip_length*(sigma*r0 + mu*r1) + h1*(mu*(q0 + r0) + sigma*(q1 + r1))) \
+                         - h1**2*(4*slip_length*(sigma*r0 + mu*r1) + h1*(mu*(q0 + r0) + sigma*(q1 + r1)))))/(slip_length*(h0**2 - h1**2)**2)
+                
+                elif self.distr == "uniform":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = (h1*(np.sqrt(3)*sigma*(q0 + r0) + 3*mu*(q1 + r1)) - h0*(3*mu*(q0 + r0) + np.sqrt(3)*sigma*(q1 + r1)))/(3.*slip_length*(h0**2 - h1**2))
+                    S[3] = (-(h0*(np.sqrt(3)*sigma*(q0 + r0) + 3*mu*(q1 + r1))) + h1*(3*mu*(q0 + r0) + np.sqrt(3)*sigma*(q1 + r1)))/(3.*slip_length*(h0**2 - h1**2))
+                    S[4] = (-(h0**3*(3*mu*(q0 + r0) + np.sqrt(3)*sigma*(q1 + r1))) + h1**2*(-4*slip_length*(3*mu*r0 + np.sqrt(3)*sigma*r1) - h1*(np.sqrt(3)*sigma*(q0 + r0) + 3*mu*(q1 + r1))) \
+                         + h0**2*(-4*slip_length*(3*mu*r0 + np.sqrt(3)*sigma*r1) + h1*(np.sqrt(3)*sigma*(q0 + r0) + 3*mu*(q1 + r1))) 
+                         + h0*h1*(8*slip_length*(np.sqrt(3)*sigma*r0 + 3*mu*r1) + h1*(3*mu*(q0 + r0) + np.sqrt(3)*sigma*(q1 + r1))))/(slip_length*(h0**2 - h1**2)**2)
+                    S[5] = (-(h0**3*(np.sqrt(3)*sigma*(q0 + r0) + 3*mu*(q1 + r1))) + h0*h1*(8*slip_length*(3*mu*r0 + np.sqrt(3)*sigma*r1) + h1*(np.sqrt(3)*sigma*(q0 + r0) + 3*mu*(q1 + r1))) \
+                         + h0**2*(-4*slip_length*(np.sqrt(3)*sigma*r0 + 3*mu*r1) + h1*(3*mu*(q0 + r0) + np.sqrt(3)*sigma*(q1 + r1))) - h1**2*(4*slip_length*(np.sqrt(3)*sigma*r0 + 3*mu*r1) + h1*(3*mu*(q0 \
+                         + r0) + np.sqrt(3)*sigma*(q1 + r1))))/(slip_length*(h0**2 - h1**2)**2)
+                
+                else:
+                    print("This distribution is not implemented yet for mom_order=1 and SG_order=1")
+            
+            else:
+                print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+        
+        else:
+            print("This moment order is not implemented yet for the SGSWME1D")
+        
+        return S
+    
+
+    def get_initial_values(self,
+                           mom_order: int,
+                           SG_order: int,
+                           initial_condition: str,
+                           position: float) -> np.array:
+        
+        initial_values = np.zeros((mom_order+2)*(SG_order+1))
+        
+        if initial_condition == 'constantHeight_noVelocity':
+            if mom_order == 0:
+                if SG_order == 0:
+                    initial_values[0] = 1
+                    initial_values[1] = 0*initial_values[0]
+                
+                elif SG_order == 1:
+                    initial_values[0] = 1
+                    initial_values[1] = 0
+                    initial_values[2] = 0*initial_values[0]
+                    initial_values[3] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 1
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+
+            elif mom_order == 1:
+                if SG_order == 0:
+                    initial_values[0] = 1
+                    initial_values[1] = 0*initial_values[0]
+                    initial_values[2] = 0*initial_values[0]
+                
+                elif SG_order == 1:
+                    initial_values[0] = 1
+                    initial_values[1] = 0
+                    initial_values[2] = 0*initial_values[0]
+                    initial_values[3] = 0
+                    initial_values[4] = 0*initial_values[0]
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+            
+            else:
+                print("This moment order is not implemented yet for the SGSWME1D")
+        
+        elif initial_condition == 'constantHeight_constantVelocity':
+            if mom_order == 0:
+                if SG_order == 0:
+                    initial_values[0] = 1
+                    initial_values[1] = 1*initial_values[0]
+
+                elif SG_order == 1:
+                    initial_values[0] = 1
+                    initial_values[1] = 0
+                    initial_values[2] = 1*initial_values[0]
+                    initial_values[3] = 0
+
+                elif SG_order == 2:
+                    initial_values[0] = 1
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 1*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+            
+            elif mom_order == 1:
+                if SG_order == 0:
+                    initial_values[0] = 1
+                    initial_values[1] = 1*initial_values[0]
+                    initial_values[2] = 0*initial_values[0]
+                
+                elif SG_order == 1:
+                    initial_values[0] = 1
+                    initial_values[1] = 0
+                    initial_values[2] = 1*initial_values[0]
+                    initial_values[3] = 0
+                    initial_values[4] = 0*initial_values[0]
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+            
+            else:
+                print("This moment order is not implemented yet for the SGSWME1D")
+        
+        elif initial_condition == 'linearHeight_noVelocity':
+            if mom_order == 0:
+                if SG_order == 0:
+                    initial_values[0] = 1 + 0.1*position
+                    initial_values[1] = 0*initial_values[0]
+                
+                elif SG_order == 1:
+                    initial_values[0] = 1 + 0.1*position
+                    initial_values[1] = 0
+                    initial_values[2] = 0*initial_values[0]
+                    initial_values[3] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 1 + 0.1*position
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+            
+            elif mom_order == 1:
+                if SG_order == 0:
+                    initial_values[0] = 1 + 0.1*position
+                    initial_values[1] = 0*initial_values[0]
+                    initial_values[2] = 0*initial_values[0]
+                
+                elif SG_order == 1:
+                    initial_values[0] = 1 + 0.1*position
+                    initial_values[1] = 0
+                    initial_values[2] = 0*initial_values[0]
+                    initial_values[3] = 0
+                    initial_values[4] = 0*initial_values[0]
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=1")   
+
+            else:
+                print("This moment order is not implemented yet for the SGSWME1D")         
+        
+        elif initial_condition == 'damBreak_noVelocity':
+            x0 = 0
+            if position < x0:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 2
+                        initial_values[1] = 0*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 2
+                        initial_values[1] = 0*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")
+            
+            else:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")                   
+        
+        elif initial_condition == 'lowDamBreak_withVelocity':
+            x0 = 0
+            if position < x0:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 1.5
+                        initial_values[1] = 0.25*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 1.5
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1.5
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 1.5
+                        initial_values[1] = 0.25*initial_values[0]
+                        initial_values[2] = -0.25*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 1.5
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = -0.25*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")
+            
+            else:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0.25*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0.25*initial_values[0]
+                        initial_values[2] = -0.25*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = -0.25*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")     
+        
+        elif initial_condition == 'highDamBreak_withVelocity':
+            x0 = 0
+            if position < x0:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 5
+                        initial_values[1] = 0.25*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 5
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 5
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 5
+                        initial_values[1] = 0.25*initial_values[0]
+                        initial_values[2] = -0.25*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 5
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = -0.25*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")
+            
+            else:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0.25*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0.25*initial_values[0]
+                        initial_values[2] = -0.25*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = -0.25*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")     
+
+        else:
+            print("This initial condition is not implemented yet for the SGSWME1D")
+        
+        return initial_values
+    
+    def compute_number_of_variables(self, mom_order, SG_order) -> int:
+        number_of_variables = (mom_order + 2)*(SG_order + 1)
+        return int(number_of_variables)
+    
+    def compute_breakdown_criterion(self,
+                                   values: list,
+                                   breakdown_criterion: str,
+                                   n) -> np.array:
+        pass
+    
+    def compute_exp_and_var(self,
+                            mom_order: int,
+                            SG_order: int,
+                            values: np.array,
+                            primitive: bool) -> np.array:
+        
+        if mom_order == 0:
+            if SG_order == 0:
+                func1_exp = values[:,0]
+                func1_var = np.zeros(len(values[:,0]))
+                func2_var = np.zeros(len(values[:,1]))
+                
+                if primitive == True:
+                    func2_exp = np.divide(values[:,1], values[:,0])
+                
+                else:
+                    func2_exp = values[:,1]
+            
+            elif SG_order == 1:
+                print(values.shape)
+                func1_exp = values[:,0]
+                func1_var = np.square(values[:,1])
+                
+                if primitive == True:
+                    func2_exp = np.zeros(len(values[:,2]))
+                    func2_var = np.zeros(len(values[:,3]))
+                    
+                    if self.distr == "normal":
+                        for i in range(len(func2_exp)):
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
+                    
+                    elif self.distr == "uniform":
+                        for i in range(len(func2_exp)):
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func2_exp[i]**2
+                                
+                    else:
+                        print("This distribution is not implemented yet for mom_order=0 and SG_order=1")
+                
+                else:
+                    func2_exp = values[:,2]
+                    func2_var = np.square(values[:,3])
+            
+            elif SG_order == 2:
+                func1_exp = values[:,0]
+                func1_var = np.square(values[:,1]) + np.square(values[:,2])
+                
+                if primitive == True:
+                    func2_exp = np.zeros(len(values[:,3]))
+                    func2_var = np.zeros(len(values[:,4]))
+                    
+                    if self.distr == "normal":
+                        for i in range(len(func2_exp)):
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
+                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1+values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
+                    
+                    elif self.distr == "uniform":
+                        for i in range(len(func2_exp)):
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
+                            func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func2_exp[i]**2
+                    
+                    else:
+                        print("This distribution is not implemented yet for mom_order=1 and SG_order=2")
+                
+                else:
+                    func2_exp = values[:,3]
+                    func2_var = np.square(values[:,4]) + np.square(values[:,5])
+            
+            else:
+                print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+            
+            func3_exp = np.zeros(len(values[:,0]))
+            func3_var = np.zeros(len(values[:,0]))
+            
+        elif mom_order == 1:
+            if SG_order == 0:
+                func1_exp = values[:,0]
+                func1_var = np.zeros(len(values[:,0]))
+                func2_var = np.zeros(len(values[:,1]))
+                func3_var = np.zeros(len(values[:,2]))
+                
+                if primitive == True:
+                    func2_exp = np.divide(values[:,1], values[:,0])
+                    func3_exp = np.divide(values[:,2], values[:,0])
+                
+                else:
+                    func2_exp = values[:,1]
+                    func3_exp = values[:,2]
+            
+            elif SG_order == 1:
+                func1_exp = values[:,0]
+                func1_var = np.square(values[:,1])
+                
+                if primitive == True:
+                    func2_exp = np.zeros(len(values[:,2]))
+                    func2_var = np.zeros(len(values[:,3]))
+                    func3_exp = np.zeros(len(values[:,2]))
+                    func3_var = np.zeros(len(values[:,3]))
+                    
+                    if self.distr == "normal":
+                        for i in range(len(func2_exp)):
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
+                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func3_exp[i]**2                           
+                    
+                    elif self.distr == "uniform":
+                        for i in range(len(func2_exp)):
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func2_exp[i]**2
+                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func3_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func3_exp[i]**2                            
+                    else:
+                        print("This distribution is not implemented yet for mom_order=1 and SG_order=1")
+                
+                else:
+                    func2_exp = values[:,2]
+                    func2_var = np.square(values[:,3])
+                    func3_exp = values[:,4]
+                    func3_var = np.square(values[:,5])
+            
+            else:    
+                print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+        
+        else:
+            print("This moment order is not implemented yet for the SGSWME1D")     
+        
+        return func1_exp, func1_var, func2_exp, func2_var, func3_exp, func3_var
+        
+    
+    def compute_vertical_velocity_profile(self,
+                                          mom_order: int,
+                                          SG_order: int,
+                                          values: np.array,
+                                          z_points: np.array) -> np.array:
+        """
+        reconstructs the vertical velocity profile from the solution values and evaluates the velocity profile pointwise
+
+        Parameters
+        ----------
+        mom_order: integer
+            moment order of the model
+        SG_order: integer
+            stochastic Galerkin order of the model
+        values: np.array (2D)
+            2D numpy array containing the values of the variables in each mesh cell
+        z_points: 
+            the locations in vertical direction in which the velocity is computed
+        
+        Returns
+        -------
+        velocity_profile_exp: numpy 2D array
+            expected lateral velocity evaluated in in each point in z_points in z-direction
+        velocity_profile_var: numpy 2D array
+            variance of lateral velocity evaluated in in each point in z_points in z-direction
+        """
+        
+        velocity_profile_exp = np.zeros((len(values), len(z_points)))
+        velocity_profile_var = np.zeros((len(values), len(z_points)))
+        if mom_order == 0:
+            _, _, um_exp, um_var, _, _ = self.compute_exp_and_var(0, SG_order, values, True)
+            for i in range(len(um_exp)):
+                velocity_profile_exp[i,:] = um_exp[i]*(np.ones(len(z_points)))
+                velocity_profile_var[i,:] = um_var[i]*(np.ones(len(z_points)))
+        elif mom_order == 1:
+            _, _, um_exp, um_var, alpha1_exp, alpha1_var = self.compute_exp_and_var(1, SG_order,values, True)
+            for i in range(len(um_exp)):
+                velocity_profile_exp[i,:] = um_exp[i]*(np.ones(len(z_points))) + alpha1_exp[i]*(np.ones(len(z_points)) - 2*z_points)
+                velocity_profile_var[i,:] = um_var[i]*(np.ones(len(z_points))) + alpha1_var[i]*(np.ones(len(z_points)) - 2*z_points)**2
+   
+        return velocity_profile_exp, velocity_profile_var

@@ -4,22 +4,23 @@
 
 [pde_information]
 
-### True: one-dimensional, False: two-dimensional
+### True: one-dimensional, False: two-dimensional. Implemented: 1D
 1D = True
 
-### PDE type. Implemented: SWME1D, HSWME1D
-pde_type = VegetationSWME1D
-    # SWME1D, HSWME1D #
-    # Specify friction model. Implemented: Newton
-frictionModel = Newton
-        # Newton #
-        # Specify friction parameters
+### PDE type. Implemented: SWME1D, HSWME1D, VegetationSWME1D, SGSWME1D
+pde_type = SGSWME1D
+
+# Specify friction parameters
 slipLength = 0.1
 viscosity = 0.1
 
-# Specify initial conditions. Implemented: DamBreak
-# SWME1D, HSWME1D: damBreak_noVelocity, constantHeight_noVelocity, constantHeight_constantVelocity, linearHeight_noVelocity
-initialCondition = constantHeight_constantVelocity
+# Specify friction parameters for SGSWME1D and Monte Carlo SWME1D (viscosity above gets overruled). Implemented distr: uniform, normal
+distr = uniform
+mu = 0.1
+sigma = 0.01
+
+# Specify initial conditions. Implemented: constantHeight_noVelocity, constantHeight_constantVelocity, linearHeight_noVelocity, damBreak_noVelocity, lowDamBreak_withVelocity, highDamBreak_withVelocity
+initialCondition = highDamBreak_withVelocity
 
 
 ###############################
@@ -31,11 +32,12 @@ initialCondition = constantHeight_constantVelocity
 ### Only structured grids implemented currently
 structuredGrid = True
 
-    # structuredGrid #
-    # Number of grid points in x-direction and y-direction (if the simulation is 1D: only resolutionX is used)
-resolutionX = 400
+# structuredGrid #
+# Number of grid points in x-direction and y-direction (if the simulation is 1D: only resolutionX is used)
+resolutionX = 1000
 resolutionY = 400
-    # Physical boundaries of the domain (if the simulation is 1D: only x1boundary and x2boundary are used)
+
+# Physical boundaries of the domain (if the simulation is 1D: only x1boundary and x2boundary are used)
 x1boundary = -2
 x2boundary = 2
 y1boundary = -2
@@ -48,25 +50,40 @@ y2boundary = 2
 
 [numerical_method_information]
 # End time
-t_end = 0.05
+t_end = 0.2
 
 # True: spatially adaptive simulation, False: classical simulation
 spatiallyAdaptive = False
-    ### SPATIALLYADAPTIVE ###
-    # List of the physical position of the boundary interfaces
-boundaryInterfaces = -1,1
-    # List of the order of the method in each subdomain
-orders = 1,5,1
-    ### CLASSICAL ###
-    # Order of the model
-order = 3
 
+# True: stochastic Galerkin simulation, False: simulation without intrusive uncertainty quantification
+stochasticGalerkin = True
+
+# True: Monte Carlo loop, False: no Monte Carlo loop
+monteCarlo = False
+
+### SPATIALLYADAPTIVE:
+# List of the physical position of the boundary interfaces
+boundaryInterfaces = -1,1
+# List of the order of the method in each subdomain
+orders = 1,5,1
+
+### CLASSICAL ###
+# Order of the model
+order = 1
+# In case monteCarlo = True, number of Monte Carlo samples
+n_MC = 10
+
+### STOCHASTIC GALERKIN (always classical) ###
+# Moment order of the model
+momOrder = 1
+# Stochastic Galerkin order of the model
+SGOrder = 1
 
 # Finite volume method type. Implemented: PVM
 fvm_type = PVM
 
-    # PVM #
-    # Polynomial viscosity method. Implemented: PRICE
+# PVM #
+# Polynomial viscosity method. Implemented: PRICE
 pvm = PRICE
 
 # Boundary condition. Implemented: Inflow_Outflow

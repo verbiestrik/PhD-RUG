@@ -63,7 +63,8 @@ class PVM(SpatialDiscretization):
                             system_matrix: Callable[...,np.array],
                             direction: str,
                             delta_t: float,
-                            delta_x: float) -> np.array:
+                            delta_x: float,
+                            **kwargs) -> np.array:
         
         """
         Computes the fluctuations between two cells containing the values value_left and value_right
@@ -90,7 +91,7 @@ class PVM(SpatialDiscretization):
 
         """
         
-        generalized_roe = system_matrix((value_left+value_right)/2)
+        generalized_roe = system_matrix((value_left+value_right)/2, **kwargs)
         viscosity = self.compute_viscosity(generalized_roe,delta_t,delta_x)
         if direction == 'negative':
             viscosity *= -1

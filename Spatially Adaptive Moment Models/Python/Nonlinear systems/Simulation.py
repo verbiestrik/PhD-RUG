@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import numpy as np
-import pde
-import mesh
-import spatialDiscretization
+import PDE
+import Mesh
+import SpatialDiscretization
 
 class Simulation(ABC):
 
@@ -99,6 +99,7 @@ class Simulation(ABC):
         """
         pass
 
+
 class ClassicalSimulation1D(Simulation):
 
     """
@@ -138,11 +139,11 @@ class ClassicalSimulation1D(Simulation):
 
     def __init__(self,
                  order: int,
-                 pde_type: pde.PDE,
-                 mesh: mesh.RectangularMesh,
+                 pde_type: PDE.PDE,
+                 mesh: Mesh.RectangularMesh,
                  boundary_condition: str,
                  initial_condition: str,
-                 spatial_discretization: spatialDiscretization.SpatialDiscretization):
+                 spatial_discretization: SpatialDiscretization.SpatialDiscretization):
         """
         Constructs all the necessary attributes for the ClassicalSimulation1D object.
 
@@ -174,20 +175,21 @@ class ClassicalSimulation1D(Simulation):
 
     def run_simulation(self,
                        t_end: float,
-                       g = 9.81) -> np.array:
+                       **kwargs) -> np.array:
 
+        g = kwargs["g"] if "g" in kwargs else 9.81
         delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution #TODO: include the possibility of nonuniform grids
-
+        
         values = self._get_initial_conditions(self.mesh.cell_center_positions)
 
         CFL = 0.7
         t = 0
 
-        def system_matrix(cell_values):
-            return self.pde_type.compute_system_matrix(self.order,cell_values)
+        def system_matrix(cell_values, **kwargs):
+            return self.pde_type.compute_system_matrix(self.order,cell_values, **kwargs)
 
-        def source_term(cell_values):
-            return self.pde_type.compute_source_term(self.order,cell_values)
+        def source_term(cell_values, **kwargs):
+            return self.pde_type.compute_source_term(self.order,cell_values, **kwargs)
 
 
         while t < t_end:
@@ -196,7 +198,7 @@ class ClassicalSimulation1D(Simulation):
             values[0,:] = self._update_boundary_conditions(values[1,:])
             values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values[self.mesh.resolution,:])
             
-            wave_speed_sqrt = values[:,0]*int(g)
+            wave_speed_sqrt = values[:,0]*g
             for i in range(self.order):
                 wave_speed_sqrt += np.divide(values[:,i+2]*values[:,i+2],values[:,0]*values[:,0])
             max_wave_speed_plus = np.max(np.abs(np.divide(values[:,1],values[:,0])+wave_speed_sqrt))
@@ -220,7 +222,7 @@ class ClassicalSimulation1D(Simulation):
                     'negative',
                     delta_t,
                     delta_x) 
-                source_term_value = source_term(values[i,:]) 
+                source_term_value = source_term(values[i,:], **kwargs) 
                 values[i,:] = values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + delta_t*source_term_value # solve FVM equations
 
             t+=delta_t
@@ -271,6 +273,10 @@ class ClassicalSimulation1D(Simulation):
 
         if self.boundary_condition == 'INFLOW_OUTFLOW':
             values_ghost = values_boundary
+        
+        else:
+            print("This boundary condition is not implemented yet")
+        
         return values_ghost 
     
     def _post_processing(self,
@@ -278,14 +284,14 @@ class ClassicalSimulation1D(Simulation):
 
         data_array = np.zeros((self.mesh.resolution,self.number_of_variables+1)) # rewrite this such that it can be generalized to other PDE models
 
-        for i in range(self.mesh.resolution):
-            data_array[i,0] = self.mesh.cell_center_positions[i]
+        data_array[:,0] = self.mesh.cell_center_positions
         data_array[:,1] = values[1:-1,0]
         data_array[:,2] = np.divide(values[1:-1,1],data_array[:,1])
         for j in range(self.order): #TODO: this is unnecessary routine here
             data_array[:,j+3] = np.divide(values[1:-1,j+2],data_array[:,1])
 
         return data_array
+    
 
 class SpatiallyAdaptiveSimulation1D(Simulation):
 
@@ -337,11 +343,11 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
     def __init__(self,
                  boundary_interfaces: list,
                  orders: list,
-                 pde_type: pde.PDE,
-                 mesh: mesh.RectangularMesh,
+                 pde_type: PDE.PDE,
+                 mesh: Mesh.RectangularMesh,
                  boundary_condition: str,
                  initial_condition: str,
-                 spatial_discretization: spatialDiscretization.SpatialDiscretization):
+                 spatial_discretization: SpatialDiscretization.SpatialDiscretization):
 
         """
         Constructs all the necessary attributes for the SpatiallyAdaptiveSimulation1D object.
@@ -405,7 +411,7 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
             values[0,:self.numbers_of_variables[0]] = self._update_boundary_conditions(values[1,:self.numbers_of_variables[0]])
             values[self.mesh.resolution+1,:self.numbers_of_variables[-1]] = self._update_boundary_conditions(values[self.mesh.resolution,:self.numbers_of_variables[-1]])
 
-            wave_speed_sqrt = values[:,0]*int(g)
+            wave_speed_sqrt = values[:,0]*g
             for i in range(self.max_order):
                 wave_speed_sqrt += np.divide(values[:,i+2]*values[:,i+2],values[:,0]*values[:,0])
             max_wave_speed_plus = np.max(np.abs(np.divide(values[:,1],values[:,0])+wave_speed_sqrt))
@@ -772,3 +778,208 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
             data_array[:,j+3] = np.divide(values[1:-1,j+2],data_array[:,1])
         
         return data_array
+
+
+class ClassicalGalerkinSimulation1D(Simulation):
+
+    """
+    This interface represents a classical (not spatially adaptive) simulation in 1D with intrusive uncertainty.
+
+    ...
+
+    Attributes
+    ----------
+    mom_order: integer
+        moment order of the model
+    SG_order: integer
+        stochastic Galerkin order of the model
+    pde_type : str
+        the partial differential equations that is simulated
+    number_of_variables : int
+        number of state variables
+    mesh : RectangularMesh
+        the used mesh
+    boundary_condition: str
+        the used boundary condition
+    initial_condition: str
+        the initial condition for the simulation
+    spatial_discretization: spatial_discretization
+        the numerical method for the spatial discretization
+
+    
+    Implemented methods from interface Simulation
+    -------
+    def run_simulation(self,t_end):
+        runs the simulation and outputs the end values
+    def _get_initial_conditions(self,cell_centers_x):
+        constructs the initial values in each grid cell
+    def _update_boundary_conditions(self,values_boundary):
+        updates the boundary conditions
+    def _post_processing(self,values):
+        post processed the end data of the simulation and prepares it for plotting
+    """
+
+    def __init__(self,
+                 mom_order: int,
+                 SG_order: int,
+                 pde_type: PDE.PDE,
+                 mesh: Mesh.RectangularMesh,
+                 boundary_condition: str,
+                 initial_condition: str,
+                 spatial_discretization: SpatialDiscretization.SpatialDiscretization):
+        """
+        Constructs all the necessary attributes for the ClassicalGalerkinSimulation1D object.
+
+        Parameters
+        ----------
+        mom_order: integer
+            moment order of the model
+        SG_order: integer
+            stochastic Galerkin order of the model
+        pde_type : str
+            the partial differential equations that is simulated
+        mesh : RectangularMesh
+            the used mesh
+        boundary_condition: str
+            the used boundary condition
+        initial_condition: str
+            the initial condition for the simulation
+        spatial_discretization: spatial_discretization
+            the numerical method for the spatial discretization
+
+        """
+        self.mom_order = mom_order
+        self.SG_order = SG_order
+        self.pde_type = pde_type
+        self.number_of_variables = pde_type.compute_number_of_variables(self.mom_order, self.SG_order)
+        self.mesh = mesh
+        self.boundary_condition = boundary_condition
+        self.initial_condition = initial_condition
+        self.spatial_discretization = spatial_discretization
+
+    def run_simulation(self,
+                       t_end: float,
+                       g = 9.81) -> np.array:
+
+        delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution #TODO: include the possibility of nonuniform grids
+        
+        values = self._get_initial_conditions(self.mesh.cell_center_positions)
+
+        CFL = 0.7
+        t = 0
+
+        def system_matrix(cell_values):
+            return self.pde_type.compute_system_matrix(self.mom_order, self.SG_order, cell_values)
+
+        def source_term(cell_values):
+            return self.pde_type.compute_source_term(self.mom_order, self.SG_order, cell_values)
+
+
+        while t < t_end:
+
+            # update boundary conditions
+            values[0,:] = self._update_boundary_conditions(values[1,:])
+            values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values[self.mesh.resolution,:])
+            
+            denominator = values[:,0]
+            if self.SG_order > 0:
+                for i in range(1, self.SG_order):
+                    denominator += values[:,i]
+            wave_speed_part1 = np.divide(values[:,self.SG_order+1], denominator)
+            wave_speed_part2 = values[:,0]*g
+            if self.SG_order > 0:
+                for i in range(1, self.SG_order):
+                    wave_speed_part1 += np.divide(values[:,self.SG_order+1+i], denominator)
+                    wave_speed_part2 += values[:,i]*g
+            if self.mom_order > 0:
+                wave_speed_part2 += np.divide(values[:,2*self.SG_order+2]*values[:,2*self.SG_order+2],denominator*denominator)
+                if self.SG_order > 0:
+                    for i in range(1, self.SG_order):
+                        wave_speed_part2 += np.divide(values[:,2*self.SG_order+2+i]*values[:,2*self.SG_order+2+i],denominator*denominator)
+            max_wave_speed_plus = np.max(np.abs(wave_speed_part1 + np.sqrt(wave_speed_part2)))
+            max_wave_speed_min = np.max(np.abs(wave_speed_part2 - np.sqrt(wave_speed_part2)))
+            max_speed = max(max_wave_speed_plus,max_wave_speed_min)
+
+            delta_t = CFL*delta_x/max_speed
+
+            for i in range(1, self.mesh.resolution+1):
+                fluctuation_plus = self.spatial_discretization.compute_fluctuation(
+                    values[i-1,:],
+                    values[i,:],
+                    system_matrix,
+                    'positive',
+                    delta_t,
+                    delta_x) 
+                fluctuation_minus = self.spatial_discretization.compute_fluctuation(
+                    values[i,:],
+                    values[i+1,:],
+                    system_matrix,
+                    'negative',
+                    delta_t,
+                    delta_x) 
+                source_term_value = source_term(values[i,:]) 
+                values[i,:] = values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + delta_t*source_term_value # solve FVM equations
+
+            t += delta_t
+        simulation_data = self._post_processing(values)
+        return simulation_data
+            
+
+    def _get_initial_conditions(self,
+                               cell_centers_x: np.array) -> np.array:
+
+        """
+        construct the initial values for the variables
+
+        Parameters
+        ----------
+        cell_centers_x : numpy 1D array
+            the centers of the cells
+        
+        Returns
+        -------
+        initial_values: numpy 2D array
+            initial values of the variables in each grid cell
+
+        """
+        
+        initial_values = np.zeros((self.mesh.resolution + 2, self.number_of_variables))
+
+        for i in range(0, self.mesh.resolution):
+            initial_values[i+1,:] = self.pde_type.get_initial_values(self.mom_order, self.SG_order, self.initial_condition, cell_centers_x[i])            
+        
+        return initial_values
+    
+    def _update_boundary_conditions(self,
+                                   values_boundary: np.array) -> np.array:
+        """
+        update the boundary conditions
+
+        Parameters
+        ----------
+        values_boundary : numpy 1D array #TODO: implement boundary conditions that include more cells
+            the values of the variables in the boundary cell
+        
+        Returns
+        -------
+        values_ghost: numpy 1D array
+            the values of the variables in the ghost cell
+
+        """
+
+        if self.boundary_condition == 'INFLOW_OUTFLOW':
+            values_ghost = values_boundary
+        
+        else:
+            print("This boundary condition is not implemented yet")
+        
+        return values_ghost 
+    
+    def _post_processing(self,
+                         values) -> np.array:
+
+        data_array = np.zeros((self.mesh.resolution, self.number_of_variables + 1)) # rewrite this such that it can be generalized to other PDE models
+        data_array[:,0] = self.mesh.cell_center_positions
+        data_array[:,1:self.number_of_variables+1] = values[1:-1,:]
+        
+        return data_array    

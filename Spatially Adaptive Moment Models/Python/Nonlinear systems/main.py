@@ -1,10 +1,9 @@
-import simulation
-import pde
-import mesh
-import spatialDiscretization
+import Simulation
+import PDE
+import Mesh
+import SpatialDiscretization
+import Visualisation
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import configparser
 import timeit
 
@@ -17,92 +16,128 @@ def main():
     numerical_method_information = config['numerical_method_information']
 
     if pde_information['pde_type'] == 'SWME1D':
-        _pde = pde.SWME1D(pde_information['initialCondition'],
+        _pde = PDE.SWME1D(pde_information['initialCondition'],
                           pde_information.getfloat('viscosity'),
                           pde_information.getfloat('slipLength'),
                           hyperbolic=False)
     elif pde_information['pde_type'] == 'HSWME1D':
-        _pde = pde.SWME1D(pde_information['initialCondition'],
+        _pde = PDE.SWME1D(pde_information['initialCondition'],
                           pde_information.getfloat('viscosity'),
                           pde_information.getfloat('slipLength'),
                           hyperbolic=True)
     elif pde_information['pde_type'] == 'VegetationSWME1D':
-        _pde = pde.VegetationSWME1D(pde_information['initialCondition'],
+        _pde = PDE.VegetationSWME1D(pde_information['initialCondition'],
                                     pde_information.getfloat('viscosity'),
                                     pde_information.getfloat('slipLength'),
                                     False,
                                     1,
                                     1,
                                     1)
+    elif pde_information['pde_type'] == 'SGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information.getboolean('spatiallyAdaptive') and not numerical_method_information.getboolean('monteCarlo'):
+        _pde = PDE.SGSWME1D(pde_information['initialCondition'],
+                            pde_information['distr'],
+                            pde_information.getfloat('mu'),
+                            pde_information.getfloat('sigma'),
+                            pde_information.getfloat('slipLength'),
+                            hyperbolic=False)
+    
+    elif pde_information['pde_type'] == 'SGSWME1D':
+        print("pde_type can only be SGSWME1D if stochasticGalerkin is True and spatiallyAdaptive and monteCarlo are False")
+    
     else:
-        print('PDE_type is not implemented yet')
+        print('This pde_type is not implemented yet')
     
     ##########################################################################
 
     if numerical_method_information['fvm_type'] == 'PVM':
         if numerical_method_information['pvm'] == 'PRICE':
-            _spatialDiscretization = spatialDiscretization.PRICE()
+            _spatialDiscretization = SpatialDiscretization.PRICE()
         else:
-            print('this pvm method is not implemented yet')
+            print('This pvm method is not implemented yet')
     else:
-        print('this finite volume type is not implemented yet')
+        print('This finite volume type is not implemented yet')
 
 
     #########################################################################
 
     if pde_information.getboolean('1D'):
 
-        _mesh = mesh.UniformRectangularMesh1D([grid_information.getfloat('x1boundary'),grid_information.getfloat('x2boundary')],
+        _mesh = Mesh.UniformRectangularMesh1D([grid_information.getfloat('x1boundary'),grid_information.getfloat('x2boundary')],
                                                grid_information.getint('resolutionX')) #TODO: Implement different grids
+        
+        if not numerical_method_information.getboolean('stochasticGalerkin'):
+            if numerical_method_information.getboolean('spatiallyAdaptive'):
+                boundaryInterfaces = numerical_method_information['boundaryInterfaces']
+                boundaryInterfaces = [float(boundaryInterface) for boundaryInterface in boundaryInterfaces.split(',')]
+                orders = numerical_method_information['orders']
+                orders = [int(order) for order in orders.split(',')]
 
-        if numerical_method_information.getboolean('spatiallyAdaptive'):
-            boundaryInterfaces = numerical_method_information['boundaryInterfaces']
-            boundaryInterfaces = [float(boundaryInterface) for boundaryInterface in boundaryInterfaces.split(',')]
-            orders = numerical_method_information['orders']
-            orders = [int(order) for order in orders.split(',')]
-
-            _simulation = simulation.SpatiallyAdaptiveSimulation1D(
-                [float(boundaryInterface) for boundaryInterface in numerical_method_information['boundaryInterfaces'].split(',')],
-                [int(order) for order in numerical_method_information['orders'].split(',')],
-                _pde,
-                _mesh,
-                numerical_method_information['boundaryCondition'],
-                pde_information['initialCondition'],
-                _spatialDiscretization
-            )
+                _simulation = Simulation.SpatiallyAdaptiveSimulation1D(
+                    [float(boundaryInterface) for boundaryInterface in numerical_method_information['boundaryInterfaces'].split(',')],
+                    [int(order) for order in numerical_method_information['orders'].split(',')],
+                    _pde,
+                    _mesh,
+                    numerical_method_information['boundaryCondition'],
+                    pde_information['initialCondition'],
+                    _spatialDiscretization)
+            
+            else:
+                _simulation = Simulation.ClassicalSimulation1D(
+                    numerical_method_information.getint('order'),
+                    _pde,
+                    _mesh,
+                    numerical_method_information['boundaryCondition'],
+                    pde_information['initialCondition'],
+                    _spatialDiscretization)
         
         else:
-
-            _simulation = simulation.ClassicalSimulation1D(
-                numerical_method_information.getint('order'),
-                _pde,
-                _mesh,
-                numerical_method_information['boundaryCondition'],
-                pde_information['initialCondition'],
-                _spatialDiscretization)
+            _simulation = Simulation.ClassicalGalerkinSimulation1D(
+                    numerical_method_information.getint('momOrder'),
+                    numerical_method_information.getint('SGOrder'),
+                    _pde,
+                    _mesh,
+                    numerical_method_information['boundaryCondition'],
+                    pde_information['initialCondition'],
+                    _spatialDiscretization)
 
         start = timeit.default_timer()
-        data_array = _simulation.run_simulation(numerical_method_information.getfloat('t_end'))
+        
+        if not numerical_method_information.getboolean('monteCarlo'):
+            data_array = _simulation.run_simulation(numerical_method_information.getfloat('t_end'))
+        
+        elif numerical_method_information.getboolean('monteCarlo') and pde_information['pde_type'] == 'SWME1D' and not numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information.getboolean('spatiallyAdaptive'):
+            data_array = np.zeros((numerical_method_information.getint('n_MC'), grid_information.getint('resolutionX'), numerical_method_information.getint('order') + 3))
+            if pde_information['distr'] == "normal":
+                for n in range(numerical_method_information.getint('n_MC')):
+                    data_array[n,:,:] = _simulation.run_simulation(numerical_method_information.getfloat('t_end'), viscosity = np.random.normal(pde_information.getfloat('mu'), pde_information.getfloat('sigma')))
+            elif pde_information['distr'] == "uniform":
+                for n in range(numerical_method_information.getint('n_MC')):
+                    data_array[n,:,:] = _simulation.run_simulation(numerical_method_information.getfloat('t_end'), viscosity = np.random.uniform(pde_information.getfloat('mu') - pde_information.getfloat('sigma'), pde_information.getfloat('mu') + pde_information.getfloat('sigma')))
+            else:
+                print("This distribution is not implemented yet for the Monte Carlo loop")
+        
+        else:
+            print("Monte Carlo loop can only be used on pde_type SWME1D and cannot be used in combination with stochasticGalerkin and/or spatiallyAdaptive = True")
+        
         stop = timeit.default_timer()
         print('Time: ', stop - start)
-        data_frame = pd.DataFrame(data_array)
-        data_frame.to_csv('data.csv', index=False)
 
-        z = np.linspace(0,1,100)
         if numerical_method_information.getboolean('spatiallyAdaptive'):
-            velocity_profile = _pde.compute_vertical_velocity_profile(np.max([int(order) for order in numerical_method_information['orders'].split(',')]),
-                                                                      data_array,
-                                                                      z)
-        else: 
-            velocity_profile = _pde.compute_vertical_velocity_profile(numerical_method_information.getint('order'),
-                                                                      data_array,
-                                                                      z)
-
-        plt.plot(velocity_profile[200,:], z)
-
-        #plt.plot(_mesh.cell_center_positions, data_array[:,1])
-        #plt.plot(_mesh.cell_center_positions,_simulation.compute_all_breakdown_criteria(data_array)[:,1])
-        plt.show()
+            np.save("Data\data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}.npy".format(pde_information['pde_type'], numerical_method_information['orders'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
+            Visualisation.visualisation(_pde, True, False, False, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, order = numerical_method_information['orders'])
+        
+        elif numerical_method_information.getboolean('monteCarlo'):
+            np.save("Data\data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('order'), numerical_method_information.getint('n_MC'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
+            Visualisation.visualisation(_pde, False, True, False, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, n_MC = numerical_method_information.getint('n_MC'), order = numerical_method_information.getint('order'))
+        
+        elif numerical_method_information.getboolean('stochasticGalerkin'):
+            np.save("Data\data_{0}_{1}_MO={2},SO={3}_mu={4}_sigma={5}_lambda={6}_IC={7}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('momOrder'),numerical_method_information.getint('SGOrder'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
+            Visualisation.visualisation(_pde, False, False, True, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, mom_order = numerical_method_information.getint('momOrder'), SG_order = numerical_method_information.getint('SGOrder'))
+        
+        else:
+            np.save("Data\data_{0}_order={1}_nu={2}_lambda={3}_IC={2}.npy".format(pde_information['pde_type'], numerical_method_information['order'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
+            Visualisation.visualisation(_pde, False, False, False, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, order = numerical_method_information['order'])
+    
     else:
         print('2D not implemented yet')
 
