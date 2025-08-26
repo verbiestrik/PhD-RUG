@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 import numpy as np
 from collections.abc import Callable
 
-#TODO: use duck typing
 class SpatialDiscretization(ABC):
 
     """
@@ -12,7 +11,8 @@ class SpatialDiscretization(ABC):
 
     Attributes
     ----------
-    None
+    non_conservative : boolean
+        True if the spatial discretization is of the conservative type, false if non-conservative
 
     
     Abstract methods
@@ -30,6 +30,7 @@ class SpatialDiscretization(ABC):
         """
         pass
 
+
 class PVM(SpatialDiscretization):
 
     """
@@ -45,7 +46,8 @@ class PVM(SpatialDiscretization):
     -------------
     def compute_fluctuation(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         computes the fluctuation between two cells with values value_left and value_right
-
+    def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x)
+        compute the generalized roe matrix and the viscosity matrix between two cells with values value_left and value_right
             
     Abstract methods    
     -----------------
@@ -63,8 +65,7 @@ class PVM(SpatialDiscretization):
                             system_matrix: Callable[...,np.array],
                             direction: str,
                             delta_t: float,
-                            delta_x: float,
-                            **kwargs) -> np.array:
+                            delta_x: float) -> np.array:
         
         """
         Computes the fluctuations between two cells containing the values value_left and value_right
@@ -90,14 +91,66 @@ class PVM(SpatialDiscretization):
             fluctuation between two cells containing the values value_left and value_right
 
         """
-        
-        generalized_roe = system_matrix((value_left+value_right)/2, **kwargs)
+        # Nodes on [0, 1]
+        quadrature_nodes = [
+            (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
+            (1 - (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
+            1/2,
+            (1 + (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
+            (1 + (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2
+        ]
+
+        # Weights on [0, 1]
+        quadrature_weights = [
+            (322 - 13*np.sqrt(70)) / 1800,
+            (322 + 13*np.sqrt(70)) / 1800,
+            128 / 450,
+            (322 + 13*np.sqrt(70)) / 1800,
+            (322 - 13*np.sqrt(70)) / 1800
+        ]
+
+        # Nodes on [0, 1]
+        quadrature_nodes = [1/2]
+
+        # Weights on [0, 1]
+        quadrature_weights = [1]
+
+        generalized_roe = 0
+        for i in range(len(quadrature_nodes)):
+            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right))
         viscosity = self.compute_viscosity(generalized_roe,delta_t,delta_x)
         if direction == 'negative':
             viscosity *= -1
         fluctuation = (np.dot(generalized_roe,value_right-value_left) + np.dot(viscosity,value_right-value_left))/2
 
         return fluctuation
+    
+    def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
+        # Nodes on [0, 1]
+        quadrature_nodes = [
+            (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
+            (1 - (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
+            1/2,
+            (1 + (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
+            (1 + (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2
+        ]
+
+        # Weights on [0, 1]
+        quadrature_weights = [
+            (322 - 13*np.sqrt(70)) / 1800,
+            (322 + 13*np.sqrt(70)) / 1800,
+            128 / 450,
+            (322 + 13*np.sqrt(70)) / 1800,
+            (322 - 13*np.sqrt(70)) / 1800
+        ]
+
+        generalized_roe = 0
+        for i in range(len(quadrature_nodes)):
+            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right))
+        viscosity = self.compute_viscosity(generalized_roe,delta_t,delta_x)
+        if direction == 'negative':
+            viscosity *= -1
+        return (generalized_roe + viscosity)/2.
 
     @abstractmethod
     def compute_viscosity(self,
@@ -135,5 +188,18 @@ class PRICE(PVM):
                           roe_matrix: np.array,
                           delta_t: float,
                           delta_x: float):
-        viscosity = delta_x/(2*delta_t)*np.identity(np.shape(roe_matrix)[0])+delta_t/(2*delta_x)*roe_matrix 
+        
+        viscosity = 0.5*delta_x/delta_t*np.identity(np.shape(roe_matrix)[0])+0.5*delta_t/delta_x*roe_matrix@roe_matrix 
+        return viscosity
+    
+class LF(PVM):
+
+    def __init__(self):
+        pass
+
+    def compute_viscosity(self,
+                          roe_matrix: np.array,
+                          delta_t: float,
+                          delta_x: float):
+        viscosity = delta_x/delta_t*np.identity(np.shape(roe_matrix)[0])
         return viscosity
