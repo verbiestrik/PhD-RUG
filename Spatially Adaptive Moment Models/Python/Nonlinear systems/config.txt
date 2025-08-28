@@ -7,8 +7,8 @@
 ### True: one-dimensional, False: two-dimensional. Implemented: 1D
 1D = True
 
-### PDE type. Implemented: SWME1D, HSWME1D, VegetationSWME1D, SGSWME1D
-pde_type = SGSWME1D
+### PDE type. Implemented: SWME1D, HSWME1D, VegetationSWME1D, SGSWME1D, HSGSWME1D
+pde_type = HSGSWME1D
 
 # Specify friction parameters
 slipLength = 0.1
@@ -20,7 +20,7 @@ mu = 0.1
 sigma = 0.01
 
 # Specify initial conditions. Implemented: constantHeight_noVelocity, constantHeight_constantVelocity, linearHeight_noVelocity, damBreak_noVelocity, lowDamBreak_withVelocity, highDamBreak_withVelocity
-initialCondition = highDamBreak_withVelocity
+initialCondition = lowDamBreak_withVelocity
 
 
 ###############################
@@ -77,14 +77,17 @@ n_MC = 10
 # Moment order of the model
 momOrder = 1
 # Stochastic Galerkin order of the model
-SGOrder = 1
+SGOrder = 2
 
 # Finite volume method type. Implemented: PVM
 fvm_type = PVM
 
 # PVM #
-# Polynomial viscosity method. Implemented: PRICE
+# Polynomial viscosity method. Implemented: PRICE, LF
 pvm = PRICE
+
+# Time integration for source term. Implemented: ExplicitEuler, ImplicitEuler
+timeIntegrator = ImplicitEuler
 
 # Boundary condition. Implemented: Inflow_Outflow
 boundaryCondition = INFLOW_OUTFLOW
