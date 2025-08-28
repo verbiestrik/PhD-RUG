@@ -172,9 +172,10 @@ class ImplicitEuler(Implicit):
     def _compute_residual(self,
                   initial_value: np.array,
                   rhs_f: Callable[...,np.array],
-                  delta_t: float) -> np.array:
+                  delta_t: float,
+                  **kwargs) -> np.array:
         
-        residual = lambda end_value : end_value - delta_t*rhs_f(end_value,delta_t) - initial_value
+        residual = lambda end_value : end_value - delta_t*rhs_f(end_value,delta_t,**kwargs) - initial_value
 
         return residual
     
@@ -186,7 +187,8 @@ class ExplicitEuler(Explicit):
     def integrate(self,
                   initial_value: np.array,
                   rhs_f: Callable[...,np.array],
-                  delta_t: float) -> np.array:
+                  delta_t: float,
+                  **kwargs) -> np.array:
         
         """
         integrates the equation dw/dt = rhs_f(w) starting from initial_value with a time step of delta_t
@@ -207,6 +209,6 @@ class ExplicitEuler(Explicit):
 
         """
         
-        end_values = initial_value + delta_t*rhs_f(initial_value,delta_t)
+        end_values = initial_value + delta_t*rhs_f(initial_value,delta_t,**kwargs)
 
         return end_values
