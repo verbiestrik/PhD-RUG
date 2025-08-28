@@ -225,7 +225,7 @@ class ClassicalSimulation1D(Simulation):
                 source_term_value = source_term(values[i,:], **kwargs) 
                 values[i,:] = values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + delta_t*source_term_value # solve FVM equations
 
-            t+=delta_t
+            t += delta_t
         simulation_data = self._post_processing(values)
         return simulation_data
 
