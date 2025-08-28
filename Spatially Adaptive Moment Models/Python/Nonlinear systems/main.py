@@ -2,7 +2,7 @@ import Simulation
 import PDE
 import Mesh
 import SpatialDiscretization
-import Visualisation
+import TimeIntegration
 import numpy as np
 import configparser
 import timeit
@@ -41,7 +41,15 @@ def main():
                             pde_information.getfloat('slipLength'),
                             hyperbolic=False)
     
-    elif pde_information['pde_type'] == 'SGSWME1D':
+    elif pde_information['pde_type'] == 'HSGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information.getboolean('spatiallyAdaptive') and not numerical_method_information.getboolean('monteCarlo'):
+        _pde = PDE.SGSWME1D(pde_information['initialCondition'],
+                            pde_information['distr'],
+                            pde_information.getfloat('mu'),
+                            pde_information.getfloat('sigma'),
+                            pde_information.getfloat('slipLength'),
+                            hyperbolic=True)
+    
+    elif pde_information['pde_type'] == 'SGSWME1D' or pde_information['pde_type'] == 'HSGSWME1D':
         print("pde_type can only be SGSWME1D if stochasticGalerkin is True and spatiallyAdaptive and monteCarlo are False")
     
     else:
@@ -123,20 +131,16 @@ def main():
         print('Time: ', stop - start)
 
         if numerical_method_information.getboolean('spatiallyAdaptive'):
-            np.save("Data\data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}.npy".format(pde_information['pde_type'], numerical_method_information['orders'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
-            Visualisation.visualisation(_pde, True, False, False, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, order = numerical_method_information['orders'])
+            np.save("Data\data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_information['pde_type'], numerical_method_information['orders'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
         
         elif numerical_method_information.getboolean('monteCarlo'):
-            np.save("Data\data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('order'), numerical_method_information.getint('n_MC'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
-            Visualisation.visualisation(_pde, False, True, False, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, n_MC = numerical_method_information.getint('n_MC'), order = numerical_method_information.getint('order'))
+            np.save("Data\data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('order'), numerical_method_information.getint('n_MC'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
         
         elif numerical_method_information.getboolean('stochasticGalerkin'):
-            np.save("Data\data_{0}_{1}_MO={2},SO={3}_mu={4}_sigma={5}_lambda={6}_IC={7}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('momOrder'),numerical_method_information.getint('SGOrder'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
-            Visualisation.visualisation(_pde, False, False, True, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, mom_order = numerical_method_information.getint('momOrder'), SG_order = numerical_method_information.getint('SGOrder'))
+            np.save("Data\data_{0}_{1}_MO={2},SO={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('momOrder'),numerical_method_information.getint('SGOrder'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
         
         else:
-            np.save("Data\data_{0}_order={1}_nu={2}_lambda={3}_IC={2}.npy".format(pde_information['pde_type'], numerical_method_information['order'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition']), data_array)
-            Visualisation.visualisation(_pde, False, False, False, grid_information.getint('resolutionX'), grid_information.getfloat('x1boundary'), grid_information.getfloat('x2boundary'), pde_information['initialCondition'], data_array, order = numerical_method_information['order'])
+            np.save("Data\data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_information['pde_type'], numerical_method_information['order'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
     
     else:
         print('2D not implemented yet')
