@@ -65,7 +65,8 @@ class PVM(SpatialDiscretization):
                             system_matrix: Callable[...,np.array],
                             direction: str,
                             delta_t: float,
-                            delta_x: float) -> np.array:
+                            delta_x: float,
+                            **kwargs) -> np.array:
         
         """
         Computes the fluctuations between two cells containing the values value_left and value_right
@@ -117,7 +118,7 @@ class PVM(SpatialDiscretization):
 
         generalized_roe = 0
         for i in range(len(quadrature_nodes)):
-            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right))
+            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right,**kwargs))
         viscosity = self.compute_viscosity(generalized_roe,delta_t,delta_x)
         if direction == 'negative':
             viscosity *= -1
@@ -125,7 +126,7 @@ class PVM(SpatialDiscretization):
 
         return fluctuation
     
-    def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
+    def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x,**kwargs):
         # Nodes on [0, 1]
         quadrature_nodes = [
             (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
@@ -146,7 +147,7 @@ class PVM(SpatialDiscretization):
 
         generalized_roe = 0
         for i in range(len(quadrature_nodes)):
-            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right))
+            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right,**kwargs))
         viscosity = self.compute_viscosity(generalized_roe,delta_t,delta_x)
         if direction == 'negative':
             viscosity *= -1
