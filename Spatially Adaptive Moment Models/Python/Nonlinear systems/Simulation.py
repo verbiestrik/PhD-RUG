@@ -185,7 +185,7 @@ class ClassicalSimulation1D(Simulation):
                        t_end: float,
                        **kwargs) -> np.array:
 
-        g = kwargs["g"] if "g" in kwargs else 9.81
+        g = kwargs["g"] if "g" in kwargs else 1
         delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution #TODO: include the possibility of nonuniform grids
         
         values = self._get_initial_conditions(self.mesh.cell_center_positions)
@@ -197,7 +197,7 @@ class ClassicalSimulation1D(Simulation):
             return self.pde_type.compute_system_matrix(self.order,cell_values, **kwargs)
 
         def source_term(cell_values, delta_t, **kwargs):
-            return self.pde_type.compute_source_term(self.order,cell_values,delta_t, **kwargs)
+            return self.pde_type.compute_source_term(self.order,cell_values,delta_t,**kwargs)
 
         step = 0
 
@@ -225,16 +225,18 @@ class ClassicalSimulation1D(Simulation):
                     system_matrix,
                     'positive',
                     delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 fluctuation_minus = self.spatial_discretization.compute_fluctuation(
                     values[i,:],
                     values[i+1,:],
                     system_matrix,
                     'negative',
                     delta_t,
-                    delta_x) 
-                source_term_value = source_term(values[i,:], **kwargs) 
-                values[i,:] = values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + delta_t*source_term_value # solve FVM equations
+                    delta_x,
+                    **kwargs) 
+                values[i,:] = previous_values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus)
+                values[i,:] = self.time_integration.integrate(values[i,:],source_term,delta_t,**kwargs)
             print(t)
             t += delta_t
             step += 1
@@ -521,9 +523,9 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
         return initial_values
 
     def _update_domain_decomposition_pointwise(self,
-                                     values,
-                                     delta_x,
-                                     delta_t):
+                                               values: np.array,
+                                               delta_x: float,
+                                               delta_t: float):
         
         """
         updates the domain decomposition in each point of the domain
@@ -580,16 +582,20 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
                                    n,
                                    delta_x,
                                    delta_t,
-                                   tolerance_up_source=0.1,
-                                   tolerance_up_height_gradient=0.15,
-                                   tolerance_up_momentum_gradient=0.15,
-                                   tolerance_up_moment_gradient=0.15,
-                                   tolerance_down_height_gradient = 0.001,
-                                   tolerance_down_momentum_gradient = 0.001,
-                                   tolerance_down_moment_gradient = 0.001,
-                                   tolerance_down_last_moment = 0.001,
-                                   tolerance_down_res1=0.001,
-                                   tolerance_down_res2=0.01) -> np.array:        
+                                   **kwargs) -> np.array:        
+        
+        tolerance_up_source              = kwargs["tolerance_up_source"]              if "tolerance_up_source"              in kwargs else 0.1
+        tolerance_up_height_gradient     = kwargs["tolerance_up_height_gradient"]     if "tolerance_up_height_gradient"     in kwargs else 0.15
+        tolerance_up_momentum_gradient   = kwargs["tolerance_up_momentum_gradient"]   if "tolerance_up_momentum_gradient"   in kwargs else 0.15
+        tolerance_up_moment_gradient     = kwargs["tolerance_up_moment_gradient"]     if "tolerance_up_moment_gradient"     in kwargs else 0.15
+        tolerance_down_height_gradient   = kwargs["tolerance_down_height_gradient"]   if "tolerance_down_height_gradient"   in kwargs else 0.001
+        tolerance_down_momentum_gradient = kwargs["tolerance_down_momentum_gradient"] if "tolerance_down_momentum_gradient" in kwargs else 0.001
+        tolerance_down_moment_gradient   = kwargs["tolerance_down_moment_gradient"]   if "tolerance_down_moment_gradient"   in kwargs else 0.001
+        tolerance_down_last_moment       = kwargs["tolerance_down_last_moment"]       if "tolerance_down_last_moment"       in kwargs else 0.001
+        tolerance_down_res1              = kwargs["tolerance_down_res1"]              if "tolerance_down_res1"              in kwargs else 0.001
+        tolerance_down_res2              = kwargs["tolerance_down_res2"]              if "tolerance_down_res2"              in kwargs else 0.01
+
+
         """
         TODO
 
@@ -613,13 +619,13 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
         breakdown_criterion_flags = np.zeros(n)
 
         for i in range(n):
-            self.breakdown_estimators[i,0] = 1*np.abs(self.pde_type.compute_source_term_lastentry(self.orders_cellwise[i+1],values[i+1,:self.numbers_of_variables_cellwise[i+1]],True))
+            self.breakdown_estimators[i,0] = 1*np.abs(self.pde_type.compute_source_term_lastentry(self.orders_cellwise[i+1],values[i+1,:self.numbers_of_variables_cellwise[i+1]],True,**kwargs))
             self.breakdown_estimators[i,1] = np.abs(values[i+1,self.numbers_of_variables_cellwise[i+1]-1]/values[i+1,0])
             self.breakdown_estimators[i,2] = 1*np.abs((values[i+2,0] - values[i,0]))/(2*delta_x)
             self.breakdown_estimators[i,3] = 1*np.abs((values[i+2,1] - values[i,1]))/(2*delta_x)
             for j in range(self.orders_cellwise[i+1]):
                 self.breakdown_estimators[i,4+j] = 1*np.abs((values[i+2,2+j])-values[i,2+j])/(2*delta_x)
-        self.breakdown_estimators[0,0] = 1*np.abs(self.pde_type.compute_source_term_lastentry(self.orders_cellwise[1],values[1,:self.numbers_of_variables_cellwise[1]],True))
+        self.breakdown_estimators[0,0] = 1*np.abs(self.pde_type.compute_source_term_lastentry(self.orders_cellwise[1],values[1,:self.numbers_of_variables_cellwise[1]],True,**kwargs))
         self.breakdown_estimators[0,1] = np.abs(values[1,self.numbers_of_variables_cellwise[1]-1])
         self.breakdown_estimators[0,2] = 1*np.abs((values[2,0] - values[1,0]))/delta_x
         self.breakdown_estimators[0,3] = 1*np.abs((values[2,1] - values[1,1]))/delta_x
@@ -770,8 +776,9 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
     
     def run_simulation(self,
                        t_end: float,
-                       g = 9.81) -> np.array:
+                       **kwargs) -> np.array:
         
+        g = kwargs["g"] if "g" in kwargs else 1
         delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution #TODO: include the possibility of nonuniform grids
 
         print("Orders at the beginning of the simulation:",self.orders)
@@ -815,17 +822,17 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                 order_right = self.orders[m+1]
                 n_variables_right = self.numbers_of_variables[m+1]
 
-                def system_matrix_left(cell_values):
-                    return self.pde_type.compute_system_matrix(order_left,cell_values)
+                def system_matrix_left(cell_values,**kwargs):
+                    return self.pde_type.compute_system_matrix(order_left,cell_values,**kwargs)
 
-                def source_term_left(cell_values,delta_t):
-                    return self.pde_type.compute_source_term(order_left,cell_values,delta_t)
+                def source_term_left(cell_values,delta_t,**kwargs):
+                    return self.pde_type.compute_source_term(order_left,cell_values,delta_t,**kwargs)
 
-                def system_matrix_right(cell_values):
-                    return self.pde_type.compute_system_matrix(order_right,cell_values)
+                def system_matrix_right(cell_values,**kwargs):
+                    return self.pde_type.compute_system_matrix(order_right,cell_values,**kwargs)
 
-                def source_term_right(cell_values,delta_t):
-                    return self.pde_type.compute_source_term(order_right,cell_values,delta_t)
+                def source_term_right(cell_values,delta_t,**kwargs):
+                    return self.pde_type.compute_source_term(order_right,cell_values,delta_t,**kwargs)
 
                 left_boundary_subdomain = right_boundary_subdomain+1
                 right_boundary_subdomain = self.boundary_interfaces_discretized[m]
@@ -840,18 +847,20 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                             system_matrix_left,
                             'positive',
                             delta_t,
-                            delta_x)
+                            delta_x,
+                            **kwargs)
                         generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                             previous_values[i,:n_variables_left],
                             previous_values[i+1,:n_variables_left],
                             system_matrix_left,
                             'negative',
                             delta_t,
-                            delta_x)
+                            delta_x,
+                            **kwargs)
                         fluctuation_plus = generalized_roe_plus@(previous_values[i,:n_variables_left]-previous_values[i-1,:n_variables_left])
                         fluctuation_minus = generalized_roe_minus@(previous_values[i+1,:n_variables_left]-previous_values[i,:n_variables_left]) 
                         values[i,:n_variables_left] = previous_values[i,:n_variables_left] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) 
-                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t)
+                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t,**kwargs)
                         self.dom_decomp_val_res1[i-1] \
                             = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[i,n_variables_left-1]-previous_values[i-1,n_variables_left-1])\
                             + generalized_roe_minus[:-1,-1]*(previous_values[i+1,n_variables_left-1]-previous_values[i,n_variables_left-1]),np.inf)
@@ -864,14 +873,16 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_left,
                         'positive',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain-2,:n_variables_left],
                         previous_values[right_boundary_subdomain-1,:n_variables_left],
                         system_matrix_left,
                         'negative',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     fluctuation_plus = generalized_roe_plus@(previous_values[right_boundary_subdomain-2,:n_variables_left]\
                                                              -previous_values[right_boundary_subdomain-3,:n_variables_left])
                     fluctuation_minus = generalized_roe_minus@(previous_values[right_boundary_subdomain-1,:n_variables_left]\
@@ -879,7 +890,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain-2,:n_variables_left] = (previous_values[right_boundary_subdomain-2,:n_variables_left]\
                         -delta_t/delta_x*(fluctuation_plus+fluctuation_minus)) 
                     values[right_boundary_subdomain-2,:n_variables_left] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain-2,:n_variables_left],source_term_left,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain-2,:n_variables_left],source_term_left,delta_t,**kwargs)
                     self.dom_decomp_val_res1[right_boundary_subdomain-3] \
                         = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[right_boundary_subdomain-2,n_variables_left-1]-previous_values[right_boundary_subdomain-3,n_variables_left-1])\
                         + generalized_roe_minus[:-1,-1]*(previous_values[right_boundary_subdomain-1,n_variables_left-1]-previous_values[right_boundary_subdomain-2,n_variables_left-1]),np.inf)
@@ -891,14 +902,16 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_left,
                         'positive',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain-1,:n_variables_left],
                         previous_values[right_boundary_subdomain,:n_variables_left],
                         system_matrix_left,
                         'negative',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     fluctuation_plus = generalized_roe_plus@(previous_values[right_boundary_subdomain-1,:n_variables_left]\
                                                              -previous_values[right_boundary_subdomain-2,:n_variables_left])
                     fluctuation_minus = generalized_roe_minus@(previous_values[right_boundary_subdomain,:n_variables_left]\
@@ -906,7 +919,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain-1,:n_variables_left] = (previous_values[right_boundary_subdomain-1,:n_variables_left]
                     -delta_t/delta_x*(fluctuation_plus+fluctuation_minus))
                     values[right_boundary_subdomain-1,:n_variables_left]\
-                        = self.time_integration.integrate(values[right_boundary_subdomain-1,:n_variables_left],source_term_left,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain-1,:n_variables_left],source_term_left,delta_t,**kwargs)
                     self.dom_decomp_val_res1[right_boundary_subdomain-2] \
                         = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[right_boundary_subdomain-1,n_variables_left-1]-previous_values[right_boundary_subdomain-2,n_variables_left-1])\
                         + generalized_roe_minus[:-1,-1]*(previous_values[right_boundary_subdomain,n_variables_left-1]-previous_values[right_boundary_subdomain-1,n_variables_left-1]),np.inf)
@@ -920,20 +933,23 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_right,
                         'positive',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     generalized_roe_plus_Restricted = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain-1,:n_variables_left],
                         previous_values[right_boundary_subdomain,:n_variables_left],
                         system_matrix_left,'positive',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain,:n_variables_right],
                         previous_values[right_boundary_subdomain+1,:n_variables_right],
                         system_matrix_right,
                         'negative',
                         delta_t,
-                        delta_x)  
+                        delta_x,
+                        **kwargs)  
                     fluctuation_plus_Full = generalized_roe_plus_Full@(previous_values[right_boundary_subdomain,:n_variables_right]\
                                                                        -previous_values[right_boundary_subdomain-1,:n_variables_right])
                     fluctuation_plus_Restricted = generalized_roe_plus_Restricted@(previous_values[right_boundary_subdomain,:n_variables_left]\
@@ -945,7 +961,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain,n_variables_left:n_variables_right] = (previous_values[right_boundary_subdomain,n_variables_left:n_variables_right]
                     -delta_t/delta_x*(fluctuation_plus_Full[n_variables_left:n_variables_right]+fluctuation_minus[n_variables_left:n_variables_right])) # solve FVM equations for last moment
                     values[right_boundary_subdomain,:n_variables_right]\
-                        = self.time_integration.integrate(values[right_boundary_subdomain,:n_variables_right],source_term_right,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain,:n_variables_right],source_term_right,delta_t,**kwargs)
                     
                     self.dom_decomp_val_res1[right_boundary_subdomain-1] \
                         = np.linalg.norm(generalized_roe_minus[:-1,-1]*(previous_values[right_boundary_subdomain+1,n_variables_right-1]-previous_values[right_boundary_subdomain,n_variables_right-1]),np.inf)
@@ -962,18 +978,20 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                             system_matrix_left,
                             'positive',
                             delta_t,
-                            delta_x) 
+                            delta_x,
+                            **kwargs) 
                         generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                             previous_values[i,:n_variables_left],
                             previous_values[i+1,:n_variables_left],
                             system_matrix_left,
                             'negative',
                             delta_t,
-                            delta_x)  
+                            delta_x,
+                            **kwargs)  
                         fluctuation_plus = generalized_roe_plus@(previous_values[i,:n_variables_left]-previous_values[i-1,:n_variables_left])
                         fluctuation_minus = generalized_roe_minus@(previous_values[i+1,:n_variables_left]-previous_values[i,:n_variables_left])
                         values[i,:n_variables_left] = previous_values[i,:n_variables_left]-delta_t/delta_x*(fluctuation_plus+fluctuation_minus)
-                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t)
+                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t,**kwargs)
 
                         self.dom_decomp_val_res1[i-1] \
                             = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[i,n_variables_left-1]-previous_values[i-1,n_variables_left-1])\
@@ -987,19 +1005,22 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_left,
                         'positive',
                         delta_t,
-                        delta_x)             
+                        delta_x,
+                        **kwargs)             
                     generalized_roe_minus_Full = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain+1,:n_variables_left],
                         previous_values[right_boundary_subdomain+2,:n_variables_left],
                         system_matrix_left,'negative',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     generalized_roe_minus_Restricted = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain+1,:n_variables_right],
                         previous_values[right_boundary_subdomain+2,:n_variables_right],
                         system_matrix_right,'negative',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     fluctuation_plus = generalized_roe_plus@(previous_values[right_boundary_subdomain+1,:n_variables_left]\
                                                              -previous_values[right_boundary_subdomain,:n_variables_left])
                     fluctuation_minus_Full = generalized_roe_minus_Full@(previous_values[right_boundary_subdomain+2,:n_variables_left]\
@@ -1013,7 +1034,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain+1,n_variables_right:n_variables_left] = (previous_values[right_boundary_subdomain+1,n_variables_right:n_variables_left] 
                     -delta_t/delta_x*(fluctuation_plus[n_variables_right:n_variables_left]+fluctuation_minus_Full[n_variables_right:n_variables_left])) # solve FVM equations for last moments
                     values[right_boundary_subdomain+1,:n_variables_left] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain+1,:n_variables_left],source_term_left,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain+1,:n_variables_left],source_term_left,delta_t,**kwargs)
                     
                     self.dom_decomp_val_res1[right_boundary_subdomain] \
                         = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[right_boundary_subdomain+1,n_variables_left-1]-previous_values[right_boundary_subdomain,n_variables_left-1]),np.inf)
@@ -1025,14 +1046,16 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         previous_values[right_boundary_subdomain+2,:n_variables_right],
                         system_matrix_right,'positive',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain+2,:n_variables_right],
                         previous_values[right_boundary_subdomain+3,:n_variables_right],
                         system_matrix_right,
                         'negative',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     fluctuation_plus = generalized_roe_plus@(previous_values[right_boundary_subdomain+2,:n_variables_right]\
                                                              -previous_values[right_boundary_subdomain+1,:n_variables_right])
                     fluctuation_minus = generalized_roe_minus@(previous_values[right_boundary_subdomain+3,:n_variables_right]\
@@ -1040,7 +1063,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain+2,:n_variables_right] = (previous_values[right_boundary_subdomain+2,:n_variables_right]
                     -delta_t/delta_x*(fluctuation_plus+fluctuation_minus)) # solve FVM equations
                     values[right_boundary_subdomain+2,:n_variables_right] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain+2,:n_variables_right],source_term_right,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain+2,:n_variables_right],source_term_right,delta_t,**kwargs)
                     
                     self.dom_decomp_val_res1[right_boundary_subdomain+1] \
                         = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[right_boundary_subdomain+2,n_variables_right-1]-previous_values[right_boundary_subdomain+1,n_variables_right-1])\
@@ -1053,14 +1076,16 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         previous_values[right_boundary_subdomain+3,:n_variables_right],
                         system_matrix_right,'positive',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain+3,:n_variables_right],
                         previous_values[right_boundary_subdomain+4,:n_variables_right],
                         system_matrix_right,
                         'negative',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     fluctuation_plus = generalized_roe_plus@(previous_values[right_boundary_subdomain+3,:n_variables_right]\
                                                              -previous_values[right_boundary_subdomain+2,:n_variables_right])
                     fluctuation_minus = generalized_roe_minus@(previous_values[right_boundary_subdomain+4,:n_variables_right]\
@@ -1068,7 +1093,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain+3,:n_variables_right] = (previous_values[right_boundary_subdomain+3,:n_variables_right]
                     -delta_t/delta_x*(fluctuation_plus+fluctuation_minus)) # solve FVM equations
                     values[right_boundary_subdomain+3,:n_variables_right] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain+3,:n_variables_right],source_term_right,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain+3,:n_variables_right],source_term_right,delta_t,**kwargs)
 
                     self.dom_decomp_val_res1[right_boundary_subdomain+2] \
                         = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[right_boundary_subdomain+3,n_variables_right-1]-previous_values[right_boundary_subdomain+2,n_variables_right-1])\
@@ -1084,18 +1109,20 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     system_matrix_right,
                     'positive',
                     delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                     previous_values[i,:n_variables_right],
                     previous_values[i+1,:n_variables_right],
                     system_matrix_right,
                     'negative',
                     delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 fluctuation_plus = generalized_roe_plus@(previous_values[i,:n_variables_right]-previous_values[i-1,:n_variables_right])
                 fluctuation_minus = generalized_roe_minus@(previous_values[i+1,:n_variables_right]-previous_values[i,:n_variables_right])
                 values[i,:n_variables_right] = previous_values[i,:n_variables_right] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus)
-                values[i,:n_variables_right] = self.time_integration.integrate(values[i,:n_variables_right],source_term_right,delta_t)
+                values[i,:n_variables_right] = self.time_integration.integrate(values[i,:n_variables_right],source_term_right,delta_t,**kwargs)
             
                 self.dom_decomp_val_res1[i-1] \
                     = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[i,n_variables_right-1]-previous_values[i-1,n_variables_right-1])\
@@ -1251,8 +1278,9 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
     
     def run_simulation(self,
                        t_end: float,
-                       g = 9.81) -> np.array:
+                       **kwargs) -> np.array:
         
+        g = kwargs["g"] if "g" in kwargs else 1
         delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution #TODO: include the possibility of nonuniform grids
 
         #self._calculate_boundary_interfaces()
@@ -1299,17 +1327,17 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                 order_right = self.orders[m+1]
                 n_variables_right = self.numbers_of_variables[m+1]
 
-                def system_matrix_left(cell_values):
-                    return self.pde_type.compute_system_matrix(order_left,cell_values)
+                def system_matrix_left(cell_values, **kwargs):
+                    return self.pde_type.compute_system_matrix(order_left,cell_values,**kwargs)
 
-                def source_term_left(cell_values,delta_t):
-                    return self.pde_type.compute_source_term(order_left,cell_values,delta_t,self.pde_type.linear_source)
+                def source_term_left(cell_values,delta_t,**kwargs):
+                    return self.pde_type.compute_source_term(order_left,cell_values,delta_t,self.pde_type.linear_source,**kwargs)
 
-                def system_matrix_right(cell_values):
-                    return self.pde_type.compute_system_matrix(order_right,cell_values)
+                def system_matrix_right(cell_values, **kwargs):
+                    return self.pde_type.compute_system_matrix(order_right,cell_values,**kwargs)
 
-                def source_term_right(cell_values,delta_t):
-                    return self.pde_type.compute_source_term(order_right,cell_values,delta_t,self.pde_type.linear_source)
+                def source_term_right(cell_values,delta_t,**kwargs):
+                    return self.pde_type.compute_source_term(order_right,cell_values,delta_t,self.pde_type.linear_source,**kwargs)
 
                 left_boundary_subdomain = right_boundary_subdomain+2
                 right_boundary_subdomain = self.boundary_interfaces_discretized[m]
@@ -1323,18 +1351,20 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                             system_matrix_left,
                             'positive',
                             delta_t,
-                            delta_x)
+                            delta_x,
+                            **kwargs)
                         generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                             previous_values[i,:n_variables_left],
                             previous_values[i+1,:n_variables_left],
                             system_matrix_left,
                             'negative',
                             delta_t,
-                            delta_x)
+                            delta_x,
+                            **kwargs)
                         fluctuation_plus = generalized_roe_plus@(previous_values[i,:n_variables_left]-previous_values[i-1,:n_variables_left])
                         fluctuation_minus = generalized_roe_minus@(previous_values[i+1,:n_variables_left]-previous_values[i,:n_variables_left]) 
                         values[i,:n_variables_left] = previous_values[i,:n_variables_left] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) 
-                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t)
+                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t,**kwargs)
                         self.dom_decomp_val_res1[i-1] \
                             = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[i,n_variables_left-1]-previous_values[i-1,n_variables_left-1])\
                             + generalized_roe_minus[:-1,-1]*(previous_values[i+1,n_variables_left-1]-previous_values[i,n_variables_left-1]),np.inf)
@@ -1352,22 +1382,24 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_left,
                         'positive',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     generalized_roe_minus1 = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain,:n_variables_right],
                         values_boundary_help,
                         system_matrix_right,
                         'negative',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     generalized_roe_minus2 = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         values_boundary_help,
                         previous_values[right_boundary_subdomain+1,:n_variables_right],
                         system_matrix_right,
                         'negative',
                         delta_t,
-                        delta_x
-                    )
+                        delta_x,
+                        **kwargs)
                     # fluctuation_plus = generalized_roe_plus@(previous_values[right_boundary_subdomain,:n_variables_left]\
                     #                                          -previous_values[right_boundary_subdomain-1,:n_variables_left])
                     # fluctuation_minus = generalized_roe_minus1@(previous_values[right_boundary_subdomain+1,:n_variables_right]\
@@ -1382,7 +1414,7 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain,:n_variables_left] = (previous_values[right_boundary_subdomain,:n_variables_left]
                     -delta_t/delta_x*(fluctuation_plus+fluctuation_minus[:n_variables_left]))
                     values[right_boundary_subdomain,:n_variables_left] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain,:n_variables_left],source_term_left,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain,:n_variables_left],source_term_left,delta_t,**kwargs)
 
                     self.dom_decomp_val_res1[right_boundary_subdomain-1] \
                         = np.linalg.norm(generalized_roe_minus1[:-1,-1]*(values_boundary_help[n_variables_right-1]\
@@ -1399,22 +1431,24 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_right,
                         'positive',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     generalized_roe_plus2 = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         values_boundary_help,
                         previous_values[right_boundary_subdomain+1,:n_variables_right],
                         system_matrix_right,
                         'positive',
                         delta_t,
-                        delta_x
-                    )
+                        delta_x,
+                        **kwargs)
                     generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain+1,:n_variables_right],
                         previous_values[right_boundary_subdomain+2,:n_variables_right],
                         system_matrix_right,
                         'negative',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     fluctuation_plus = generalized_roe_plus1@(values_boundary_help\
                                                              -previous_values[right_boundary_subdomain,:n_variables_right])\
                                         +generalized_roe_plus2@(previous_values[right_boundary_subdomain+1,:n_variables_right]\
@@ -1424,7 +1458,7 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain+1,:n_variables_right] = (previous_values[right_boundary_subdomain+1,:n_variables_right]
                     -delta_t/delta_x*(fluctuation_plus+fluctuation_minus))
                     values[right_boundary_subdomain+1,:n_variables_right] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain+1,:n_variables_right],source_term_right,delta_t) 
+                        = self.time_integration.integrate(values[right_boundary_subdomain+1,:n_variables_right],source_term_right,delta_t,**kwargs) 
                     self.dom_decomp_val_res1[right_boundary_subdomain] \
                         = np.linalg.norm(generalized_roe_plus1[:-1,-1]*(values_boundary_help[n_variables_right-1]\
                                                              -previous_values[right_boundary_subdomain,n_variables_right-1]\
@@ -1447,18 +1481,20 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                             system_matrix_left,
                             'positive',
                             delta_t,
-                            delta_x)
+                            delta_x,
+                            **kwargs)
                         generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                             previous_values[i,:n_variables_left],
                             previous_values[i+1,:n_variables_left],
                             system_matrix_left,
                             'negative',
                             delta_t,
-                            delta_x)
+                            delta_x,
+                            **kwargs)
                         fluctuation_plus = generalized_roe_plus@(previous_values[i,:n_variables_left]-previous_values[i-1,:n_variables_left])
                         fluctuation_minus = generalized_roe_minus@(previous_values[i+1,:n_variables_left]-previous_values[i,:n_variables_left]) 
                         values[i,:n_variables_left] = previous_values[i,:n_variables_left] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) 
-                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t)
+                        values[i,:n_variables_left] = self.time_integration.integrate(values[i,:n_variables_left],source_term_left,delta_t,**kwargs)
                         self.dom_decomp_val_res1[i-1] \
                             = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[i,n_variables_left-1]-previous_values[i-1,n_variables_left-1])\
                             + generalized_roe_minus[:-1,-1]*(previous_values[i+1,n_variables_left-1]-previous_values[i,n_variables_left-1]),np.inf)
@@ -1471,22 +1507,24 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_left,
                         'positive',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     generalized_roe_minus1 = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain,:n_variables_left],
                         values_boundary_help,
                         system_matrix_left,
                         'negative',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     generalized_roe_minus2 = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         values_boundary_help,
                         previous_values[right_boundary_subdomain+1,:n_variables_left],
                         system_matrix_left,
                         'negative',
                         delta_t,
-                        delta_x
-                    )
+                        delta_x,
+                        **kwargs)
                     fluctuation_plus = generalized_roe_plus@(previous_values[right_boundary_subdomain,:n_variables_left]\
                                                              -previous_values[right_boundary_subdomain-1,:n_variables_left])
                     fluctuation_minus = generalized_roe_minus1@(values_boundary_help\
@@ -1496,7 +1534,7 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain,:n_variables_left] = (previous_values[right_boundary_subdomain,:n_variables_left]
                     -delta_t/delta_x*(fluctuation_plus+fluctuation_minus)) 
                     values[right_boundary_subdomain,:n_variables_left] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain,:n_variables_left],source_term_left,delta_t)
+                        = self.time_integration.integrate(values[right_boundary_subdomain,:n_variables_left],source_term_left,delta_t,**kwargs)
 
                     self.dom_decomp_val_res1[right_boundary_subdomain-1] \
                         = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[right_boundary_subdomain,n_variables_left-1]-previous_values[right_boundary_subdomain-1,n_variables_left-1])\
@@ -1515,22 +1553,24 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                         system_matrix_left,
                         'positive',
                         delta_t,
-                        delta_x)
+                        delta_x,
+                        **kwargs)
                     generalized_roe_plus2 = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         values_boundary_help,
                         previous_values[right_boundary_subdomain+1,:n_variables_left],
                         system_matrix_left,
                         'positive',
                         delta_t,
-                        delta_x
-                    )
+                        delta_x,
+                        **kwargs)
                     generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                         previous_values[right_boundary_subdomain+1,:n_variables_right],
                         previous_values[right_boundary_subdomain+2,:n_variables_right],
                         system_matrix_right,
                         'negative',
                         delta_t,
-                        delta_x) 
+                        delta_x,
+                        **kwargs) 
                     fluctuation_plus = generalized_roe_plus1@(values_boundary_help\
                                                              -previous_values[right_boundary_subdomain,:n_variables_left])\
                                         + generalized_roe_plus2@(previous_values[right_boundary_subdomain+1,:n_variables_left]\
@@ -1540,7 +1580,7 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain+1,:n_variables_right] = (previous_values[right_boundary_subdomain+1,:n_variables_right]
                     -delta_t/delta_x*(fluctuation_plus[:n_variables_right]+fluctuation_minus))
                     values[right_boundary_subdomain+1,:n_variables_right] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain+1,:n_variables_right],source_term_right,delta_t) 
+                        = self.time_integration.integrate(values[right_boundary_subdomain+1,:n_variables_right],source_term_right,delta_t,**kwargs) 
                     self.dom_decomp_val_res1[right_boundary_subdomain] \
                         = np.linalg.norm(generalized_roe_plus1[:-1,-1]*(values_boundary_help[n_variables_left-1]\
                                                              -previous_values[right_boundary_subdomain,n_variables_left-1])\
@@ -1556,18 +1596,20 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     system_matrix_right,
                     'positive',
                     delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 generalized_roe_minus = self.spatial_discretization.compute_generalized_roe_and_viscosity(
                     previous_values[i,:n_variables_right],
                     previous_values[i+1,:n_variables_right],
                     system_matrix_right,
                     'negative',
                     delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 fluctuation_plus = generalized_roe_plus@(previous_values[i,:n_variables_right]-previous_values[i-1,:n_variables_right])
                 fluctuation_minus = generalized_roe_minus@(previous_values[i+1,:n_variables_right]-previous_values[i,:n_variables_right])
                 values[i,:n_variables_right] = previous_values[i,:n_variables_right] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus)
-                values[i,:n_variables_right] = self.time_integration.integrate(values[i,:n_variables_right],source_term_right,delta_t)
+                values[i,:n_variables_right] = self.time_integration.integrate(values[i,:n_variables_right],source_term_right,delta_t,**kwargs)
             
                 self.dom_decomp_val_res1[i-1] \
                     = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[i,n_variables_right-1]-previous_values[i-1,n_variables_right-1])\
@@ -1728,8 +1770,9 @@ class Micro_macro(Simulation):
 
     def run_simulation(self,
                        t_end: float,
-                       g = 9.81) -> np.array:
+                       **kwargs) -> np.array:
 
+        g = kwargs["g"] if "g" in kwargs else 1
         delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution
 
         micro_moments = self._get_initial_conditions(self.mesh.cell_center_positions)
@@ -1737,17 +1780,17 @@ class Micro_macro(Simulation):
 
         CFL = 0.5
 
-        def micro_system_matrix(cell_values):
-            return self.pde_type.compute_system_matrix(self.micro_order,cell_values)
+        def micro_system_matrix(cell_values,**kwargs):
+            return self.pde_type.compute_system_matrix(self.micro_order,cell_values,**kwargs)
 
-        def micro_source_term(cell_values):
-            return self.pde_type.compute_source_term(self.micro_order,cell_values)
+        def micro_source_term(cell_values,**kwargs):
+            return self.pde_type.compute_source_term(self.micro_order,cell_values,**kwargs)
         
-        def macro_system_matrix(cell_values):
-            return self.pde_type.compute_system_matrix(self.macro_order, cell_values)
+        def macro_system_matrix(cell_values,**kwargs):
+            return self.pde_type.compute_system_matrix(self.macro_order, cell_values,**kwargs)
 
-        def macro_source_term(cell_values):
-            return self.pde_type.compute_source_term(self.macro_order, cell_values)
+        def macro_source_term(cell_values,**kwargs):
+            return self.pde_type.compute_source_term(self.macro_order, cell_values,**kwargs)
 
         t = 0
         step = 0
@@ -1776,15 +1819,17 @@ class Micro_macro(Simulation):
                     micro_system_matrix,
                     'positive',
                     micro_delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 fluctuation_minus = self.spatial_discretization.compute_fluctuation(
                     previous_values[i,:],
                     previous_values[i+1,:],
                     micro_system_matrix,
                     'negative',
                     micro_delta_t,
-                    delta_x) 
-                source_term_value = micro_source_term(previous_values[i,:]) 
+                    delta_x,
+                    **kwargs) 
+                source_term_value = micro_source_term(previous_values[i,:],**kwargs) 
                 micro_moments[i,:] = (previous_values[i,:] - 
                                       micro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + 
                                       delta_x * micro_delta_t * source_term_value) # solve FVM equations
@@ -1816,15 +1861,17 @@ class Micro_macro(Simulation):
                     macro_system_matrix,
                     'positive',
                     macro_delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 fluctuation_minus = self.spatial_discretization.compute_fluctuation(
                     previous_values[i,:],
                     previous_values[i+1,:],
                     macro_system_matrix,
                     'negative',
                     macro_delta_t,
-                    delta_x) 
-                source_term_value = macro_source_term(previous_values[i,:]) 
+                    delta_x,
+                    **kwargs) 
+                source_term_value = macro_source_term(previous_values[i,:],**kwargs) 
                 macro_moments[i,:] = (previous_values[i,:] - 
                                       macro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + 
                                       delta_x * macro_delta_t * source_term_value) # solve FVM equations
@@ -1996,8 +2043,9 @@ class ClassicalGalerkinSimulation1D(Simulation):
 
     def run_simulation(self,
                        t_end: float,
-                       g = 9.81) -> np.array:
+                       **kwargs) -> np.array:
 
+        g = kwargs["g"] if "g" in kwargs else 1
         delta_x = (self.mesh.boundaries[1] - self.mesh.boundaries[0])/self.mesh.resolution #TODO: include the possibility of nonuniform grids
         
         values = self._get_initial_conditions(self.mesh.cell_center_positions)
@@ -2005,11 +2053,11 @@ class ClassicalGalerkinSimulation1D(Simulation):
         CFL = 0.3
         t = 0
 
-        def system_matrix(cell_values):
-            return self.pde_type.compute_system_matrix(self.mom_order, self.SG_order, cell_values)
+        def system_matrix(cell_values, **kwargs):
+            return self.pde_type.compute_system_matrix(self.mom_order, self.SG_order, cell_values, **kwargs)
 
-        def source_term(cell_values,delta_t):
-            return self.pde_type.compute_source_term(self.mom_order, self.SG_order, cell_values,delta_t)
+        def source_term(cell_values,delta_t, **kwargs):
+            return self.pde_type.compute_source_term(self.mom_order, self.SG_order, cell_values, delta_t, **kwargs)
 
         step=0
         
@@ -2047,15 +2095,17 @@ class ClassicalGalerkinSimulation1D(Simulation):
                     system_matrix,
                     'positive',
                     delta_t,
-                    delta_x) 
+                    delta_x,
+                    **kwargs) 
                 fluctuation_minus = self.spatial_discretization.compute_fluctuation(
                     values[i,:],
                     values[i+1,:],
                     system_matrix,
                     'negative',
                     delta_t,
-                    delta_x) 
-                source_term_value = source_term(values[i,:]) 
+                    delta_x,
+                    **kwargs) 
+                source_term_value = source_term(values[i,:], delta_t, **kwargs) 
                 values[i,:] = values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + delta_t*source_term_value # solve FVM equations
             print(t)
             t += delta_t
