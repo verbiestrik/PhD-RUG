@@ -31,7 +31,7 @@ class PDE(ABC):
 
     @abstractmethod
     def __init__(self, 
-                initial_condition: str):
+                 initial_condition: str):
         """
         Constructs all the necessary attributes for the PDE object.
 
@@ -96,7 +96,7 @@ class PDE(ABC):
     def get_initial_values(self,
                            order: int,
                            initial_condition: str,
-                           position) -> np.array:
+                           position: float) -> np.array:
 
         """
         calculates the initial values for one specific physical position
@@ -122,7 +122,7 @@ class PDE(ABC):
 
     @abstractmethod
     def compute_number_of_variables(self,
-                           order: int) -> int:
+                                    order: int) -> int:
 
         """
         given the order of the moment model expansion, compute the number of state variables in the PDE
@@ -146,7 +146,7 @@ class PDE(ABC):
     def compute_breakdown_criterion(self,
                                    values: list,
                                    breakdown_criterion: str,
-                                   n) -> np.array:
+                                   n: int) -> np.array:
 
         """
         Compute specific breakdown criterion value for quantifying the required modelling complexity
@@ -210,10 +210,10 @@ class SWME1D(PDE):
     """
 
     def __init__(self, 
-                initial_condition: str,
-                viscosity: float,
-                slip_length: float,
-                hyperbolic: bool):
+                 initial_condition: str,
+                 viscosity: float,
+                 slip_length: float,
+                 hyperbolic: bool):
         """
         Constructs all the necessary attributes for the SWME1D object.
 
@@ -238,8 +238,8 @@ class SWME1D(PDE):
                               values: np.array,
                               **kwargs) -> np.array:
         
-        g = kwargs["g"] if "g" in kwargs else 9.81
-        A=np.zeros((order+2,order+2)) 
+        g = kwargs["g"] if "g" in kwargs else 1
+        A = np.zeros((order+2,order+2)) 
         h = values[0]
         um = values[1]/values[0]
         if order == 0:
@@ -316,6 +316,7 @@ class SWME1D(PDE):
             A[4][2] = 0
             A[4][3] = 2*(alpha1 + alpha3)/5
             A[4][4] = um + alpha2/3
+        
         if order == 4:
 
             alpha1 = values[2]/values[0]
@@ -550,7 +551,7 @@ class SWME1D(PDE):
         
         viscosity   = kwargs["viscosity"]   if "viscosity"      in kwargs else self.viscosity
         slip_length = kwargs["slip_length"] if "slip_length"    in kwargs else self.slip_length
-        g           = kwargs["g"]           if "g"              in kwargs else 9.81
+        g           = kwargs["g"]           if "g"              in kwargs else 1
 
         S = np.zeros(order+2) 
         h = values[0]
@@ -816,7 +817,8 @@ class SWME1D(PDE):
             print("This initial condition is not implemented yet for the SWME1D")
         return initial_values
     
-    def compute_number_of_variables(self, order) -> int:
+    def compute_number_of_variables(self,
+                                    order: int) -> int:
         number_of_variables = order + 2
         return int(number_of_variables)
     
@@ -867,9 +869,9 @@ class SWME1D(PDE):
     
     #TODO: delete the following method
     def compute_all_breakdown_criteria(self,
-                                   values: np.array,
-                                   n: int,
-                                   max_n_variables) -> np.array:
+                                       values: np.array,
+                                       n: int,
+                                       max_n_variables: int) -> np.array:
 
         """
         Compute ALL breakdown criteria for quantifying the required modelling complexity
@@ -907,7 +909,7 @@ class SWME1D(PDE):
     def compute_breakdown_criterion(self,
                                    values: list,
                                    breakdown_criterion: str,
-                                   n) -> np.array:
+                                   n: int) -> np.array:
 
         breakdown_criterion_values = np.zeros(n)
         
@@ -1666,10 +1668,13 @@ class VegetationSWME1D(SWME1D):
     def compute_source_term(self,
                             order: int,
                             values: np.array,
-                            h_v = 0.4,
-                            stem_diam = 0.008, 
-                            n_stems = 800, 
-                            drag_coeff = 0.97) -> np.array:
+                            **kwargs) -> np.array:
+        
+        h_v        = kwargs["h_v"]        if "h_v"        in kwargs else 0.4
+        stem_diam  = kwargs["stem_diam"]  if "stem_diam"  in kwargs else 0.008
+        n_stems    = kwargs["n_stems"]    if "n_stems"    in kwargs else 800
+        drag_coeff = kwargs["drag_coeff"] if "drag_coeff" in kwargs else 0.97
+        
         """
         Computes the source term with a given order of the PDE evaluated in the given values.
 
@@ -1894,8 +1899,9 @@ class SGSWME1D(PDE):
                               mom_order: int,
                               SG_order: int,
                               values: np.array,
-                              g = 9.81) -> np.array:
+                              **kwargs) -> np.array:
         
+        g = kwargs["g"] if "g" in kwargs else 1
         A = np.zeros(((mom_order + 2)*(SG_order + 1), (mom_order + 2)*(SG_order + 1))) 
         
         if mom_order == 0:
@@ -3461,8 +3467,9 @@ class SGSWME1D(PDE):
                             mom_order: int,
                             SG_order: int,
                             values: np.array,
-                            g = 9.81) -> np.array:
+                            **kwargs) -> np.array:
         
+        g = kwargs["g"] if "g" in kwargs else 1
         mu = self.mu
         sigma = self.sigma
         slip_length = self.slip_length
@@ -4200,14 +4207,16 @@ class SGSWME1D(PDE):
         
         return initial_values
     
-    def compute_number_of_variables(self, mom_order, SG_order) -> int:
+    def compute_number_of_variables(self,
+                                    mom_order: int,
+                                    SG_order: int) -> int:
         number_of_variables = (mom_order + 2)*(SG_order + 1)
         return int(number_of_variables)
     
     def compute_breakdown_criterion(self,
                                    values: list,
                                    breakdown_criterion: str,
-                                   n) -> np.array:
+                                   n: int) -> np.array:
         pass
     
     def compute_exp_and_var(self,
