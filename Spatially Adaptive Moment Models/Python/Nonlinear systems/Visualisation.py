@@ -58,7 +58,7 @@ def visualisation(pde_type: PDE.PDE,
         ax2.legend()
         
         ax3.set_title('$u_m$ for {}'.format(title))
-        ax3.plot(data_array[:,0], data_array[:,2], '-', label='$u_m for {}$'.format(label), color=color_1)
+        ax3.plot(data_array[:,0], data_array[:,2], '-', label='$u_m$ for {}'.format(label), color=color_1)
         ax3.set_xlabel('x')
         ax3.legend()
 

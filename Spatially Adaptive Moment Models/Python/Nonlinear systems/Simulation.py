@@ -190,7 +190,7 @@ class ClassicalSimulation1D(Simulation):
         
         values = self._get_initial_conditions(self.mesh.cell_center_positions)
 
-        CFL = 0.3
+        CFL = 0.7
         t = 0
 
         def system_matrix(cell_values, **kwargs):
@@ -204,8 +204,8 @@ class ClassicalSimulation1D(Simulation):
         while t < t_end:
 
             # update boundary conditions
-            values[0,:] = self._update_boundary_conditions(values[1,:], 'left')
-            values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values[self.mesh.resolution,:],'right')
+            values[0,:] = self._update_boundary_conditions(values, 'left')
+            values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values,'right')
             
             wave_speed_sqrt = values[:,0]*g
             for i in range(self.order):

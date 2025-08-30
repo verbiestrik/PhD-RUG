@@ -61,7 +61,8 @@ class Implicit(TimeIntegration):
     def integrate(self,
                   initial_value: np.array,
                   rhs_f: Callable[...,np.array],
-                  delta_t: float) -> np.array:
+                  delta_t: float,
+                  **kwargs) -> np.array:
         
         """
         integrates the equation dw/dt = rhs_f(w) starting from initial_value with a time step of delta_t
@@ -82,9 +83,9 @@ class Implicit(TimeIntegration):
 
         """
         if self.linear:
-            end_values = rhs_f(initial_value,delta_t)@initial_value
+            end_values = rhs_f(initial_value,delta_t,**kwargs)@initial_value
         else: 
-            end_values = spopt.newton(self._compute_residual(initial_value,rhs_f,delta_t),initial_value,maxiter=100)
+            end_values = spopt.newton(self._compute_residual(initial_value,rhs_f,delta_t,**kwargs),initial_value,maxiter=100)
 
         return end_values
     

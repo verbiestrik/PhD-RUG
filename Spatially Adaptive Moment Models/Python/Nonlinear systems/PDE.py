@@ -213,7 +213,8 @@ class SWME1D(PDE):
                  initial_condition: str,
                  viscosity: float,
                  slip_length: float,
-                 hyperbolic: bool):
+                 hyperbolic: bool,
+                 linear_source: bool):
         """
         Constructs all the necessary attributes for the SWME1D object.
 
@@ -232,6 +233,7 @@ class SWME1D(PDE):
         self.viscosity = viscosity
         self.slip_length = slip_length
         self.hyperbolic = hyperbolic
+        self.linear_source = linear_source
 
     def compute_system_matrix(self,
                               order: int,
@@ -547,126 +549,169 @@ class SWME1D(PDE):
     def compute_source_term(self,
                             order: int,
                             values: np.array,
+                            delta_t: float,
                             **kwargs) -> np.array:
         
         viscosity   = kwargs["viscosity"]   if "viscosity"      in kwargs else self.viscosity
         slip_length = kwargs["slip_length"] if "slip_length"    in kwargs else self.slip_length
         g           = kwargs["g"]           if "g"              in kwargs else 1
 
-        S = np.zeros(order+2) 
-        h = values[0]
-        um = values[1]/values[0]
-        if order == 0:
-            S[0] = 0
-            S[1] = -viscosity/slip_length*um
-        if order == 1:
-            alpha1 = values[2]/values[0]
+        if self.linear_source:
+            S = self._compute_source_matrix_inverse(order,values,delta_t, **kwargs)
+        else:
+            S = np.zeros(order+2) 
+            h = values[0]
+            um = values[1]/values[0]
+            if order == 0:
+                S[0] = 0
+                S[1] = -viscosity/slip_length*um
+            if order == 1:
+                alpha1 = values[2]/values[0]
 
-            S[0] = 0
-            S[1] = -viscosity/slip_length*(um + alpha1)
-            S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1)
-        if order == 2:
-            alpha1 = values[2]/values[0]
-            alpha2 = values[3]/values[0]
+                S[0] = 0
+                S[1] = -viscosity/slip_length*(um + alpha1)
+                S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1)
+            if order == 2:
+                alpha1 = values[2]/values[0]
+                alpha2 = values[3]/values[0]
 
-            S[0] = 0
-            S[1] = -viscosity/slip_length*(um + alpha1 + alpha2)
-            S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1 + alpha2)
-            S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2)
-        if order == 3:
-            alpha1 = values[2]/values[0]
-            alpha2 = values[3]/values[0]
-            alpha3 = values[4]/values[0]
+                S[0] = 0
+                S[1] = -viscosity/slip_length*(um + alpha1 + alpha2)
+                S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1 + alpha2)
+                S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2)
+            if order == 3:
+                alpha1 = values[2]/values[0]
+                alpha2 = values[3]/values[0]
+                alpha3 = values[4]/values[0]
 
-            S[0] = 0
-            S[1] = -viscosity/slip_length*(um + alpha1 + alpha2 + alpha3)
-            S[2] = -3*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 4*slip_length)*alpha3)/h
-            S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2 + alpha3)
-            S[4] = -7*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 24*slip_length)*alpha3)/h
-        if order == 4:
+                S[0] = 0
+                S[1] = -viscosity/slip_length*(um + alpha1 + alpha2 + alpha3)
+                S[2] = -3*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 4*slip_length)*alpha3)/h
+                S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2 + alpha3)
+                S[4] = -7*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 24*slip_length)*alpha3)/h
+            if order == 4:
 
-            alpha1 = values[2]/values[0]
-            alpha2 = values[3]/values[0]
-            alpha3 = values[4]/values[0]
-            alpha4 = values[5]/values[0]
+                alpha1 = values[2]/values[0]
+                alpha2 = values[3]/values[0]
+                alpha3 = values[4]/values[0]
+                alpha4 = values[5]/values[0]
 
-            S[0] = 0
-            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + \
-            alpha4))/slip_length)
-            S[2] = (-3*viscosity*(um + alpha2 + alpha3 + ((h + \
-            4*slip_length)*alpha1 + 4*slip_length*alpha3)/h + \
-            alpha4))/slip_length
-            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*slip_length)*alpha2 + \
-            12*slip_length*alpha4)/h))/slip_length
-            S[4] = (-7*viscosity*(um + alpha2 + alpha3 + ((h + \
-            4*slip_length)*alpha1 + 24*slip_length*alpha3)/h + \
-            alpha4))/slip_length
-            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*slip_length)*alpha2 + \
-            40*slip_length*alpha4)/h))/slip_length
+                S[0] = 0
+                S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + \
+                alpha4))/slip_length)
+                S[2] = (-3*viscosity*(um + alpha2 + alpha3 + ((h + \
+                4*slip_length)*alpha1 + 4*slip_length*alpha3)/h + \
+                alpha4))/slip_length
+                S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+                12*slip_length)*alpha2 + \
+                12*slip_length*alpha4)/h))/slip_length
+                S[4] = (-7*viscosity*(um + alpha2 + alpha3 + ((h + \
+                4*slip_length)*alpha1 + 24*slip_length*alpha3)/h + \
+                alpha4))/slip_length
+                S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+                12*slip_length)*alpha2 + \
+                40*slip_length*alpha4)/h))/slip_length
 
-        if order == 5:
+            if order == 5:
 
-            alpha1 = values[2]/values[0]
-            alpha2 = values[3]/values[0]
-            alpha3 = values[4]/values[0]
-            alpha4 = values[5]/values[0]
-            alpha5 = values[6]/values[0]
+                alpha1 = values[2]/values[0]
+                alpha2 = values[3]/values[0]
+                alpha3 = values[4]/values[0]
+                alpha4 = values[5]/values[0]
+                alpha5 = values[6]/values[0]
 
-            S[0] = 0
-            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
-            alpha5))/slip_length)
-            S[2] = (-3*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
-            h*alpha2 + (h + 4*slip_length)*alpha3 + h*alpha4 + (h + \
-            4*slip_length)*alpha5))/(h*slip_length)
-            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*slip_length)*alpha2 + 12*slip_length*alpha4)/h + \
-            alpha5))/slip_length
-            S[4] = (-7*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
-            h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
-            24*slip_length)*alpha5))/(h*slip_length)
-            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*slip_length)*alpha2 + 40*slip_length*alpha4)/h + \
-            alpha5))/slip_length
-            S[6] = (-11*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
-            h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
-            60*slip_length)*alpha5))/(h*slip_length)
+                S[0] = 0
+                S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
+                alpha5))/slip_length)
+                S[2] = (-3*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+                h*alpha2 + (h + 4*slip_length)*alpha3 + h*alpha4 + (h + \
+                4*slip_length)*alpha5))/(h*slip_length)
+                S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+                12*slip_length)*alpha2 + 12*slip_length*alpha4)/h + \
+                alpha5))/slip_length
+                S[4] = (-7*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+                h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
+                24*slip_length)*alpha5))/(h*slip_length)
+                S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+                12*slip_length)*alpha2 + 40*slip_length*alpha4)/h + \
+                alpha5))/slip_length
+                S[6] = (-11*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+                h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
+                60*slip_length)*alpha5))/(h*slip_length)
 
-        if order == 6:
+            if order == 6:
 
-            alpha1 = values[2]/values[0]
-            alpha2 = values[3]/values[0]
-            alpha3 = values[4]/values[0]
-            alpha4 = values[5]/values[0]
-            alpha5 = values[6]/values[0]
-            alpha6 = values[7]/values[0]
+                alpha1 = values[2]/values[0]
+                alpha2 = values[3]/values[0]
+                alpha3 = values[4]/values[0]
+                alpha4 = values[5]/values[0]
+                alpha5 = values[6]/values[0]
+                alpha6 = values[7]/values[0]
 
-            S[0] = 0
-            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
-            alpha5 + alpha6))/slip_length)
-            S[2] = (-3*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*slip_length)*alpha1 + 4*slip_length*(alpha3 + \
-            alpha5))/h + alpha6))/slip_length
-            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*slip_length)*alpha2 + \
-            12*slip_length*(alpha4 + alpha6))/h))/slip_length
-            S[4] = (-7*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*slip_length)*alpha1 + 24*slip_length*(alpha3 + \
-            alpha5))/h + alpha6))/slip_length
-            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*slip_length)*alpha2 + \
-            40*slip_length*(alpha4 + alpha6))/h))/slip_length
-            S[6] = (-11*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*slip_length)*alpha1 + 12*slip_length*(2*alpha3 + \
-            5*alpha5))/h + alpha6))/slip_length
-            S[7] = (-13*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*slip_length)*alpha2 + \
-            40*slip_length*alpha4 + \
-            84*slip_length*alpha6)/h))/slip_length
+                S[0] = 0
+                S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
+                alpha5 + alpha6))/slip_length)
+                S[2] = (-3*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+                ((h + 4*slip_length)*alpha1 + 4*slip_length*(alpha3 + \
+                alpha5))/h + alpha6))/slip_length
+                S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+                alpha6 + ((h + 12*slip_length)*alpha2 + \
+                12*slip_length*(alpha4 + alpha6))/h))/slip_length
+                S[4] = (-7*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+                ((h + 4*slip_length)*alpha1 + 24*slip_length*(alpha3 + \
+                alpha5))/h + alpha6))/slip_length
+                S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+                alpha6 + ((h + 12*slip_length)*alpha2 + \
+                40*slip_length*(alpha4 + alpha6))/h))/slip_length
+                S[6] = (-11*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+                ((h + 4*slip_length)*alpha1 + 12*slip_length*(2*alpha3 + \
+                5*alpha5))/h + alpha6))/slip_length
+                S[7] = (-13*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+                alpha6 + ((h + 12*slip_length)*alpha2 + \
+                40*slip_length*alpha4 + \
+                84*slip_length*alpha6)/h))/slip_length
 
         return S
     
+    def _compute_source_matrix_inverse(self,
+                                      order: int,
+                                      values: np.array,
+                                      delta_t,
+                                      **kwargs) -> np.array:
+        
+        g = kwargs["g"] if "g" in kwargs else 1 
+        S_inv = np.zeros((order+2,order+2)) 
+        h = values[0]
+        if order == 0:
+            S_inv[0][0] = 1
+            S_inv[0][1] = 0
+            S_inv[1][0] = 0
+            S_inv[1][1] = (h*self.slip_length)/(h*self.slip_length + \
+            delta_t*self.viscosity)
+            
+        if order == 1:
+            S_inv[0][0] = 1
+            S_inv[0][1] = 0
+            S_inv[0][2] = 0
+            S_inv[1][0] = 0
+            S_inv[1][1] = (h**3*self.slip_length + 3*h*delta_t*(h + \
+            4*self.slip_length)*self.viscosity)/(h**3*self.slip_length + \
+            4*h*delta_t*(h + 3*self.slip_length)*self.viscosity + \
+            12*delta_t**2*self.viscosity**2)
+            S_inv[1][2] = -((h**2*delta_t*self.viscosity)/(h**3*self.slip_length \
+            + 4*h*delta_t*(h + 3*self.slip_length)*self.viscosity + \
+            12*delta_t**2*self.viscosity**2))
+            S_inv[2][0] = 0
+            S_inv[2][1] = (-3*h**2*delta_t*self.viscosity)/(h**3*self.slip_length \
+            + 4*h*delta_t*(h + 3*self.slip_length)*self.viscosity + \
+            12*delta_t**2*self.viscosity**2)
+            S_inv[2][2] = (h**2*(h*self.slip_length + \
+            delta_t*self.viscosity))/(h**3*self.slip_length + 4*h*delta_t*(h + \
+            3*self.slip_length)*self.viscosity + \
+            12*delta_t**2*self.viscosity**2)
+        
+        return S_inv
+
     def get_initial_values(self,
                            order: int,
                            initial_condition: str,

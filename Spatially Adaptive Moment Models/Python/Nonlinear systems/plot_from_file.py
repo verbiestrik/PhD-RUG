@@ -22,8 +22,9 @@ viscosity_C = 0.1
 slip_length_A = 0.1
 slip_length_B = 0.1
 slip_length_C = 0.1
+linear_source = True
 
-monte_carlo_A = True
+monte_carlo_A = False
 monte_carlo_B = False
 monte_carlo_C = False
 distr_A = "uniform"
@@ -55,7 +56,7 @@ SG_order_C = 2
 title = 'Dam Break of Low Dam'
 t_end = 0.2
 
-label_A = 'Monte Carlo'
+label_A = 'Test Case'
 label_B = 'K=1'
 label_C = 'K=2'
 color_1_A = 'tab:green'
@@ -69,7 +70,7 @@ color_2_C = 'lightskyblue'
 color_3_C = 'mediumblue'
 
 if pde_type_A == 'SWME1D':
-    _pde_A = PDE.SWME1D(IC_A, viscosity_A, slip_length_A, hyperbolic=False)
+    _pde_A = PDE.SWME1D(IC_A, viscosity_A, slip_length_A, hyperbolic=False, linear_source=True)
 elif pde_type_A == 'HSWME1D':
     _pde_A = PDE.SWME1D(IC_A, viscosity_A, slip_length_A, hyperbolic=True)
 elif pde_type_A == 'VegetationSWME1D':
@@ -81,6 +82,7 @@ elif pde_type_A == 'SGSWME1D':
 else:
     print('This pde_type is not implemented yet')
 
+'''
 if pde_type_B == 'SWME1D':
     _pde_B = PDE.SWME1D(IC_B, viscosity_B, slip_length_B, hyperbolic=False)
 elif pde_type_B == 'HSWME1D':
@@ -106,7 +108,7 @@ elif pde_type_C == 'SGSWME1D':
     print("pde_type can only be SGSWME1D if stochastic_Galerkin is True and spatially_adaptive and monte_carlo are False")
 else:
     print('This pde_type is not implemented yet')
-
+'''
 
 if spatially_adaptive_A:
     data_array = np.load("Data\data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_type_A, orders_A, viscosity_A, slip_length_A, IC_A, t_end))
@@ -127,7 +129,7 @@ else:
     data_array = np.load("Data\data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_type_A, order_A, viscosity_A, slip_length_A, IC_A, t_end))
     Visualisation.visualisation(_pde_A, False, False, False, len(data_array[:,0]), data_array[0,0], data_array[-1,0], IC_A, data_array, title, label_A, order = order_A, color_2 = color_2_A, color_3 = color_3_A)
 
-
+'''
 if spatially_adaptive_B:
     data_array = np.load("Data\data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_type_B, orders_B, viscosity_B, slip_length_B, IC_B, t_end))
     ax_arr = Visualisation.visualisation_add(ax_arr,_pde_B, True, False, False, len(data_array[:,0]), data_array[0,0], data_array[-1,0], IC_B, data_array, label_B, orders = orders_B, color_1 = color_1_B, color_2 = color_2_B, color_3 = color_3_B)
@@ -166,5 +168,5 @@ elif monte_carlo_B:
 else:
     data_array = np.load("Data\data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_type_C, order_C, viscosity_C, slip_length_C, IC_C, t_end))
     ax_arr = Visualisation.visualisation(ax_arr, _pde_C, False, False, False, len(data_array[:,0]), data_array[0,0], data_array[-1,0], IC_C, data_array, label_C, order = order_C, color_1 = color_1_C, color_2 = color_2_C, color_3 = color_3_C)
-
+'''
 plt.show()

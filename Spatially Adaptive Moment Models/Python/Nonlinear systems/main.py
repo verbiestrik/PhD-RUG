@@ -15,11 +15,16 @@ def main():
     grid_information = config['grid_information']
     numerical_method_information = config['numerical_method_information']
 
+    linear_source = pde_information['linear_source']
+    time_integrator = numerical_method_information['timeIntegrator']
+    linear_source_implicit = linear_source and time_integrator == 'ImplicitEuler'
+
     if pde_information['pde_type'] == 'SWME1D':
         _pde = PDE.SWME1D(pde_information['initialCondition'],
                           pde_information.getfloat('viscosity'),
                           pde_information.getfloat('slipLength'),
-                          hyperbolic=False)
+                          hyperbolic=False,
+                          linear_source=linear_source_implicit)
     elif pde_information['pde_type'] == 'HSWME1D':
         _pde = PDE.SWME1D(pde_information['initialCondition'],
                           pde_information.getfloat('viscosity'),
@@ -60,11 +65,17 @@ def main():
     if numerical_method_information['fvm_type'] == 'PVM':
         if numerical_method_information['pvm'] == 'PRICE':
             _spatialDiscretization = SpatialDiscretization.PRICE()
+        elif numerical_method_information['pvm'] == 'LF':
+            _spatialDiscretization = SpatialDiscretization.LF()
         else:
             print('This pvm method is not implemented yet')
     else:
         print('This finite volume type is not implemented yet')
-
+    
+    if numerical_method_information['timeIntegrator'] == 'ImplicitEuler':
+        _time_integration = TimeIntegration.ImplicitEuler(linear_source)
+    elif numerical_method_information['timeIntegrator'] == 'ExplicitEuler':
+        _time_integration = TimeIntegration.ExplicitEuler()
 
     #########################################################################
 
@@ -87,7 +98,8 @@ def main():
                     _mesh,
                     numerical_method_information['boundaryCondition'],
                     pde_information['initialCondition'],
-                    _spatialDiscretization)
+                    _spatialDiscretization,
+                    _time_integration)
             
             else:
                 _simulation = Simulation.ClassicalSimulation1D(
@@ -96,7 +108,8 @@ def main():
                     _mesh,
                     numerical_method_information['boundaryCondition'],
                     pde_information['initialCondition'],
-                    _spatialDiscretization)
+                    _spatialDiscretization,
+                    _time_integration)
         
         else:
             _simulation = Simulation.ClassicalGalerkinSimulation1D(
@@ -106,7 +119,8 @@ def main():
                     _mesh,
                     numerical_method_information['boundaryCondition'],
                     pde_information['initialCondition'],
-                    _spatialDiscretization)
+                    _spatialDiscretization,
+                    _time_integration)
 
         start = timeit.default_timer()
         
