@@ -19,13 +19,15 @@ class PDE(ABC):
     -------
     def compute_system_matrix(self,order,values):
         computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
-    def compute_source_term(self,order,values):
+    def compute_source_term(self,order,values,delta_t):
         computes the source term of the partial differential equation evaluated in the given values, for the given order.
     def get_initial_values(self,order,initial_condition,position):
         calculates the initial values for one specific physical position
     def compute_number_of_variables(self,order):
         computes the number of state variables in the PDE given the order of the moment model
-    def compute_breakdown_criterion(self,values,breakdown_criterion,n)
+    def compute_all_breakdown_criteria(self,values,number_of_variables,n,delta_x,tolerance_up_height_gradient,tolerance_down_height_gradient,tolerance_up_momentum_gradient,tolerance_down_momentum_gradient,tolerance_up_last_moment,tolerance_down_last_moment)
+        computes the values of all breakdown criteria in each mesh cell
+    def compute_breakdown_criterion(self,values,number_of_variables,breakdown_criterion,n)
         computes the values of the given breakdown criterion in each mesh cell
     """
 
@@ -142,9 +144,25 @@ class PDE(ABC):
 
         pass
 
+    
+    @abstractmethod
+    def compute_all_breakdown_criteria(self,
+                                   values: np.array,
+                                   number_of_variables: list,
+                                   n,
+                                   delta_x,
+                                   tolerance_up_height_gradient,
+                                   tolerance_down_height_gradient,
+                                   tolerance_up_momentum_gradient,
+                                   tolerance_down_momentum_gradient,
+                                   tolerance_up_last_moment,
+                                   tolerance_down_last_moment) -> np.array:
+        pass
+
     @abstractmethod
     def compute_breakdown_criterion(self,
                                    values: list,
+                                   number_of_variables: int,
                                    breakdown_criterion: str,
                                    n: int) -> np.array:
 
@@ -155,8 +173,12 @@ class PDE(ABC):
         ----------
         values : list of numpy 1D arrays
             the values of the variables in each mesh cell
+        number_of_variables : integer
+            the number of variables
         breakdown_criterion : str
             the breakdon criterion that is considered
+        n : int
+            the number of grid cells
         
         Returns
         -------
@@ -204,9 +226,16 @@ class SWME1D(PDE):
 
     Instance methods
     ----------------
+    def compute_system_matrix_diff(self,order_low,values):
+        calcultates the system matrix diff
+    def compute_system_matrix_last_row(self,order,values):
+        calculates the system matrix last row
+    def _compute_source_matrix_inverse(self,order,values,delta_t):
+        calculates the source matrix inverse if the rhs is linear for speed up
+    def compute_source_term_lastentry(self,order,values,last_moment_zero):
+        calculates the source term last entry
     def compute_vertical_velocity_profile(self,values):
         reconstruct the vertical velocity profiles from the moment values
-    
     """
 
     def __init__(self, 
@@ -244,12 +273,14 @@ class SWME1D(PDE):
         A = np.zeros((order+2,order+2)) 
         h = values[0]
         um = values[1]/values[0]
+        
         if order == 0:
             A[0][0] = 0
             A[0][1] = 1
             A[1][0] = g*h - um*um
             A[1][1] = 2.*um
-        if order == 1:
+        
+        elif order == 1:
             alpha1 = values[2]/values[0]
 
             A[0][0] = 0
@@ -261,7 +292,8 @@ class SWME1D(PDE):
             A[2][0] = -2*um*alpha1
             A[2][1] = 2*alpha1
             A[2][2] = um
-        if order == 2:
+        
+        elif order == 2:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
 
@@ -284,7 +316,8 @@ class SWME1D(PDE):
             A[3][1] = 2*alpha2
             A[3][2] = alpha1/3
             A[3][3] = um + 3/7*alpha2
-        if order == 3:
+        
+        elif order == 3:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
@@ -319,8 +352,7 @@ class SWME1D(PDE):
             A[4][3] = 2*(alpha1 + alpha3)/5
             A[4][4] = um + alpha2/3
         
-        if order == 4:
-
+        elif order == 4:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
@@ -373,8 +405,8 @@ class SWME1D(PDE):
             A[5][3] = (6*alpha2)/35. + (30*alpha4)/77.
             A[5][4] = (3*alpha1)/7. + (3*alpha3)/11.
             A[5][5] = um + (23*alpha2)/77. + (243*alpha4)/1001.
-        if order == 5:
-
+        
+        elif order == 5:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
@@ -446,14 +478,14 @@ class SWME1D(PDE):
             A[6][4] = (5*(alpha2 + alpha4))/21.
             A[6][5] = (4*alpha1)/9. + (3*(alpha3 + alpha5))/13.
             A[6][6] = um + (11*alpha2)/39. + (8*alpha4)/39.
-        if order == 6:
-
+        
+        elif order == 6:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
             alpha4 = values[5]/values[0]
             alpha5 = values[6]/values[0]
-            alpha6 = values[6]/values[0]
+            alpha6 = values[7]/values[0]
 
             if self.hyperbolic:
                 alpha2 = 0
@@ -543,35 +575,259 @@ class SWME1D(PDE):
             A[7][6] = (255*alpha1 + 119*alpha3 + 104*alpha5)/561.
             A[7][7] = um + (3*alpha2)/11. + (104*alpha4)/561. + \
             (600*alpha5)/3553.
+        
+        else:
+            print("This order is not implemented for the system matrix of the SWME1D-PDE.")
 
         return A
 
+    def compute_system_matrix_diff(self,
+                                   order_low: int,
+                                   values: np.array) -> np.array:
+        
+        g = kwargs["g"] if "g" in kwargs else 1
+        A_diff = np.zeros((order_low+2,order_low+2)) 
+        h = values[0]
+        um = values[1]/values[0]
+        
+        if order_low == 0:
+            alpha1 = values[2]/values[0]
+            A_diff[1][0] = -1/3.*alpha1*alpha1
+        
+        elif order_low == 1:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+
+            A_diff[1][0] = -0.2*alpha2*alpha2
+            A_diff[2][0] = (-4*alpha1*alpha2)/5.
+            A_diff[2][2] = alpha2
+
+        elif order_low == 2:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+                alpha3 = 0
+
+            A_diff[1][0] = -1./7.*alpha3*alpha3
+            A_diff[2][0] = (-18*alpha2*alpha3)/35.
+            A_diff[2][3] = (3*alpha3)/5.
+            A_diff[3][0] = (-2*alpha3*(9*alpha1 + 2*alpha3))/21.
+            A_diff[3][2] = (9*alpha3)/7.
+        
+        elif order_low == 3:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+                alpha3 = 0
+                alpha4 = 0
+
+            A_diff[1][0] = -1./9.*alpha4*alpha4
+            A_diff[2][0] = (-8*alpha3*alpha4)/21.
+            A_diff[2][4] = (3*alpha4)/7.
+            A_diff[3][0] = (-4*alpha4*(99*alpha2 + 25*alpha4))/693.
+            A_diff[3][3] = (16*alpha4)/21.
+            A_diff[4][0] = (-4*(22*alpha1 + 9*alpha3)*alpha4)/99.
+            A_diff[4][2] = (14*alpha4)/9.
+            A_diff[4][4] = alpha4/3.
+        
+        elif order_low == 4:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            alpha5 = values[6]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+                alpha3 = 0
+                alpha4 = 0
+                alpha5 = 0
+
+            A_diff[1][0] = -1/11.*alpha5*alpha5
+            A_diff[2][0] = (-10*alpha4*alpha5)/33.
+            A_diff[2][5] = alpha5/3.
+            A_diff[3][0] = (-50*alpha5*(26*alpha3 + 7*alpha5))/3003.
+            A_diff[3][4] = (125*alpha5)/231.
+            A_diff[4][0] = (-20*(13*alpha2 + 6*alpha4)*alpha5)/429.
+            A_diff[4][3] = (10*alpha5)/11.
+            A_diff[4][5] = (3*alpha5)/11.
+            A_diff[5][0] = (-2*alpha5*(455*alpha1 + 180*alpha3 + \
+            63*alpha5))/1001.
+            A_diff[5][2] = (20*alpha5)/11.
+            A_diff[5][4] = (345*alpha5)/1001.
+        
+        elif order_low == 5:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            alpha5 = values[6]/values[0]
+            alpha6 = values[7]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+                alpha3 = 0
+                alpha4 = 0
+                alpha5 = 0
+                alpha6 = 0
+
+            A_diff[1][0] = -1/13.*alpha6*alpha6
+            A_diff[2][0] = (-36*alpha5*alpha6)/143.
+            A_diff[2][6] = (3*alpha6)/11.
+            A_diff[3][0] = (-2*alpha6*(25*alpha4 + 7*alpha6))/143.
+            A_diff[3][5] = (60*alpha6)/143.
+            A_diff[4][0] = (-2*(100*alpha3 + 49*alpha5)*alpha6)/429.
+            A_diff[4][4] = (25*alpha6)/39.
+            A_diff[4][6] = (98*alpha6)/429.
+            A_diff[5][0] = (-2*alpha6*(765*alpha2 + 340*alpha4 + 126*alpha6))/2431.
+            A_diff[5][3] = (150*alpha6)/143.
+            A_diff[5][5] = (41*alpha6)/143.
+            A_diff[6][0] = (-2*(306*alpha1 + 119*alpha3 + 80*alpha5)*alpha6)/663.
+            A_diff[6][2] = (27*alpha6)/13.
+            A_diff[6][4] = (14*alpha6)/39.
+            A_diff[6][6] = (8*alpha6)/39.
+        
+        else:
+            print("This order is not implemented for the system matrix diff of the SWME1D-PDE.")
+
+        return A_diff
+    
+    def compute_system_matrix_last_row(self,
+                              order: int,
+                              values: np.array,
+                              **kwargs) -> np.array:
+
+        g = kwargs["g"] if "g" in kwargs else 1
+        A_last_row=np.zeros((1,order+2)) 
+        h = values[0]
+        um = values[1]/values[0]
+        
+        if order == 0:
+            A_last_row[0][0] = 0
+            A_last_row[0][1] = 0
+        
+        elif order == 1:
+            alpha1 = values[2]/values[0]
+
+            A_last_row[0][0] = (-2*alpha1*alpha1)/3.
+            A_last_row[0][1] = 0
+            A_last_row[0][2] = alpha1/3.
+
+        elif order == 2:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+
+            A_last_row[0][0] = (-6*alpha1*alpha2)/5.
+            A_last_row[0][1] = 0
+            A_last_row[0][2] = 0
+            A_last_row[0][3] = (2*alpha1)/5.
+        
+        elif order == 3:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+                alpha3 = 0
+
+            A_last_row[0][0] = (-2*(1287*alpha2*alpha2 + 65*alpha3*(44*alpha1 + \
+            9*alpha3)))/5005.
+            A_last_row[0][1] = 0
+            A_last_row[0][2] = (-2*alpha3)/7.
+            A_last_row[0][3] = (6*alpha2)/35.
+            A_last_row[0][4] = (3*alpha1)/7. + (3*alpha3)/11.
+        
+        elif order == 4:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+                alpha3 = 0
+                alpha4 = 0
+
+            A_last_row[0][0] = (-2*(390*alpha2*alpha3 + (455*alpha1 + \
+            180*alpha3)*alpha4))/819.
+            A_last_row[0][1] = 0
+            A_last_row[0][2] = (-5*alpha4)/9.
+            A_last_row[0][3] = 0
+            A_last_row[0][4] = (5*(alpha2 + alpha4))/21.
+            A_last_row[0][5] = (4*alpha1)/9. + (3*alpha3)/13.
+        
+        elif order == 5:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            alpha5 = values[6]/values[0]
+
+            if self.hyperbolic:
+                alpha2 = 0
+                alpha3 = 0
+                alpha4 = 0
+                alpha5 = 0
+
+            A_last_row[0][0] = (-100*alpha3*alpha3)/231. - (10*alpha2*alpha4)/11. \
+            - (14*alpha3*alpha5)/33. - (4*(85*alpha4*alpha4 + 459*alpha1*alpha5 + \
+            60*alpha5*alpha5))/1683.
+            A_last_row[0][1] = 0
+            A_last_row[0][2] = (-9*alpha5)/11.
+            A_last_row[0][3] = (-5*alpha4)/33.
+            A_last_row[0][4] = (25*alpha3 + 49*alpha5)/231.
+            A_last_row[0][5] = (3*alpha2)/11. + (19*alpha4)/99.
+            A_last_row[0][6] = (255*alpha1 + 119*alpha3 + 104*alpha5)/561.
+        
+        else:
+            print("This order is not implemented for the system matrix last row of the SWME1D-PDE.")
+
+        return A_last_row
+    
     def compute_source_term(self,
                             order: int,
                             values: np.array,
                             delta_t: float,
                             **kwargs) -> np.array:
         
-        viscosity   = kwargs["viscosity"]   if "viscosity"      in kwargs else self.viscosity
-        slip_length = kwargs["slip_length"] if "slip_length"    in kwargs else self.slip_length
-        g           = kwargs["g"]           if "g"              in kwargs else 1
+        viscosity   = kwargs["viscosity"]   if "viscosity"   in kwargs else self.viscosity
+        slip_length = kwargs["slip_length"] if "slip_length" in kwargs else self.slip_length
+        g           = kwargs["g"]           if "g"           in kwargs else 1
 
         if self.linear_source:
-            S = self._compute_source_matrix_inverse(order,values,delta_t, **kwargs)
+            S = self._compute_source_matrix_inverse(order,values,delta_t,**kwargs)
+        
         else:
             S = np.zeros(order+2) 
             h = values[0]
             um = values[1]/values[0]
+            
             if order == 0:
                 S[0] = 0
                 S[1] = -viscosity/slip_length*um
-            if order == 1:
+            
+            elif order == 1:
                 alpha1 = values[2]/values[0]
 
                 S[0] = 0
                 S[1] = -viscosity/slip_length*(um + alpha1)
                 S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1)
-            if order == 2:
+
+            elif order == 2:
                 alpha1 = values[2]/values[0]
                 alpha2 = values[3]/values[0]
 
@@ -579,7 +835,8 @@ class SWME1D(PDE):
                 S[1] = -viscosity/slip_length*(um + alpha1 + alpha2)
                 S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1 + alpha2)
                 S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2)
-            if order == 3:
+            
+            elif order == 3:
                 alpha1 = values[2]/values[0]
                 alpha2 = values[3]/values[0]
                 alpha3 = values[4]/values[0]
@@ -589,8 +846,8 @@ class SWME1D(PDE):
                 S[2] = -3*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 4*slip_length)*alpha3)/h
                 S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2 + alpha3)
                 S[4] = -7*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 24*slip_length)*alpha3)/h
-            if order == 4:
-
+            
+            elif order == 4:
                 alpha1 = values[2]/values[0]
                 alpha2 = values[3]/values[0]
                 alpha3 = values[4]/values[0]
@@ -612,8 +869,7 @@ class SWME1D(PDE):
                 12*slip_length)*alpha2 + \
                 40*slip_length*alpha4)/h))/slip_length
 
-            if order == 5:
-
+            elif order == 5:
                 alpha1 = values[2]/values[0]
                 alpha2 = values[3]/values[0]
                 alpha3 = values[4]/values[0]
@@ -639,8 +895,7 @@ class SWME1D(PDE):
                 h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
                 60*slip_length)*alpha5))/(h*slip_length)
 
-            if order == 6:
-
+            elif order == 6:
                 alpha1 = values[2]/values[0]
                 alpha2 = values[3]/values[0]
                 alpha3 = values[4]/values[0]
@@ -670,53 +925,1816 @@ class SWME1D(PDE):
                 alpha6 + ((h + 12*slip_length)*alpha2 + \
                 40*slip_length*alpha4 + \
                 84*slip_length*alpha6)/h))/slip_length
+            
+            else:
+                print("This order is not implemented for the source term of the SWME1D-PDE.")
 
         return S
     
     def _compute_source_matrix_inverse(self,
                                       order: int,
                                       values: np.array,
-                                      delta_t,
+                                      delta_t: float,
                                       **kwargs) -> np.array:
         
-        g = kwargs["g"] if "g" in kwargs else 1 
+        viscosity   = kwargs["viscosity"]   if "viscosity"   in kwargs else self.viscosity
+        slip_length = kwargs["slip_length"] if "slip_length" in kwargs else self.slip_length
+        g           = kwargs["g"]           if "g"           in kwargs else 1
+
         S_inv = np.zeros((order+2,order+2)) 
         h = values[0]
+        
         if order == 0:
             S_inv[0][0] = 1
             S_inv[0][1] = 0
             S_inv[1][0] = 0
-            S_inv[1][1] = (h*self.slip_length)/(h*self.slip_length + \
-            delta_t*self.viscosity)
+            S_inv[1][1] = (h*slip_length)/(h*slip_length + \
+            delta_t*viscosity)
             
-        if order == 1:
+        elif order == 1:
             S_inv[0][0] = 1
             S_inv[0][1] = 0
             S_inv[0][2] = 0
             S_inv[1][0] = 0
-            S_inv[1][1] = (h**3*self.slip_length + 3*h*delta_t*(h + \
-            4*self.slip_length)*self.viscosity)/(h**3*self.slip_length + \
-            4*h*delta_t*(h + 3*self.slip_length)*self.viscosity + \
-            12*delta_t**2*self.viscosity**2)
-            S_inv[1][2] = -((h**2*delta_t*self.viscosity)/(h**3*self.slip_length \
-            + 4*h*delta_t*(h + 3*self.slip_length)*self.viscosity + \
-            12*delta_t**2*self.viscosity**2))
+            S_inv[1][1] = (h**3*slip_length + 3*h*delta_t*(h + \
+            4*slip_length)*viscosity)/(h**3*slip_length + \
+            4*h*delta_t*(h + 3*slip_length)*viscosity + \
+            12*delta_t**2*viscosity**2)
+            S_inv[1][2] = -((h**2*delta_t*viscosity)/(h**3*slip_length \
+            + 4*h*delta_t*(h + 3*slip_length)*viscosity + \
+            12*delta_t**2*viscosity**2))
             S_inv[2][0] = 0
-            S_inv[2][1] = (-3*h**2*delta_t*self.viscosity)/(h**3*self.slip_length \
-            + 4*h*delta_t*(h + 3*self.slip_length)*self.viscosity + \
-            12*delta_t**2*self.viscosity**2)
-            S_inv[2][2] = (h**2*(h*self.slip_length + \
-            delta_t*self.viscosity))/(h**3*self.slip_length + 4*h*delta_t*(h + \
-            3*self.slip_length)*self.viscosity + \
-            12*delta_t**2*self.viscosity**2)
+            S_inv[2][1] = (-3*h**2*delta_t*viscosity)/(h**3*slip_length \
+            + 4*h*delta_t*(h + 3*slip_length)*viscosity + \
+            12*delta_t**2*viscosity**2)
+            S_inv[2][2] = (h**2*(h*slip_length + \
+            delta_t*viscosity))/(h**3*slip_length + 4*h*delta_t*(h + \
+            3*slip_length)*viscosity + \
+            12*delta_t**2*viscosity**2)
+        
+        elif order == 2:
+            S_inv[0][0] = 1
+            S_inv[0][1] = 0
+            S_inv[0][2] = 0
+            S_inv[0][3] = 0
+            S_inv[1][0] = 0
+            S_inv[1][1] = (h**5*slip_length + 8*h**3*delta_t*(h + \
+            9*slip_length)*viscosity + 240*h*delta_t**2*(h + \
+            3*slip_length)*viscosity**2)/(h**5*slip_length + \
+            9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3)
+            S_inv[1][2] = -((h**2*delta_t*viscosity*(h**2 + \
+            60*delta_t*viscosity))/(h**5*slip_length + \
+            9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3))
+            S_inv[1][3] = -((h**2*delta_t*viscosity*(h**2 + \
+            12*delta_t*viscosity))/(h**5*slip_length + \
+            9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3))
+            S_inv[2][0] = 0
+            S_inv[2][1] = (-3*h**2*delta_t*viscosity*(h**2 + \
+            60*delta_t*viscosity))/(h**5*slip_length + \
+            9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3)
+            S_inv[2][2] = (h**2*(h**3*slip_length + 6*h*delta_t*(h + \
+            10*slip_length)*viscosity + \
+            60*delta_t**2*viscosity**2))/(h**5*slip_length + \
+            9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3)
+            S_inv[2][3] = (-3*h**4*delta_t*viscosity)/(h**5*slip_length \
+            + 9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3)
+            S_inv[3][0] = 0
+            S_inv[3][1] = (-5*h**2*delta_t*viscosity*(h**2 + \
+            12*delta_t*viscosity))/(h**5*slip_length + \
+            9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3)
+            S_inv[3][2] = (-5*h**4*delta_t*viscosity)/(h**5*slip_length \
+            + 9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3)
+            S_inv[3][3] = (h**2*(h**3*slip_length + 4*h*delta_t*(h + \
+            3*slip_length)*viscosity + \
+            12*delta_t**2*viscosity**2))/(h**5*slip_length + \
+            9*h**3*delta_t*(h + 8*slip_length)*viscosity + \
+            24*h*delta_t**2*(13*h + 30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3)
+
+        elif order == 3:
+            S_inv[0][0] = 1
+            S_inv[0][1] = 0
+            S_inv[0][2] = 0
+            S_inv[0][3] = 0
+            S_inv[0][4] = 0
+            S_inv[1][0] = 0
+            S_inv[1][1] = (h**7*slip_length + 15*h**5*delta_t*(h + \
+            16*slip_length)*viscosity + 960*h**3*delta_t**2*(2*h + \
+            13*slip_length)*viscosity**2 + 33600*h*delta_t**3*(h + \
+            3*slip_length)*viscosity**3)/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[1][2] = -((h**2*delta_t*viscosity*(h**2 + \
+            60*delta_t*viscosity)*(h**2 + \
+            140*delta_t*viscosity))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4))
+            S_inv[1][3] = -((h**2*delta_t*viscosity*(h**4 + \
+            180*h**2*delta_t*viscosity + \
+            1680*delta_t**2*viscosity**2))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4))
+            S_inv[1][4] = -((h**4*delta_t*viscosity*(h**2 + \
+            60*delta_t*viscosity))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4))
+            S_inv[2][0] = 0
+            S_inv[2][1] = (-3*h**2*delta_t*viscosity*(h**2 + \
+            60*delta_t*viscosity)*(h**2 + \
+            140*delta_t*viscosity))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[2][2] = (h**2*(h**5*slip_length + h**3*delta_t*(13*h + \
+            228*slip_length)*viscosity + 48*h*delta_t**2*(31*h + \
+            210*slip_length)*viscosity**2 + \
+            10080*delta_t**3*viscosity**3))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[2][3] = (-3*h**4*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[2][4] = (-3*h**2*delta_t*viscosity*(h**3*(h + \
+            4*slip_length) + 12*h*delta_t*(7*h + \
+            20*slip_length)*viscosity + \
+            240*delta_t**2*viscosity**2))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[3][0] = 0
+            S_inv[3][1] = (-5*h**2*delta_t*viscosity*(h**4 + \
+            180*h**2*delta_t*viscosity + \
+            1680*delta_t**2*viscosity**2))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[3][2] = (-5*h**4*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[3][3] = (h**2*(h**5*slip_length + h**3*delta_t*(11*h + \
+            180*slip_length)*viscosity + 120*h*delta_t**2*(5*h + \
+            14*slip_length)*viscosity**2 + \
+            1680*delta_t**3*viscosity**3))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[3][4] = (-5*h**6*delta_t*viscosity)/(h**7*slip_length \
+            + 16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[4][0] = 0
+            S_inv[4][1] = (-7*h**4*delta_t*viscosity*(h**2 + \
+            60*delta_t*viscosity))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[4][2] = (-7*h**2*delta_t*viscosity*(h**3*(h + \
+            4*slip_length) + 12*h*delta_t*(7*h + \
+            20*slip_length)*viscosity + \
+            240*delta_t**2*viscosity**2))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[4][3] = (-7*h**6*delta_t*viscosity)/(h**7*slip_length \
+            + 16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+            S_inv[4][4] = (h**2*(h**5*slip_length + 9*h**3*delta_t*(h + \
+            8*slip_length)*viscosity + 24*h*delta_t**2*(13*h + \
+            30*slip_length)*viscosity**2 + \
+            720*delta_t**3*viscosity**3))/(h**7*slip_length + \
+            16*h**5*delta_t*(h + 15*slip_length)*viscosity + \
+            240*h**3*delta_t**2*(9*h + 52*slip_length)*viscosity**2 + \
+            2880*h*delta_t**3*(16*h + 35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4)
+
+        elif order == 4:
+            S_inv[0][0] = 1
+            S_inv[0][1] = 0
+            S_inv[0][2] = 0
+            S_inv[0][3] = 0
+            S_inv[0][4] = 0
+            S_inv[0][5] = 0
+            S_inv[1][0] = 0
+            S_inv[1][1] = (h**9*slip_length + 24*h**7*delta_t*(h + \
+            25*slip_length)*viscosity + 8400*h**5*delta_t**2*(h + \
+            11*slip_length)*viscosity**2 + 13440*h**3*delta_t**3*(43*h \
+            + 255*slip_length)*viscosity**3 + 8467200*h*delta_t**4*(h + \
+            3*slip_length)*viscosity**4)/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[1][2] = -((h**2*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity)*(h**4 + 420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5))
+            S_inv[1][3] = -((h**2*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**4 + 180*h**2*delta_t*viscosity + \
+            1680*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5))
+            S_inv[1][4] = -((h**4*delta_t*viscosity*(h**4 + \
+            420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5))
+            S_inv[1][5] = -((h**4*delta_t*viscosity*(h**4 + \
+            180*h**2*delta_t*viscosity + \
+            1680*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5))
+            S_inv[2][0] = 0
+            S_inv[2][1] = (-3*h**2*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity)*(h**4 + 420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[2][2] = (h**2*(h**7*slip_length + 2*h**5*delta_t*(11*h + \
+            294*slip_length)*viscosity + 7140*h**3*delta_t**2*(h + \
+            12*slip_length)*viscosity**2 + 40320*h*delta_t**3*(10*h + \
+            63*slip_length)*viscosity**3 + \
+            2540160*delta_t**4*viscosity**4))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[2][3] = (-3*h**4*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity)*(h**2 + \
+            252*delta_t*viscosity))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[2][4] = (3*h**2*delta_t*viscosity*(-(h**5*(h + \
+            4*slip_length)) - 240*h**3*delta_t*(2*h + \
+            7*slip_length)*viscosity - 1680*h*delta_t**2*(13*h + \
+            36*slip_length)*viscosity**2 - \
+            60480*delta_t**3*viscosity**3))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[2][5] = (-3*h**6*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[3][0] = 0
+            S_inv[3][1] = (-5*h**2*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**4 + 180*h**2*delta_t*viscosity + \
+            1680*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[3][2] = (-5*h**4*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity)*(h**2 + \
+            252*delta_t*viscosity))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[3][3] = (h**2*(h**7*slip_length + 20*h**5*delta_t*(h + \
+            27*slip_length)*viscosity + 60*h**3*delta_t**2*(103*h + \
+            1108*slip_length)*viscosity**2 + 2400*h*delta_t**3*(97*h + \
+            252*slip_length)*viscosity**3 + \
+            604800*delta_t**4*viscosity**4))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[3][4] = (-5*h**6*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[3][5] = (-5*h**2*delta_t*viscosity*(h**5*(h + \
+            12*slip_length) + 24*h**3*delta_t*(13*h + \
+            90*slip_length)*viscosity + 240*h*delta_t**2*(37*h + \
+            84*slip_length)*viscosity**2 + \
+            20160*delta_t**3*viscosity**3))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[4][0] = 0
+            S_inv[4][1] = (-7*h**4*delta_t*viscosity*(h**4 + \
+            420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[4][2] = (7*h**2*delta_t*viscosity*(-(h**5*(h + \
+            4*slip_length)) - 240*h**3*delta_t*(2*h + \
+            7*slip_length)*viscosity - 1680*h*delta_t**2*(13*h + \
+            36*slip_length)*viscosity**2 - \
+            60480*delta_t**3*viscosity**3))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[4][3] = (-7*h**6*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[4][4] = (h**2*(h**7*slip_length + 18*h**5*delta_t*(h + \
+            24*slip_length)*viscosity + 240*h**3*delta_t**2*(13*h + \
+            84*slip_length)*viscosity**2 + 20160*h*delta_t**3*(4*h + \
+            9*slip_length)*viscosity**3 + \
+            181440*delta_t**4*viscosity**4))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[4][5] = (-7*h**8*delta_t*viscosity)/(h**9*slip_length \
+            + 25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[5][0] = 0
+            S_inv[5][1] = (-9*h**4*delta_t*viscosity*(h**4 + \
+            180*h**2*delta_t*viscosity + \
+            1680*delta_t**2*viscosity**2))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[5][2] = (-9*h**6*delta_t*viscosity*(h**2 + \
+            140*delta_t*viscosity))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[5][3] = (-9*h**2*delta_t*viscosity*(h**5*(h + \
+            12*slip_length) + 24*h**3*delta_t*(13*h + \
+            90*slip_length)*viscosity + 240*h*delta_t**2*(37*h + \
+            84*slip_length)*viscosity**2 + \
+            20160*delta_t**3*viscosity**3))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[5][4] = (-9*h**8*delta_t*viscosity)/(h**9*slip_length \
+            + 25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+            S_inv[5][5] = (h**2*(h**7*slip_length + 16*h**5*delta_t*(h + \
+            15*slip_length)*viscosity + 240*h**3*delta_t**2*(9*h + \
+            52*slip_length)*viscosity**2 + 2880*h*delta_t**3*(16*h + \
+            35*slip_length)*viscosity**3 + \
+            100800*delta_t**4*viscosity**4))/(h**9*slip_length + \
+            25*h**7*delta_t*(h + 24*slip_length)*viscosity + \
+            600*h**5*delta_t**2*(15*h + 154*slip_length)*viscosity**2 + \
+            5040*h**3*delta_t**3*(133*h + 680*slip_length)*viscosity**3 \
+            + 201600*h*delta_t**4*(59*h + 126*slip_length)*viscosity**4 \
+            + 25401600*delta_t**5*viscosity**5)
+
+        elif order == 5:
+            S_inv[0][0] = 1
+            S_inv[0][1] = 0
+            S_inv[0][2] = 0
+            S_inv[0][3] = 0
+            S_inv[0][4] = 0
+            S_inv[0][5] = 0
+            S_inv[0][6] = 0
+            S_inv[1][0] = 0
+            S_inv[1][1] = (h**11*slip_length + 35*h**9*delta_t*(h + \
+            36*slip_length)*viscosity + 13440*h**7*delta_t**2*(2*h + \
+            33*slip_length)*viscosity**2 + 120960*h**5*delta_t**3*(39*h \
+            + 373*slip_length)*viscosity**3 + \
+            6773760*h**3*delta_t**4*(37*h + \
+            210*slip_length)*viscosity**4 + 3353011200*h*delta_t**5*(h \
+            + 3*slip_length)*viscosity**5)/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[1][2] = -((h**2*delta_t*viscosity*(h**4 + \
+            420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2)*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6))
+            S_inv[1][3] = -((h**2*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**6 + 840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6))
+            S_inv[1][4] = -((h**4*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**4 + 420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6))
+            S_inv[1][5] = -((h**4*delta_t*viscosity*(h**6 + \
+            840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6))
+            S_inv[1][6] = -((h**6*delta_t*viscosity*(h**4 + \
+            420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6))
+            S_inv[2][0] = 0
+            S_inv[2][1] = (-3*h**2*delta_t*viscosity*(h**4 + \
+            420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2)*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[2][2] = (h**2*(h**9*slip_length + 3*h**7*delta_t*(11*h + \
+            416*slip_length)*viscosity + 48*h**5*delta_t**2*(509*h + \
+            8946*slip_length)*viscosity**2 + \
+            30240*h**3*delta_t**3*(127*h + \
+            1338*slip_length)*viscosity**3 + 725760*h*delta_t**4*(229*h \
+            + 1386*slip_length)*viscosity**4 + \
+            1005903360*delta_t**5*viscosity**5))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[2][3] = (-3*h**4*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**4 + 756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[2][4] = (-3*h**2*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**5*(h + 4*slip_length) + \
+            240*h**3*delta_t*(2*h + 7*slip_length)*viscosity + \
+            1680*h*delta_t**2*(13*h + 36*slip_length)*viscosity**2 + \
+            60480*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[2][5] = (-3*h**6*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[2][6] = (3*h**4*delta_t*viscosity*(-(h**5*(h + \
+            4*slip_length)) - 240*h**3*delta_t*(2*h + \
+            7*slip_length)*viscosity - 1680*h*delta_t**2*(13*h + \
+            36*slip_length)*viscosity**2 - \
+            60480*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[3][0] = 0
+            S_inv[3][1] = (-5*h**2*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**6 + 840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[3][2] = (-5*h**4*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**4 + 756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[3][3] = (h**2*(h**9*slip_length + h**7*delta_t*(31*h + \
+            1200*slip_length)*viscosity + 240*h**5*delta_t**2*(89*h + \
+            1575*slip_length)*viscosity**2 + \
+            15120*h**3*delta_t**3*(201*h + \
+            1844*slip_length)*viscosity**3 + 604800*h*delta_t**4*(155*h \
+            + 396*slip_length)*viscosity**4 + \
+            239500800*delta_t**5*viscosity**5))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[3][4] = (-5*h**6*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**2 + \
+            396*delta_t*viscosity))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[3][5] = (5*h**2*delta_t*viscosity*(-(h**7*(h + \
+            12*slip_length)) - 48*h**5*delta_t*(23*h + \
+            210*slip_length)*viscosity - 5040*h**3*delta_t**2*(29*h + \
+            180*slip_length)*viscosity**2 - 60480*h*delta_t**3*(59*h + \
+            132*slip_length)*viscosity**3 - \
+            7983360*delta_t**4*viscosity**4))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[3][6] = (-5*h**8*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[4][0] = 0
+            S_inv[4][1] = (-7*h**4*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**4 + 420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[4][2] = (-7*h**2*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**5*(h + 4*slip_length) + \
+            240*h**3*delta_t*(2*h + 7*slip_length)*viscosity + \
+            1680*h*delta_t**2*(13*h + 36*slip_length)*viscosity**2 + \
+            60480*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[4][3] = (-7*h**6*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity)*(h**2 + \
+            396*delta_t*viscosity))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[4][4] = (h**2*(h**9*slip_length + h**7*delta_t*(29*h + \
+            1092*slip_length)*viscosity + 336*h**5*delta_t**2*(58*h + \
+            907*slip_length)*viscosity**2 + 5040*h**3*delta_t**3*(445*h \
+            + 2632*slip_length)*viscosity**3 + \
+            282240*h*delta_t**4*(179*h + 396*slip_length)*viscosity**4 \
+            + 111767040*delta_t**5*viscosity**5))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[4][5] = (-7*h**8*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[4][6] = (7*h**2*delta_t*viscosity*(-(h**7*(h + \
+            24*slip_length)) - 120*h**5*delta_t*(7*h + \
+            86*slip_length)*viscosity - 720*h**3*delta_t**2*(117*h + \
+            644*slip_length)*viscosity**2 - 20160*h*delta_t**3*(83*h + \
+            180*slip_length)*viscosity**3 - \
+            3628800*delta_t**4*viscosity**4))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[5][0] = 0
+            S_inv[5][1] = (-9*h**4*delta_t*viscosity*(h**6 + \
+            840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[5][2] = (-9*h**6*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[5][3] = (9*h**2*delta_t*viscosity*(-(h**7*(h + \
+            12*slip_length)) - 48*h**5*delta_t*(23*h + \
+            210*slip_length)*viscosity - 5040*h**3*delta_t**2*(29*h + \
+            180*slip_length)*viscosity**2 - 60480*h*delta_t**3*(59*h + \
+            132*slip_length)*viscosity**3 - \
+            7983360*delta_t**4*viscosity**4))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[5][4] = (-9*h**8*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[5][5] = (h**2*(h**9*slip_length + 9*h**7*delta_t*(3*h + \
+            100*slip_length)*viscosity + 600*h**5*delta_t**2*(19*h + \
+            210*slip_length)*viscosity**2 + 5040*h**3*delta_t**3*(193*h \
+            + 1032*slip_length)*viscosity**3 + \
+            362880*h*delta_t**4*(51*h + 110*slip_length)*viscosity**4 + \
+            39916800*delta_t**5*viscosity**5))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[5][6] = \
+            (-9*h**10*delta_t*viscosity)/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[6][0] = 0
+            S_inv[6][1] = (-11*h**6*delta_t*viscosity*(h**4 + \
+            420*h**2*delta_t*viscosity + \
+            15120*delta_t**2*viscosity**2))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[6][2] = (11*h**4*delta_t*viscosity*(-(h**5*(h + \
+            4*slip_length)) - 240*h**3*delta_t*(2*h + \
+            7*slip_length)*viscosity - 1680*h*delta_t**2*(13*h + \
+            36*slip_length)*viscosity**2 - \
+            60480*delta_t**3*viscosity**3))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[6][3] = (-11*h**8*delta_t*viscosity*(h**2 + \
+            252*delta_t*viscosity))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[6][4] = (11*h**2*delta_t*viscosity*(-(h**7*(h + \
+            24*slip_length)) - 120*h**5*delta_t*(7*h + \
+            86*slip_length)*viscosity - 720*h**3*delta_t**2*(117*h + \
+            644*slip_length)*viscosity**2 - 20160*h*delta_t**3*(83*h + \
+            180*slip_length)*viscosity**3 - \
+            3628800*delta_t**4*viscosity**4))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[6][5] = \
+            (-11*h**10*delta_t*viscosity)/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+            S_inv[6][6] = (h**2*(h**9*slip_length + 25*h**7*delta_t*(h + \
+            24*slip_length)*viscosity + 600*h**5*delta_t**2*(15*h + \
+            154*slip_length)*viscosity**2 + 5040*h**3*delta_t**3*(133*h \
+            + 680*slip_length)*viscosity**3 + 201600*h*delta_t**4*(59*h \
+            + 126*slip_length)*viscosity**4 + \
+            25401600*delta_t**5*viscosity**5))/(h**11*slip_length + \
+            36*h**9*delta_t*(h + 35*slip_length)*viscosity + \
+            420*h**7*delta_t**2*(67*h + 1056*slip_length)*viscosity**2 \
+            + 40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6)
+
+        elif order == 6:
+            S_inv[0][0] = 1
+            S_inv[0][1] = 0
+            S_inv[0][2] = 0
+            S_inv[0][3] = 0
+            S_inv[0][4] = 0
+            S_inv[0][5] = 0
+            S_inv[0][6] = 0
+            S_inv[0][7] = 0
+            S_inv[1][0] = 0
+            S_inv[1][1] = (h**13*slip_length + 48*h**11*delta_t*(h + \
+            49*slip_length)*viscosity + 70560*h**9*delta_t**2*(h + \
+            23*slip_length)*viscosity**2 + 282240*h**7*delta_t**3*(91*h \
+            + 1263*slip_length)*viscosity**3 + \
+            2661120*h**5*delta_t**4*(1237*h + \
+            10983*slip_length)*viscosity**4 + \
+            1341204480*h**3*delta_t**5*(113*h + \
+            625*slip_length)*viscosity**5 + \
+            1917922406400*h*delta_t**6*(h + \
+            3*slip_length)*viscosity**6)/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[1][2] = -((h**2*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2)*(h**6 + \
+            1512*h**4*delta_t*viscosity + \
+            277200*h**2*delta_t**2*viscosity**2 + \
+            8648640*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7))
+            S_inv[1][3] = -((h**2*delta_t*viscosity*(h**4 + \
+            1188*h**2*delta_t*viscosity + \
+            144144*delta_t**2*viscosity**2)*(h**6 + \
+            840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7))
+            S_inv[1][4] = -((h**4*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**6 + 1512*h**4*delta_t*viscosity \
+            + 277200*h**2*delta_t**2*viscosity**2 + \
+            8648640*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7))
+            S_inv[1][5] = -((h**4*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity)*(h**6 + 840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7))
+            S_inv[1][6] = -((h**6*delta_t*viscosity*(h**6 + \
+            1512*h**4*delta_t*viscosity + \
+            277200*h**2*delta_t**2*viscosity**2 + \
+            8648640*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7))
+            S_inv[1][7] = -((h**6*delta_t*viscosity*(h**6 + \
+            840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7))
+            S_inv[2][0] = 0
+            S_inv[2][1] = (-3*h**2*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2)*(h**6 + \
+            1512*h**4*delta_t*viscosity + \
+            277200*h**2*delta_t**2*viscosity**2 + \
+            8648640*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[2][2] = (h**2*(h**11*slip_length + 2*h**9*delta_t*(23*h + \
+            1170*slip_length)*viscosity + 252*h**7*delta_t**2*(261*h + \
+            6332*slip_length)*viscosity**2 + \
+            24192*h**5*delta_t**3*(929*h + \
+            14003*slip_length)*viscosity**3 + \
+            2661120*h**3*delta_t**4*(976*h + \
+            9621*slip_length)*viscosity**4 + \
+            191600640*h*delta_t**5*(509*h + \
+            3003*slip_length)*viscosity**5 + \
+            575376721920*delta_t**6*viscosity**6))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[2][3] = (-3*h**4*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2)*(h**4 + \
+            1188*h**2*delta_t*viscosity + \
+            144144*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[2][4] = (-3*h**2*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**7*(h + 4*slip_length) + \
+            56*h**5*delta_t*(29*h + 108*slip_length)*viscosity + \
+            25200*h**3*delta_t**2*(13*h + 44*slip_length)*viscosity**2 \
+            + 665280*h*delta_t**3*(19*h + 52*slip_length)*viscosity**3 \
+            + 34594560*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[2][5] = (-3*h**6*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity)*(h**4 + 756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[2][6] = (3*h**4*delta_t*viscosity*(-(h**7*(h + \
+            4*slip_length)) - 56*h**5*delta_t*(29*h + \
+            108*slip_length)*viscosity - 25200*h**3*delta_t**2*(13*h + \
+            44*slip_length)*viscosity**2 - 665280*h*delta_t**3*(19*h + \
+            52*slip_length)*viscosity**3 - \
+            34594560*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[2][7] = (-3*h**8*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[3][0] = 0
+            S_inv[3][1] = (-5*h**2*delta_t*viscosity*(h**4 + \
+            1188*h**2*delta_t*viscosity + \
+            144144*delta_t**2*viscosity**2)*(h**6 + \
+            840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[3][2] = (-5*h**4*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2)*(h**4 + \
+            1188*h**2*delta_t*viscosity + \
+            144144*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[3][3] = (h**2*(h**11*slip_length + 4*h**9*delta_t*(11*h + \
+            573*slip_length)*viscosity + 108*h**7*delta_t**2*(569*h + \
+            13900*slip_length)*viscosity**2 + \
+            12960*h**5*delta_t**3*(1489*h + \
+            21868*slip_length)*viscosity**3 + \
+            2661120*h**3*delta_t**4*(739*h + \
+            6213*slip_length)*viscosity**4 + \
+            79833600*h*delta_t**5*(679*h + \
+            1716*slip_length)*viscosity**5 + \
+            136994457600*delta_t**6*viscosity**6))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[3][4] = (-5*h**6*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**4 + 1188*h**2*delta_t*viscosity \
+            + 144144*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[3][5] = (-5*h**2*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity)*(h**7*(h + 12*slip_length) + \
+            48*h**5*delta_t*(23*h + 210*slip_length)*viscosity + \
+            5040*h**3*delta_t**2*(29*h + 180*slip_length)*viscosity**2 \
+            + 60480*h*delta_t**3*(59*h + 132*slip_length)*viscosity**3 \
+            + 7983360*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[3][6] = (-5*h**8*delta_t*viscosity*(h**4 + \
+            1188*h**2*delta_t*viscosity + \
+            144144*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[3][7] = (5*h**4*delta_t*viscosity*(-(h**7*(h + \
+            12*slip_length)) - 48*h**5*delta_t*(23*h + \
+            210*slip_length)*viscosity - 5040*h**3*delta_t**2*(29*h + \
+            180*slip_length)*viscosity**2 - 60480*h*delta_t**3*(59*h + \
+            132*slip_length)*viscosity**3 - \
+            7983360*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[4][0] = 0
+            S_inv[4][1] = (-7*h**4*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**6 + 1512*h**4*delta_t*viscosity \
+            + 277200*h**2*delta_t**2*viscosity**2 + \
+            8648640*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[4][2] = (-7*h**2*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**7*(h + 4*slip_length) + \
+            56*h**5*delta_t*(29*h + 108*slip_length)*viscosity + \
+            25200*h**3*delta_t**2*(13*h + 44*slip_length)*viscosity**2 \
+            + 665280*h*delta_t**3*(19*h + 52*slip_length)*viscosity**3 \
+            + 34594560*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[4][3] = (-7*h**6*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**4 + 1188*h**2*delta_t*viscosity \
+            + 144144*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[4][4] = (h**2*(h**11*slip_length + 42*h**9*delta_t*(h + \
+            52*slip_length)*viscosity + 336*h**7*delta_t**2*(162*h + \
+            3871*slip_length)*viscosity**2 + \
+            1344*h**5*delta_t**3*(12163*h + \
+            153351*slip_length)*viscosity**3 + \
+            665280*h**3*delta_t**4*(2113*h + \
+            11816*slip_length)*viscosity**4 + \
+            111767040*h*delta_t**5*(261*h + \
+            572*slip_length)*viscosity**5 + \
+            63930746880*delta_t**6*viscosity**6))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[4][5] = (-7*h**8*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**2 + \
+            572*delta_t*viscosity))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[4][6] = (7*h**2*delta_t*viscosity*(-(h**9*(h + \
+            24*slip_length)) - 12*h**7*delta_t*(187*h + \
+            3044*slip_length)*viscosity - 1680*h**5*delta_t**2*(403*h + \
+            4176*slip_length)*viscosity**2 - \
+            241920*h**3*delta_t**3*(216*h + \
+            1133*slip_length)*viscosity**3 - \
+            7983360*h*delta_t**4*(121*h + 260*slip_length)*viscosity**4 \
+            - 2075673600*delta_t**5*viscosity**5))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[4][7] = (-7*h**10*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[5][0] = 0
+            S_inv[5][1] = (-9*h**4*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity)*(h**6 + 840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[5][2] = (-9*h**6*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity)*(h**4 + 756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[5][3] = (-9*h**2*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity)*(h**7*(h + 12*slip_length) + \
+            48*h**5*delta_t*(23*h + 210*slip_length)*viscosity + \
+            5040*h**3*delta_t**2*(29*h + 180*slip_length)*viscosity**2 \
+            + 60480*h*delta_t**3*(59*h + 132*slip_length)*viscosity**3 \
+            + 7983360*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[5][4] = (-9*h**8*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity)*(h**2 + \
+            572*delta_t*viscosity))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[5][5] = (h**2*(h**11*slip_length + 8*h**9*delta_t*(5*h + \
+            249*slip_length)*viscosity + 48*h**7*delta_t**2*(1063*h + \
+            22905*slip_length)*viscosity**2 + \
+            4320*h**5*delta_t**3*(3135*h + \
+            31234*slip_length)*viscosity**3 + \
+            60480*h**3*delta_t**4*(16127*h + \
+            82872*slip_length)*viscosity**4 + \
+            13063680*h*delta_t**5*(1337*h + \
+            2860*slip_length)*viscosity**5 + \
+            37362124800*delta_t**6*viscosity**6))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[5][6] = (-9*h**10*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[5][7] = (9*h**2*delta_t*viscosity*(-(h**9*(h + \
+            40*slip_length)) - 60*h**7*delta_t*(31*h + \
+            588*slip_length)*viscosity - 1680*h**5*delta_t**2*(277*h + \
+            2640*slip_length)*viscosity**2 - \
+            80640*h**3*delta_t**3*(382*h + \
+            1905*slip_length)*viscosity**3 - \
+            3628800*h*delta_t**4*(145*h + 308*slip_length)*viscosity**4 \
+            - 1117670400*delta_t**5*viscosity**5))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[6][0] = 0
+            S_inv[6][1] = (-11*h**6*delta_t*viscosity*(h**6 + \
+            1512*h**4*delta_t*viscosity + \
+            277200*h**2*delta_t**2*viscosity**2 + \
+            8648640*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[6][2] = (11*h**4*delta_t*viscosity*(-(h**7*(h + \
+            4*slip_length)) - 56*h**5*delta_t*(29*h + \
+            108*slip_length)*viscosity - 25200*h**3*delta_t**2*(13*h + \
+            44*slip_length)*viscosity**2 - 665280*h*delta_t**3*(19*h + \
+            52*slip_length)*viscosity**3 - \
+            34594560*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[6][3] = (-11*h**8*delta_t*viscosity*(h**4 + \
+            1188*h**2*delta_t*viscosity + \
+            144144*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[6][4] = (11*h**2*delta_t*viscosity*(-(h**9*(h + \
+            24*slip_length)) - 12*h**7*delta_t*(187*h + \
+            3044*slip_length)*viscosity - 1680*h**5*delta_t**2*(403*h + \
+            4176*slip_length)*viscosity**2 - \
+            241920*h**3*delta_t**3*(216*h + \
+            1133*slip_length)*viscosity**3 - \
+            7983360*h*delta_t**4*(121*h + 260*slip_length)*viscosity**4 \
+            - 2075673600*delta_t**5*viscosity**5))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[6][5] = (-11*h**10*delta_t*viscosity*(h**2 + \
+            572*delta_t*viscosity))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[6][6] = (h**2*(h**11*slip_length + 2*h**9*delta_t*(19*h + \
+            846*slip_length)*viscosity + 420*h**7*delta_t**2*(79*h + \
+            1312*slip_length)*viscosity**2 + \
+            67200*h**5*delta_t**3*(100*h + \
+            909*slip_length)*viscosity**3 + \
+            120960*h**3*delta_t**4*(3409*h + \
+            16720*slip_length)*viscosity**4 + \
+            159667200*h*delta_t**5*(43*h + 91*slip_length)*viscosity**5 \
+            + 14529715200*delta_t**6*viscosity**6))/(h**13*slip_length \
+            + 49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[6][7] = \
+            (-11*h**12*delta_t*viscosity)/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[7][0] = 0
+            S_inv[7][1] = (-13*h**6*delta_t*viscosity*(h**6 + \
+            840*h**4*delta_t*viscosity + \
+            75600*h**2*delta_t**2*viscosity**2 + \
+            665280*delta_t**3*viscosity**3))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[7][2] = (-13*h**8*delta_t*viscosity*(h**4 + \
+            756*h**2*delta_t*viscosity + \
+            55440*delta_t**2*viscosity**2))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[7][3] = (13*h**4*delta_t*viscosity*(-(h**7*(h + \
+            12*slip_length)) - 48*h**5*delta_t*(23*h + \
+            210*slip_length)*viscosity - 5040*h**3*delta_t**2*(29*h + \
+            180*slip_length)*viscosity**2 - 60480*h*delta_t**3*(59*h + \
+            132*slip_length)*viscosity**3 - \
+            7983360*delta_t**4*viscosity**4))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[7][4] = (-13*h**10*delta_t*viscosity*(h**2 + \
+            396*delta_t*viscosity))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[7][5] = (13*h**2*delta_t*viscosity*(-(h**9*(h + \
+            40*slip_length)) - 60*h**7*delta_t*(31*h + \
+            588*slip_length)*viscosity - 1680*h**5*delta_t**2*(277*h + \
+            2640*slip_length)*viscosity**2 - \
+            80640*h**3*delta_t**3*(382*h + \
+            1905*slip_length)*viscosity**3 - \
+            3628800*h*delta_t**4*(145*h + 308*slip_length)*viscosity**4 \
+            - 1117670400*delta_t**5*viscosity**5))/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[7][6] = \
+            (-13*h**12*delta_t*viscosity)/(h**13*slip_length + \
+            49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+            S_inv[7][7] = (h**2*(h**11*slip_length + 36*h**9*delta_t*(h + \
+            35*slip_length)*viscosity + 420*h**7*delta_t**2*(67*h + \
+            1056*slip_length)*viscosity**2 + \
+            40320*h**5*delta_t**3*(128*h + \
+            1119*slip_length)*viscosity**3 + \
+            1814400*h**3*delta_t**4*(163*h + \
+            784*slip_length)*viscosity**4 + \
+            101606400*h*delta_t**5*(47*h + 99*slip_length)*viscosity**5 \
+            + 10059033600*delta_t**6*viscosity**6))/(h**13*slip_length \
+            + 49*h**11*delta_t*(h + 48*slip_length)*viscosity + \
+            2352*h**9*delta_t**2*(31*h + 690*slip_length)*viscosity**2 \
+            + 211680*h**7*delta_t**3*(129*h + \
+            1684*slip_length)*viscosity**3 + \
+            120960*h**5*delta_t**4*(30161*h + \
+            241626*slip_length)*viscosity**4 + \
+            279417600*h**3*delta_t**5*(647*h + \
+            3000*slip_length)*viscosity**5 + \
+            20118067200*h*delta_t**6*(137*h + \
+            286*slip_length)*viscosity**6 + \
+            5753767219200*delta_t**7*viscosity**7)
+        
+        else:
+            print("This order is not implemented for the speed up of linear_source=True during implicit Euler of the SWME1D-PDE.")
         
         return S_inv
+    
+    def compute_source_term_lastentry(self,
+                            order: int,
+                            values: np.array,
+                            last_moment_zero: bool,
+                            **kwargs) -> np.array:
+        
+        viscosity   = kwargs["viscosity"]   if "viscosity"   in kwargs else self.viscosity
+        slip_length = kwargs["slip_length"] if "slip_length" in kwargs else self.slip_length
+        g           = kwargs["g"]           if "g"           in kwargs else 1
+    
+        value_out = 0
+        h = values[0]
+        um = values[1]/values[0]
+
+        if order == 1:
+            alpha1 = values[2]/values[0]
+            if last_moment_zero:
+                alpha1 = 0
+            value_out = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1)
+
+        elif order == 2:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            
+            if last_moment_zero:
+                alpha2 = 0
+
+            value_out = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2)
+        
+        elif order == 3:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            if last_moment_zero:
+                alpha3 = 0
+
+            value_out = -7*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 24*slip_length)*alpha3)/h
+        
+        elif order == 4:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            
+            if last_moment_zero:
+                alpha4 = 0
+            
+            value_out = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + \
+            40*slip_length*alpha4)/h))/slip_length
+
+        elif order == 5:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            alpha5 = values[6]/values[0]
+            
+            if last_moment_zero:
+                alpha5 = 0
+            
+            value_out = (-11*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+            h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
+            60*slip_length)*alpha5))/(h*slip_length)
+
+        elif order == 6:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            alpha5 = values[6]/values[0]
+            alpha6 = values[7]/values[0]
+            
+            if last_moment_zero:
+                alpha6 = 0
+            
+            value_out = (-13*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*slip_length)*alpha2 + \
+            40*slip_length*alpha4 + \
+            84*slip_length*alpha6)/h))/slip_length
+        
+        else:
+             print("This order is not implemented for the source term last entry of the SWME1D-PDE.")
+
+        return np.abs(value_out)
 
     def get_initial_values(self,
                            order: int,
                            initial_condition: str,
                            position: float) -> np.array:
+        
         initial_values = np.zeros(2+order)
+        
         if initial_condition == 'constantHeight_noVelocity':
             initial_values[0] = 1
             initial_values[1] = 0
@@ -732,6 +2750,7 @@ class SWME1D(PDE):
                 initial_values[6] = 0 
             if order > 5:
                 initial_values[7] = 0
+        
         elif initial_condition == 'constantHeight_constantVelocity':
             initial_values[0] = 1
             initial_values[1] = 1*initial_values[0]
@@ -747,6 +2766,7 @@ class SWME1D(PDE):
                 initial_values[6] = 0 
             if order > 5:
                 initial_values[7] = 0
+        
         elif initial_condition == 'linearHeight_noVelocity':
             initial_values[0] = 1 + 0.1*position
             initial_values[1] = 0*initial_values[0]
@@ -762,6 +2782,7 @@ class SWME1D(PDE):
                 initial_values[6] = 0 
             if order > 5:
                 initial_values[7] = 0
+        
         elif initial_condition == 'damBreak_noVelocity':
             x0 = 0
             if position < x0:
@@ -794,7 +2815,41 @@ class SWME1D(PDE):
                     initial_values[6] = 0 
                 if order > 5:
                     initial_values[7] = 0
-        elif initial_condition == 'lowDamBreak_withVelocity':
+        
+        elif initial_condition == 'damBreak_constantVelocity':
+            x0 = 0
+            if position < x0:
+                initial_values[0] = 3
+                initial_values[1] = 0.25*initial_values[0]
+                if order > 0:
+                    initial_values[2] = 0
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+            else:
+                initial_values[0] = 1
+                initial_values[1] = 0.25*initial_values[0]
+                if order > 0:
+                    initial_values[2] = 0
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0
+
+        elif initial_condition == 'lowDamBreak_linearVelocity':
             x0 = 0
             if position < x0:
                 initial_values[0] = 1.5
@@ -826,7 +2881,8 @@ class SWME1D(PDE):
                     initial_values[6] = 0
                 if order > 5:
                     initial_values[7] = 0
-        elif initial_condition == 'highDamBreak_withVelocity':
+        
+        elif initial_condition == 'highDamBreak_linearVelocity':
             x0 = 0
             if position < x0:
                 initial_values[0] = 5
@@ -858,8 +2914,144 @@ class SWME1D(PDE):
                     initial_values[6] = 0
                 if order > 5:
                     initial_values[7] = 0 
+        
+        elif initial_condition == 'symmetric_damBreak':
+            x0 = -2
+            x1 = 2
+            if x0 < position < x1:
+                initial_values[0] = 2
+                initial_values[1] = 0*initial_values[0]
+                if order > 0:
+                    initial_values[2] = 0 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+            else:
+                initial_values[0] = 1
+                initial_values[1] = 0*initial_values[0]
+                if order > 0:
+                    initial_values[2] = 0 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+        
+        elif initial_condition == 'linearDamBreak_noVelocity':
+            x0 = -4
+            x1 = 4
+            if x0 < position < x1:
+                initial_values[0] = 2 + (position + 4)/8.0
+                initial_values[1] = 0*initial_values[0]
+                if order > 0:
+                    initial_values[2] = 0 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+            else:
+                initial_values[0] = 2
+                initial_values[1] = 0*initial_values[0]
+                if order > 0:
+                    initial_values[2] = 0 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0 
+                if order > 5:
+                    initial_values[7] = 0 
+        
+        elif initial_condition == 'smoothWave_noVelocity':
+            initial_values[0] = 3 + 3*np.exp(-1.5*position**2)
+            initial_values[1] = 0*initial_values[0]
+            if order > 0:
+                initial_values[2] = 0
+            if order > 1:
+                initial_values[3] = 0 
+            if order > 2:
+                initial_values[4] = 0 
+            if order > 3:
+                initial_values[5] = 0 
+            if order > 4:
+                initial_values[6] = 0
+            if order > 5:
+                initial_values[7] = 0 
+        
+        elif initial_condition == 'smoothWave_constantVelocity':
+            initial_values[0] = 1 + 0.5*np.exp(-15*position**2)
+            initial_values[1] = 0.2*initial_values[0]
+            if order > 0:
+                initial_values[2] = 0
+            if order > 1:
+                initial_values[3] = 0 
+            if order > 2:
+                initial_values[4] = 0 
+            if order > 3:
+                initial_values[5] = 0 
+            if order > 4:
+                initial_values[6] = 0
+            if order > 5:
+                initial_values[7] = 0 
+        
+        elif initial_condition == 'smooth_plus_damBreak':
+            x0 = -7
+            x1 = 7
+            if position < x0:
+                initial_values[0] = 4
+                initial_values[1] = 0.05*initial_values[0]
+                if order > 0:
+                    initial_values[2] = -0.01*initial_values[0] 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0*initial_values[0] 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0
+                if order > 5:
+                    initial_values[7] = 0 
+            else:
+                initial_values[0] = 3 + np.exp(-1.5*(position-x1)**2)
+                initial_values[1] = 0.05*initial_values[0]
+                if order > 0:
+                    initial_values[2] = -0.01*initial_values[0] 
+                if order > 1:
+                    initial_values[3] = 0 
+                if order > 2:
+                    initial_values[4] = 0*initial_values[0] 
+                if order > 3:
+                    initial_values[5] = 0 
+                if order > 4:
+                    initial_values[6] = 0 
+                if order > 5:
+                    initial_values[7] = 0 
+        
         else:
             print("This initial condition is not implemented yet for the SWME1D")
+        
         return initial_values
     
     def compute_number_of_variables(self,
@@ -909,14 +3101,31 @@ class SWME1D(PDE):
         if order >= 5:
             for i in range(len(values)):
                 velocity_profile[i,:] += values[i,7]*(np.ones(len(z_points)) - 30*z_points + 210*np.square(z_points) - \
-                                                      560*np.power(z_points,3) + 630*np.power(z_points,4) - 252*np.power(z_points,4))        
+                                                      560*np.power(z_points,3) + 630*np.power(z_points,4) - 252*np.power(z_points,4))     
+        if order >= 6:
+            for i in range(len(values)):
+                velocity_profile[i,:] += values[i,8]*(np.ones(len(z_points)) - 42*z_points + 420*np.square(z_points) - \
+                                                      1680*np.power(z_points,3) + 3150*np.power(z_points,4) - \
+                                                      2772*np.power(z_points,5) + 924*np.power(z_points,6))
+                   
         return velocity_profile
     
-    #TODO: delete the following method
     def compute_all_breakdown_criteria(self,
-                                       values: np.array,
-                                       n: int,
-                                       max_n_variables: int) -> np.array:
+                                   values: np.array,
+                                   orders: list,
+                                   number_of_variables: list,
+                                   n,
+                                   delta_x,
+                                   tolerance_up_height_gradient = 0.3,
+                                   tolerance_down_height_gradient = 0.03,
+                                   tolerance_up_momentum_gradient = 0.2,
+                                   tolerance_down_momentum_gradient = 0.02,
+                                   tolerance_up_moment_gradient = 0.1,
+                                   tolerance_down_moment_gradient = 0.01,
+                                   tolerance_up_last_moment = 0.01,
+                                   tolerance_down_last_moment = 0.001,
+                                   tolerance_up_source = 0.002,
+                                   tolerance_down_source = 0.0002) -> np.array:
 
         """
         Compute ALL breakdown criteria for quantifying the required modelling complexity
@@ -925,6 +3134,10 @@ class SWME1D(PDE):
         ----------
         values : list of numpy 1D arrays
             the values of the variables in each mesh cell
+        orders : list of integers
+            the order in each cell
+        number_of_variables : list of integers
+            the number of variables in each cell
         
         Returns
         -------
@@ -932,38 +3145,171 @@ class SWME1D(PDE):
             modelling complexity quantities in each mesh cell
 
         """
-        relative_value_last_moment = np.zeros(n)
+        max_order = max(orders)
+        tolerances_up = np.zeros(4+max_order)
+        tolerances_down = np.zeros(4+max_order)
+        tolerances_up[0] = tolerance_up_last_moment
+        tolerances_up[1] = tolerance_up_source
+        tolerances_up[2] = tolerance_up_height_gradient
+        tolerances_up[3] = tolerance_up_momentum_gradient
+        tolerances_down[0] = tolerance_down_last_moment
+        tolerances_down[1] = tolerance_down_source
+        tolerances_down[2] = tolerance_down_height_gradient
+        tolerances_down[3] = tolerance_down_momentum_gradient
+        for i in range(max_order):
+            tolerances_up[4+i] = tolerance_up_moment_gradient
+            tolerances_down[4+i] = tolerance_down_moment_gradient
+
+        breakdown_criterion_flags = np.zeros(n)
+        source_term_lastentry = np.zeros(n)
         for i in range(n):
-            relative_value_last_moment[i] = np.abs(values[i,-1])/np.sum(np.abs(values[i,0:]))
+            source_term_lastentry[i] = self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],False)
 
-        gradients = np.zeros((n,max_n_variables)) #TODO: rewrite this such that it is generalizable
+        breakdown_estimators = np.zeros((n,max_order+4))
+        for i in range(n):
+            breakdown_estimators[i,0] = np.abs(self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],False))
+            breakdown_estimators[i,1] = np.abs(values[i+1,number_of_variables[i+1]-1])
+            breakdown_estimators[i,2] = np.abs((values[i+1,0] - values[i,0]))/delta_x
+            breakdown_estimators[i,3] = np.abs((values[i+1,1] - values[i,1]))/delta_x
+            for j in range(orders[i+1]):
+                breakdown_estimators[i,4+j] = np.abs((values[i+1,2+j])-values[i,2+j])/delta_x
+        breakdown_estimators[0,0] = np.abs(self.compute_source_term_lastentry(orders[1],values[1,:number_of_variables[1]],False))
+        breakdown_estimators[0,1] = np.abs(values[1,number_of_variables[1]-1])
+        breakdown_estimators[0,2] = np.abs((values[2,0] - values[1,0]))/delta_x
+        breakdown_estimators[0,3] = np.abs((values[2,1] - values[1,1]))/delta_x
+        for j in range(orders[i+1]):
+            breakdown_estimators[0,4+j] = np.abs((values[2,2+j])-values[2,2+j])/delta_x    
 
-        for j in range(max_n_variables):
-            for i in range(n-1):
-                if values[i,j+1] < 0.01:
-                    gradients[i,j] = np.abs((values[i+1,j+1] - values[i,j+1])/0.01)
-                else:
-                    gradients[i,j] = np.abs((values[i+1,j+1] - values[i,j+1])/values[i,j+1])
-            if values[i,j+1] < 0.01:
-                gradients[i,j] = np.abs((values[i+1,j+1] - values[i,j+1])/0.01)
-            else:
-                gradients[i,j] = np.abs((values[i+1,j+1] - values[i,j+1])/values[i,j+1])  
+        for i in range(n):
+            if breakdown_estimators[i,0] > tolerances_up[0]:
+                for j in range(2,orders[i+1]+4):
+                    if breakdown_estimators[i,j] > tolerances_up[j]:
+                        breakdown_criterion_flags[i] = 1
+                        break
+            elif breakdown_estimators[i,1] > tolerances_up[1]:
+                breakdown_criterion_flags[i] = 1
+            elif (breakdown_criterion_flags[i] !=1 and\
+                  breakdown_estimators[i,0] < tolerances_down[0] and breakdown_estimators[i,1] < tolerances_down[1]):
+                breakdown_criterion_flags[i] = -1
+                for j in range(2,orders[i+1]+4):
+                    if breakdown_estimators[i,j] > tolerances_down[j]:
+                        breakdown_criterion_flags[i] = 0
+                        break
 
-        return gradients
+        # #TODO: this could be made much more efficient
+        # #TODO: with break statement, this might be faster. I could stack the tolerance in an array, then for-loop, and then use break.
+        # flagged = False
+        # if (np.abs(values[1,number_of_variables[1]-1]) > tolerance_up_last_moment\
+        #     or np.abs(source_term_lastentry[0] > tolerance_up_source)\
+        #     or np.abs((values[2,0] - values[1,0])) > tolerance_up_height_gradient \
+        #     or np.abs((values[2,1] - values[1,1])) > tolerance_up_momentum_gradient):
+        #     breakdown_criterion_flags[0] = 1
+        #     flagged = True
+        # elif (not flagged and\
+        #     (np.abs(values[1,number_of_variables[1]-1]) < tolerance_down_last_moment\
+        #     or np.abs(source_term_lastentry[0] < tolerance_down_source)\
+        #     or np.abs((values[2,0] - values[1,0])) < tolerance_down_height_gradient \
+        #     or np.abs((values[2,1] - values[1,1])) < tolerance_down_momentum_gradient)):
+        #     breakdown_criterion_flags[0] = -1
+        #     flagged = True
+        # j = 2
+        # while j<number_of_variables[1] and not flagged:
+        #     if np.abs((values[2,j] - values[1,j])) > tolerance_up_moment_gradient:
+        #         breakdown_criterion_flags[0] = 1
+        #         flagged = True
+        #     elif not flagged and\
+        #         np.abs((values[2,j] - values[1,j])) < tolerance_down_moment_gradient:
+        #         breakdown_criterion_flags[0] = -1
+        #         flagged = True
+        #     j += 1
+        # if not flagged:
+        #     if source_term_lastentry[0] > tolerance_up_source:
+        #         breakdown_criterion_flags[0] = 1
+        #         flagged = True
+        #     elif source_term_lastentry[0] < tolerance_down_source:
+        #         breakdown_criterion_flags[0] = -1
+        #         flagged = True               
+
+        # flagged = False
+        # for i in range(1,n): 
+        #     if np.abs(source_term_lastentry[i]) > tolerance_up_source:
+        #         breakdown_criterion_flags[i] = 1
+        #         flagged = True
+        #     elif np.abs(source_term_lastentry[i]) < tolerance_down_source:
+        #         breakdown_criterion_flags[i] = -1
+        #         flagged = True  
+        #     if not flagged and (np.abs((values[i+1,0] - values[i,0])) > tolerance_up_height_gradient \
+        #         or np.abs((values[i+1,1] - values[1,1])) > tolerance_up_momentum_gradient \
+        #         or np.abs(values[i+1,number_of_variables[i+1]-1]) > tolerance_up_last_moment):
+        #         breakdown_criterion_flags[i] = 1
+        #         flagged = True
+        #     elif (not flagged and\
+        #         (np.abs((values[i+1,0] - values[i,0])) < tolerance_down_height_gradient \
+        #         or np.abs((values[i+1,1] - values[i,1])) < tolerance_down_momentum_gradient \
+        #         or np.abs(values[i+1,number_of_variables[i+1]-1]) < tolerance_down_last_moment)):
+        #         breakdown_criterion_flags[i] = -1
+        #         flagged = True
+        #     j = 2
+        #     while j<number_of_variables[i+1] and not flagged:
+        #         if np.abs((values[i+1,j] - values[i,j])) > tolerance_up_moment_gradient:
+        #             breakdown_criterion_flags[i] = 1
+        #             flagged = True
+        #         elif not flagged and\
+        #             np.abs((values[i+1,j] - values[i,j])) < tolerance_down_moment_gradient:
+        #             breakdown_criterion_flags[i] = -1
+        #             flagged = True
+        #         j += 1
+
+        return breakdown_criterion_flags
     
     def compute_breakdown_criterion(self,
-                                   values: list,
+                                   values: np.array,
+                                   orders: np.array,
+                                   number_of_variables: list,
                                    breakdown_criterion: str,
-                                   n: int) -> np.array:
-
+                                   n,
+                                   delta_x) -> np.array:
         breakdown_criterion_values = np.zeros(n)
         
         if breakdown_criterion == 'height_gradient':
-            for i in range(n):
-                if values[i][0] < 0.01:
-                    breakdown_criterion_values[i] = np.abs((values[i+1][0] - values[i][0])/0.01)
+            if np.abs(values[1,0]) < 0.001:
+                breakdown_criterion_values[0] = np.abs((values[2,0] - values[1,0]))/delta_x
+            else:
+                breakdown_criterion_values[0] = np.abs((values[2,0] - values[1,0]))/delta_x
+            for i in range(2,n): 
+                if np.abs(values[i,0]) < 0.001:
+                    #breakdown_criterion_values[i] = np.abs((values[i+1,0] - values[i,0])/0.001)
+                    breakdown_criterion_values[i] = np.abs((values[i+1,0] - values[i,0]))/delta_x
                 else:
-                    breakdown_criterion_values[i] = np.abs((values[i+1][0] - values[i][0])/values[i][0])
+                    #breakdown_criterion_values[i] = np.abs((values[i+1,0] - values[i,0])/values[i,0])
+                    breakdown_criterion_values[i] = np.abs((values[i+1,0] - values[i,0]))/delta_x
+            if np.abs(values[n,0]) < 0.001:
+                breakdown_criterion_values[-1] = np.abs((values[n,0] - values[n-1,0]))/delta_x
+            else:
+                breakdown_criterion_values[-1] = np.abs((values[n,0] - values[n-1,0]))/delta_x
+        elif breakdown_criterion == 'momentum_gradient':
+            if np.abs(values[1,1]) < 0.001:
+                breakdown_criterion_values[0] = np.abs((values[2,1] - values[1,1]))/delta_x
+            else:
+                breakdown_criterion_values[0] = np.abs((values[2,1] - values[1,1]))/delta_x
+            for i in range(2,n): 
+                if np.abs(values[i,1]) < 0.001:
+                    #breakdown_criterion_values[i] = np.abs((values[i+1,1] - values[i,1])/0.001)
+                    breakdown_criterion_values[i] = np.abs((values[i+1,1] - values[i,1]))/delta_x
+                else:
+                    #breakdown_criterion_values[i] = np.abs((values[i+1,1] - values[i,1])/values[i,1])
+                    breakdown_criterion_values[i] = np.abs((values[i+1,1] - values[i,1]))/delta_x
+            if np.abs(values[n,1]) < 0.001:
+                breakdown_criterion_values[-1] = np.abs((values[n,1] - values[n-1,1]))/delta_x
+            else:
+                breakdown_criterion_values[-1] = np.abs((values[n,1] - values[n-1,1]))/delta_x
+        elif breakdown_criterion == 'last_moment':
+            for i in range(1,n+1): 
+                breakdown_criterion_values[i-1] = np.abs(values[i,number_of_variables[i]-1]) 
+                # If the order is 0, there are no moments and the above value is never used     
+        elif breakdown_criterion == 'source_term':
+            for i in range(n):
+                breakdown_criterion_values[i] = np.abs(self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],True))
         else:
             print('this criterion is not implemented yet')  
 
@@ -1013,15 +3359,14 @@ class VegetationSWME1D(SWME1D):
 
     Instance methods
     ----------------
-    def compute_drag_force(self,order,values,h_r,stem_diam,n_stems,drag_coeff):
-        computes the drag force caused by vegetation
     def compute_single_legendre_integral(self,order,h_r):
         computes the integrals of the legendre polynomials phi_i on the interval [0,h_r]
-    def compute_double_legendre_integral():
+    def compute_double_legendre_integral(self,order,h_r):
         computes the integrals of the products of legendre polynomials phi_i*phi_j on the interval [0,h_r]
-    def compute_triple_legendre_integral():
+    def compute_triple_legendre_integral(self,order,h_r):
         computes the integrals of the legendre polynomials phi_i*phi_j*phi_k on the interval [0,h_r]
-    
+    def compute_drag_force(self,order,values,h_v,stem_diam,n_stems,drag_coeff):
+        computes the drag force caused by vegetation
     """
 
     def __init__(self, 
@@ -1715,10 +4060,12 @@ class VegetationSWME1D(SWME1D):
                             values: np.array,
                             **kwargs) -> np.array:
         
-        h_v        = kwargs["h_v"]        if "h_v"        in kwargs else 0.4
-        stem_diam  = kwargs["stem_diam"]  if "stem_diam"  in kwargs else 0.008
-        n_stems    = kwargs["n_stems"]    if "n_stems"    in kwargs else 800
-        drag_coeff = kwargs["drag_coeff"] if "drag_coeff" in kwargs else 0.97
+        viscosity   = kwargs["viscosity"]   if "viscosity"   in kwargs else self.viscosity
+        slip_length = kwargs["slip_length"] if "slip_length" in kwargs else self.slip_length
+        h_v         = kwargs["h_v"]         if "h_v"         in kwargs else 0.4
+        stem_diam   = kwargs["stem_diam"]   if "stem_diam"   in kwargs else 0.008
+        n_stems     = kwargs["n_stems"]     if "n_stems"     in kwargs else 800
+        drag_coeff  = kwargs["drag_coeff"]  if "drag_coeff"  in kwargs else 0.97
         
         """
         Computes the source term with a given order of the PDE evaluated in the given values.
@@ -1752,32 +4099,32 @@ class VegetationSWME1D(SWME1D):
         um = values[1]/values[0]
         if order == 0:
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*um
+            S[1] = -viscosity/slip_length*um
         if order == 1:
             alpha1 = values[2]/values[0]
 
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*(um + alpha1)
-            S[2] = -3*self.viscosity/self.slip_length*(um + (1 + 4*self.slip_length/h)*alpha1)
+            S[1] = -viscosity/slip_length*(um + alpha1)
+            S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1)
 
         if order == 2:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
 
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*(um + alpha1 + alpha2)
-            S[2] = -3*self.viscosity/self.slip_length*(um + (1 + 4*self.slip_length/h)*alpha1 + alpha2)
-            S[3] = -5*self.viscosity/self.slip_length*(um + alpha1 + (1 + 12*self.slip_length/h)*alpha2)
+            S[1] = -viscosity/slip_length*(um + alpha1 + alpha2)
+            S[2] = -3*viscosity/slip_length*(um + (1 + 4*slip_length/h)*alpha1 + alpha2)
+            S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2)
         if order == 3:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
 
             S[0] = 0
-            S[1] = -self.viscosity/self.slip_length*(um + alpha1 + alpha2 + alpha3)
-            S[2] = -3*self.viscosity/self.slip_length*((h + 4*self.slip_length)*alpha1 + h*(um + alpha2) + (h + 4*self.slip_length)*alpha3)/h
-            S[3] = -5*self.viscosity/self.slip_length*(um + alpha1 + (1 + 12*self.slip_length/h)*alpha2 + alpha3)
-            S[4] = -7*self.viscosity/self.slip_length*((h + 4*self.slip_length)*alpha1 + h*(um + alpha2) + (h + 24*self.slip_length)*alpha3)/h
+            S[1] = -viscosity/slip_length*(um + alpha1 + alpha2 + alpha3)
+            S[2] = -3*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 4*slip_length)*alpha3)/h
+            S[3] = -5*viscosity/slip_length*(um + alpha1 + (1 + 12*slip_length/h)*alpha2 + alpha3)
+            S[4] = -7*viscosity/slip_length*((h + 4*slip_length)*alpha1 + h*(um + alpha2) + (h + 24*slip_length)*alpha3)/h
         if order == 4:
 
             alpha1 = values[2]/values[0]
@@ -1786,20 +4133,20 @@ class VegetationSWME1D(SWME1D):
             alpha4 = values[5]/values[0]
 
             S[0] = 0
-            S[1] = -((self.viscosity*(um + alpha1 + alpha2 + alpha3 + \
-            alpha4))/self.slip_length)
-            S[2] = (-3*self.viscosity*(um + alpha2 + alpha3 + ((h + \
-            4*self.slip_length)*alpha1 + 4*self.slip_length*alpha3)/h + \
-            alpha4))/self.slip_length
-            S[3] = (-5*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + \
-            12*self.slip_length*alpha4)/h))/self.slip_length
-            S[4] = (-7*self.viscosity*(um + alpha2 + alpha3 + ((h + \
-            4*self.slip_length)*alpha1 + 24*self.slip_length*alpha3)/h + \
-            alpha4))/self.slip_length
-            S[5] = (-9*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + \
-            40*self.slip_length*alpha4)/h))/self.slip_length
+            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + \
+            alpha4))/slip_length)
+            S[2] = (-3*viscosity*(um + alpha2 + alpha3 + ((h + \
+            4*slip_length)*alpha1 + 4*slip_length*alpha3)/h + \
+            alpha4))/slip_length
+            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + \
+            12*slip_length*alpha4)/h))/slip_length
+            S[4] = (-7*viscosity*(um + alpha2 + alpha3 + ((h + \
+            4*slip_length)*alpha1 + 24*slip_length*alpha3)/h + \
+            alpha4))/slip_length
+            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + \
+            40*slip_length*alpha4)/h))/slip_length
 
         if order == 5:
 
@@ -1810,23 +4157,23 @@ class VegetationSWME1D(SWME1D):
             alpha5 = values[6]/values[0]
 
             S[0] = 0
-            S[1] = -((self.viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
-            alpha5))/self.slip_length)
-            S[2] = (-3*self.viscosity*(h*um + (h + 4*self.slip_length)*alpha1 + \
-            h*alpha2 + (h + 4*self.slip_length)*alpha3 + h*alpha4 + (h + \
-            4*self.slip_length)*alpha5))/(h*self.slip_length)
-            S[3] = (-5*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + 12*self.slip_length*alpha4)/h + \
-            alpha5))/self.slip_length
-            S[4] = (-7*self.viscosity*(h*um + (h + 4*self.slip_length)*alpha1 + \
-            h*alpha2 + (h + 24*self.slip_length)*alpha3 + h*alpha4 + (h + \
-            24*self.slip_length)*alpha5))/(h*self.slip_length)
-            S[5] = (-9*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
-            12*self.slip_length)*alpha2 + 40*self.slip_length*alpha4)/h + \
-            alpha5))/self.slip_length
-            S[6] = (-11*self.viscosity*(h*um + (h + 4*self.slip_length)*alpha1 + \
-            h*alpha2 + (h + 24*self.slip_length)*alpha3 + h*alpha4 + (h + \
-            60*self.slip_length)*alpha5))/(h*self.slip_length)
+            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
+            alpha5))/slip_length)
+            S[2] = (-3*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+            h*alpha2 + (h + 4*slip_length)*alpha3 + h*alpha4 + (h + \
+            4*slip_length)*alpha5))/(h*slip_length)
+            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + 12*slip_length*alpha4)/h + \
+            alpha5))/slip_length
+            S[4] = (-7*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+            h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
+            24*slip_length)*alpha5))/(h*slip_length)
+            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*slip_length)*alpha2 + 40*slip_length*alpha4)/h + \
+            alpha5))/slip_length
+            S[6] = (-11*viscosity*(h*um + (h + 4*slip_length)*alpha1 + \
+            h*alpha2 + (h + 24*slip_length)*alpha3 + h*alpha4 + (h + \
+            60*slip_length)*alpha5))/(h*slip_length)
 
         if order == 6:
 
@@ -1838,27 +4185,27 @@ class VegetationSWME1D(SWME1D):
             alpha6 = values[7]/values[0]
 
             S[0] = 0
-            S[1] = -((self.viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
-            alpha5 + alpha6))/self.slip_length)
-            S[2] = (-3*self.viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*self.slip_length)*alpha1 + 4*self.slip_length*(alpha3 + \
-            alpha5))/h + alpha6))/self.slip_length
-            S[3] = (-5*self.viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*self.slip_length)*alpha2 + \
-            12*self.slip_length*(alpha4 + alpha6))/h))/self.slip_length
-            S[4] = (-7*self.viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*self.slip_length)*alpha1 + 24*self.slip_length*(alpha3 + \
-            alpha5))/h + alpha6))/self.slip_length
-            S[5] = (-9*self.viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*self.slip_length)*alpha2 + \
-            40*self.slip_length*(alpha4 + alpha6))/h))/self.slip_length
-            S[6] = (-11*self.viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
-            ((h + 4*self.slip_length)*alpha1 + 12*self.slip_length*(2*alpha3 + \
-            5*alpha5))/h + alpha6))/self.slip_length
-            S[7] = (-13*self.viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
-            alpha6 + ((h + 12*self.slip_length)*alpha2 + \
-            40*self.slip_length*alpha4 + \
-            84*self.slip_length*alpha6)/h))/self.slip_length
+            S[1] = -((viscosity*(um + alpha1 + alpha2 + alpha3 + alpha4 + \
+            alpha5 + alpha6))/slip_length)
+            S[2] = (-3*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+            ((h + 4*slip_length)*alpha1 + 4*slip_length*(alpha3 + \
+            alpha5))/h + alpha6))/slip_length
+            S[3] = (-5*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*slip_length)*alpha2 + \
+            12*slip_length*(alpha4 + alpha6))/h))/slip_length
+            S[4] = (-7*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+            ((h + 4*slip_length)*alpha1 + 24*slip_length*(alpha3 + \
+            alpha5))/h + alpha6))/slip_length
+            S[5] = (-9*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*slip_length)*alpha2 + \
+            40*slip_length*(alpha4 + alpha6))/h))/slip_length
+            S[6] = (-11*viscosity*(um + alpha2 + alpha3 + alpha4 + alpha5 + \
+            ((h + 4*slip_length)*alpha1 + 12*slip_length*(2*alpha3 + \
+            5*alpha5))/h + alpha6))/slip_length
+            S[7] = (-13*viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*slip_length)*alpha2 + \
+            40*slip_length*alpha4 + \
+            84*slip_length*alpha6)/h))/slip_length
 
         S = S + self.compute_drag_force(order, values, h_v, stem_diam, n_stems, drag_coeff)
         return S
@@ -3512,12 +5859,13 @@ class SGSWME1D(PDE):
                             mom_order: int,
                             SG_order: int,
                             values: np.array,
+                            delta_t: float,
                             **kwargs) -> np.array:
         
-        g = kwargs["g"] if "g" in kwargs else 1
+        slip_length = kwargs["slip_length"] if "slip_length" in kwargs else self.slip_length
+        g           = kwargs["g"]           if "g"           in kwargs else 1
         mu = self.mu
         sigma = self.sigma
-        slip_length = self.slip_length
         S = np.zeros((mom_order+2)*(SG_order+1))
 
         if mom_order == 0:
@@ -4027,7 +6375,117 @@ class SGSWME1D(PDE):
                 else:
                     print("This moment order is not implemented yet for the SGSWME1D")                   
         
-        elif initial_condition == 'lowDamBreak_withVelocity':
+        elif initial_condition == 'damBreak_constantVelocity':
+            x0 = 0
+            if position < x0:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 3
+                        initial_values[1] = 0.25*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 3
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 3
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 3
+                        initial_values[1] = 0.25*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 3
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 3
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = 0*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")
+            
+            else:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0.25*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0.25*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0.25*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.25*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = 0*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")        
+
+        elif initial_condition == 'lowDamBreak_linearVelocity':
             x0 = 0
             if position < x0:
                 if mom_order == 0:
@@ -4137,7 +6595,7 @@ class SGSWME1D(PDE):
                 else:
                     print("This moment order is not implemented yet for the SGSWME1D")     
         
-        elif initial_condition == 'highDamBreak_withVelocity':
+        elif initial_condition == 'highDamBreak_linearVelocity':
             x0 = 0
             if position < x0:
                 if mom_order == 0:
@@ -4247,6 +6705,447 @@ class SGSWME1D(PDE):
                 else:
                     print("This moment order is not implemented yet for the SGSWME1D")     
 
+        elif initial_condition == 'symmetric_damBreak':
+            x0 = -2
+            x1 = 2
+            if x0 < position < x1:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 2
+                        initial_values[1] = 0*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 2
+                        initial_values[1] = 0*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = 0*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")
+            
+            else:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 1
+                        initial_values[1] = 0*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 1
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = 0*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")     
+        
+        elif initial_condition == 'linearDamBreak_noVelocity':
+            x0 = -4
+            x1 = 4
+            if x0 < position < x1:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 2 + (position + 4)/8.0
+                        initial_values[1] = 0*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 2 + (position + 4)/8.0
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 2 + (position + 4)/8.0
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 2 + (position + 4)/8.0
+                        initial_values[1] = 0*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 2 + (position + 4)/8.0
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 2 + (position + 4)/8.0
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = 0*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")
+            
+            else:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 2
+                        initial_values[1] = 0*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 2
+                        initial_values[1] = 0*initial_values[0]
+                        initial_values[2] = 0*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = 0*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 2
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = 0*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")     
+
+        elif initial_condition == 'smoothWave_noVelocity':
+            if mom_order == 0:
+                if SG_order == 0:
+                    initial_values[0] = 3 + 3*np.exp(-1.5*position**2)
+                    initial_values[1] = 0*initial_values[0]
+
+                elif SG_order == 1:
+                    initial_values[0] = 3 + 3*np.exp(-1.5*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0*initial_values[0]
+                    initial_values[3] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 3 + 3*np.exp(-1.5*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+            
+            elif mom_order == 1:
+                if SG_order == 0:
+                    initial_values[0] = 3 + 3*np.exp(-1.5*position**2)
+                    initial_values[1] = 0*initial_values[0]
+                    initial_values[2] = 0*initial_values[0]
+                
+                elif SG_order == 1:
+                    initial_values[0] = 3 + 3*np.exp(-1.5*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0*initial_values[0]
+                    initial_values[3] = 0
+                    initial_values[4] = 0*initial_values[0]
+                    initial_values[5] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 3 + 3*np.exp(-1.5*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                    initial_values[6] = 0*initial_values[0]
+                    initial_values[7] = 0
+                    initial_values[8] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+            
+            else:
+                print("This moment order is not implemented yet for the SGSWME1D")
+        
+        elif initial_condition == 'smoothWave_constantVelocity':
+            if mom_order == 0:
+                if SG_order == 0:
+                    initial_values[0] = 1 + 0.5*np.exp(-15*position**2)
+                    initial_values[1] = 0.2*initial_values[0]
+
+                elif SG_order == 1:
+                    initial_values[0] = 1 + 0.5*np.exp(-15*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0.2*initial_values[0]
+                    initial_values[3] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 1 + 0.5*np.exp(-15*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0.2*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+            
+            elif mom_order == 1:
+                if SG_order == 0:
+                    initial_values[0] = 1 + 0.5*np.exp(-15*position**2)
+                    initial_values[1] = 0.2*initial_values[0]
+                    initial_values[2] = 0*initial_values[0]
+                
+                elif SG_order == 1:
+                    initial_values[0] = 1 + 0.5*np.exp(-15*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0.2*initial_values[0]
+                    initial_values[3] = 0
+                    initial_values[4] = 0*initial_values[0]
+                    initial_values[5] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 1 + 0.5*np.exp(-15*position**2)
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0.2*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                    initial_values[6] = 0*initial_values[0]
+                    initial_values[7] = 0
+                    initial_values[8] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+            
+            else:
+                print("This moment order is not implemented yet for the SGSWME1D") 
+        
+        elif initial_condition == 'smooth_plus_damBreak':
+            x0 = -7
+            x1 = 7
+            if x0 < position:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 4
+                        initial_values[1] = 0.05*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 4
+                        initial_values[1] = 0
+                        initial_values[2] = 0.05*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 4
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.05*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 4
+                        initial_values[1] = 0.05*initial_values[0]
+                        initial_values[2] = -0.01*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 4
+                        initial_values[1] = 0
+                        initial_values[2] = 0.05*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = -0.01*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 4
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.05*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = -0.01*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")
+            
+            else:
+                if mom_order == 0:
+                    if SG_order == 0:
+                        initial_values[0] = 3 + np.exp(-1.5*(position-x1)**2)
+                        initial_values[1] = 0.05*initial_values[0]
+
+                    elif SG_order == 1:
+                        initial_values[0] = 3 + np.exp(-1.5*(position-x1)**2)
+                        initial_values[1] = 0
+                        initial_values[2] = 0.05*initial_values[0]
+                        initial_values[3] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 3 + np.exp(-1.5*(position-x1)**2)
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.05*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+                
+                elif mom_order == 1:
+                    if SG_order == 0:
+                        initial_values[0] = 3 + np.exp(-1.5*(position-x1)**2)
+                        initial_values[1] = 0.05*initial_values[0]
+                        initial_values[2] = -0.01*initial_values[0]
+                    
+                    elif SG_order == 1:
+                        initial_values[0] = 3 + np.exp(-1.5*(position-x1)**2)
+                        initial_values[1] = 0
+                        initial_values[2] = 0.05*initial_values[0]
+                        initial_values[3] = 0
+                        initial_values[4] = -0.01*initial_values[0]
+                        initial_values[5] = 0
+                    
+                    elif SG_order == 2:
+                        initial_values[0] = 3 + np.exp(-1.5*(position-x1)**2)
+                        initial_values[1] = 0
+                        initial_values[2] = 0
+                        initial_values[3] = 0.05*initial_values[0]
+                        initial_values[4] = 0
+                        initial_values[5] = 0
+                        initial_values[6] = -0.01*initial_values[0]
+                        initial_values[7] = 0
+                        initial_values[8] = 0
+                    
+                    else:
+                        print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+                
+                else:
+                    print("This moment order is not implemented yet for the SGSWME1D")     
+                
         else:
             print("This initial condition is not implemented yet for the SGSWME1D")
         
@@ -4258,8 +7157,23 @@ class SGSWME1D(PDE):
         number_of_variables = (mom_order + 2)*(SG_order + 1)
         return int(number_of_variables)
     
+    
+    def compute_all_breakdown_criteria(self,
+                                   values: np.array,
+                                   number_of_variables: list,
+                                   n,
+                                   delta_x,
+                                   tolerance_up_height_gradient,
+                                   tolerance_down_height_gradient,
+                                   tolerance_up_momentum_gradient,
+                                   tolerance_down_momentum_gradient,
+                                   tolerance_up_last_moment,
+                                   tolerance_down_last_moment) -> np.array:
+        pass
+
     def compute_breakdown_criterion(self,
                                    values: list,
+                                   number_of_variables: int,
                                    breakdown_criterion: str,
                                    n: int) -> np.array:
         pass
