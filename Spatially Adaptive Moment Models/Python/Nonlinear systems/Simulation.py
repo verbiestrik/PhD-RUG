@@ -74,8 +74,7 @@ class Simulation(ABC):
 
     @abstractmethod
     def _update_boundary_conditions(self,
-                                    values,
-                                    boundary):
+                                    values_boundary):
         """
         Implemented and documented in the child classes.
         """
@@ -105,7 +104,7 @@ class Simulation(ABC):
 class ClassicalSimulation1D(Simulation):
 
     """
-    This interface represents a classical (not spatially adaptive) simulation in 1D.
+    This class represents a classical (not spatially adaptive) simulation in 1D.
 
     ...
 
@@ -123,7 +122,7 @@ class ClassicalSimulation1D(Simulation):
         the used boundary condition
     initial_condition: str
         the initial condition for the simulation
-    spatial_discretization: Spatial_Discretization
+    spatial_discretization: SpatialDiscretization
         the numerical method for the spatial discretization
     time_integration: TimeIntegration
         the time integration method for the right-hand side source term
@@ -210,26 +209,27 @@ class ClassicalSimulation1D(Simulation):
             wave_speed_sqrt = values[:,0]*g
             for i in range(self.order):
                 wave_speed_sqrt += np.divide(values[:,i+2]*values[:,i+2],values[:,0]*values[:,0])
-            max_wave_speed_plus = np.max(np.abs(np.divide(values[:,1],values[:,0])+wave_speed_sqrt))
-            max_wave_speed_min = np.max(np.abs(np.divide(values[:,1],values[:,0])-wave_speed_sqrt))
+            max_wave_speed_plus = np.max(np.abs(np.divide(values[:,1],values[:,0]) + np.sqrt(wave_speed_sqrt)))
+            max_wave_speed_min = np.max(np.abs(np.divide(values[:,1],values[:,0]) - np.sqrt(wave_speed_sqrt)))
             max_speed = max(max_wave_speed_plus,max_wave_speed_min)
 
             delta_t = CFL*delta_x/max_speed #TODO implement CFL condition'
+            #delta_t = 0.0005
 
             previous_values = np.copy(values)
 
             for i in range(1,self.mesh.resolution+1):
                 fluctuation_plus = self.spatial_discretization.compute_fluctuation(
-                    values[i-1,:],
-                    values[i,:],
+                    previous_values[i-1,:],
+                    previous_values[i,:],
                     system_matrix,
                     'positive',
                     delta_t,
                     delta_x,
                     **kwargs) 
                 fluctuation_minus = self.spatial_discretization.compute_fluctuation(
-                    values[i,:],
-                    values[i+1,:],
+                    previous_values[i,:],
+                    previous_values[i+1,:],
                     system_matrix,
                     'negative',
                     delta_t,
@@ -584,16 +584,16 @@ class SpatiallyAdaptiveSimulation1D(Simulation):
                                    delta_t,
                                    **kwargs) -> np.array:        
         
-        tolerance_up_source              = kwargs["tolerance_up_source"]              if "tolerance_up_source"              in kwargs else 0.1
-        tolerance_up_height_gradient     = kwargs["tolerance_up_height_gradient"]     if "tolerance_up_height_gradient"     in kwargs else 0.15
-        tolerance_up_momentum_gradient   = kwargs["tolerance_up_momentum_gradient"]   if "tolerance_up_momentum_gradient"   in kwargs else 0.15
-        tolerance_up_moment_gradient     = kwargs["tolerance_up_moment_gradient"]     if "tolerance_up_moment_gradient"     in kwargs else 0.15
+        tolerance_up_source              = kwargs["tolerance_up_source"]              if "tolerance_up_source"              in kwargs else 0.5
+        tolerance_up_height_gradient     = kwargs["tolerance_up_height_gradient"]     if "tolerance_up_height_gradient"     in kwargs else 0.2
+        tolerance_up_momentum_gradient   = kwargs["tolerance_up_momentum_gradient"]   if "tolerance_up_momentum_gradient"   in kwargs else 0.2
+        tolerance_up_moment_gradient     = kwargs["tolerance_up_moment_gradient"]     if "tolerance_up_moment_gradient"     in kwargs else 0.2
         tolerance_down_height_gradient   = kwargs["tolerance_down_height_gradient"]   if "tolerance_down_height_gradient"   in kwargs else 0.001
         tolerance_down_momentum_gradient = kwargs["tolerance_down_momentum_gradient"] if "tolerance_down_momentum_gradient" in kwargs else 0.001
         tolerance_down_moment_gradient   = kwargs["tolerance_down_moment_gradient"]   if "tolerance_down_moment_gradient"   in kwargs else 0.001
         tolerance_down_last_moment       = kwargs["tolerance_down_last_moment"]       if "tolerance_down_last_moment"       in kwargs else 0.001
-        tolerance_down_res1              = kwargs["tolerance_down_res1"]              if "tolerance_down_res1"              in kwargs else 0.001
-        tolerance_down_res2              = kwargs["tolerance_down_res2"]              if "tolerance_down_res2"              in kwargs else 0.01
+        tolerance_down_res1              = kwargs["tolerance_down_res1"]              if "tolerance_down_res1"              in kwargs else 0.005
+        tolerance_down_res2              = kwargs["tolerance_down_res2"]              if "tolerance_down_res2"              in kwargs else 0.25
 
 
         """
@@ -788,7 +788,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
         # # First domain decomposition
         # values = self._resontruct_subdomains(values,delta_x,delta_t)
 
-        CFL = 0.5
+        CFL = 0.7
         
         step_count = 0
         t = 0
@@ -890,7 +890,7 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
                     values[right_boundary_subdomain-2,:n_variables_left] = (previous_values[right_boundary_subdomain-2,:n_variables_left]\
                         -delta_t/delta_x*(fluctuation_plus+fluctuation_minus)) 
                     values[right_boundary_subdomain-2,:n_variables_left] \
-                        = self.time_integration.integrate(values[right_boundary_subdomain-2,:n_variables_left],source_term_left,delta_t,**kwargs)
+                        = self.time_integration.integrate(values[right_boundary_subdomain-2,:n_variables_left],source_term_left,delta_t, **kwargs)
                     self.dom_decomp_val_res1[right_boundary_subdomain-3] \
                         = np.linalg.norm(generalized_roe_plus[:-1,-1]*(previous_values[right_boundary_subdomain-2,n_variables_left-1]-previous_values[right_boundary_subdomain-3,n_variables_left-1])\
                         + generalized_roe_minus[:-1,-1]*(previous_values[right_boundary_subdomain-1,n_variables_left-1]-previous_values[right_boundary_subdomain-2,n_variables_left-1]),np.inf)
@@ -1132,7 +1132,9 @@ class NonConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
             step_count += 1
             print(t)
             t+=delta_t
-
+        
+        self.dom_decomp_val_res1 = self.dom_decomp_val_res1/delta_x
+        self.dom_decomp_val_res2 = self.dom_decomp_val_res2/delta_t
         simulation_data = self._post_processing(values)
         return simulation_data
     
@@ -1292,7 +1294,7 @@ class ConservativeAdaptiveSimulation1D(SpatiallyAdaptiveSimulation1D):
         # # compute first domain decomposition
         # values = self._resontruct_subdomains(values,delta_x,delta_t)
 
-        CFL = 0.5
+        CFL = 0.7
         
         step_count = 0
         t = 0
@@ -1757,7 +1759,8 @@ class Micro_macro(Simulation):
                  mesh: Mesh.RectangularMesh,
                  boundary_condition: str,
                  initial_condition: str,
-                 spatial_discretization: SpatialDiscretization.SpatialDiscretization):
+                 spatial_discretization: SpatialDiscretization.SpatialDiscretization,
+                 time_integration = TimeIntegration.TimeIntegration):
  
         self.micro_order = orders[0]
         self.macro_order = orders[1]
@@ -1767,6 +1770,7 @@ class Micro_macro(Simulation):
         self.boundary_condition = boundary_condition
         self.initial_condition = initial_condition
         self.spatial_discretization = spatial_discretization
+        self.time_integration = time_integration
 
     def run_simulation(self,
                        t_end: float,
@@ -1778,7 +1782,7 @@ class Micro_macro(Simulation):
         micro_moments = self._get_initial_conditions(self.mesh.cell_center_positions)
         macro_moments = np.zeros((self.mesh.resolution+2, self.macro_order+2))
 
-        CFL = 0.5
+        CFL = 0.7
 
         def micro_system_matrix(cell_values,**kwargs):
             return self.pde_type.compute_system_matrix(self.micro_order,cell_values,**kwargs)
@@ -1829,10 +1833,8 @@ class Micro_macro(Simulation):
                     micro_delta_t,
                     delta_x,
                     **kwargs) 
-                source_term_value = micro_source_term(previous_values[i,:],**kwargs) 
-                micro_moments[i,:] = (previous_values[i,:] - 
-                                      micro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + 
-                                      delta_x * micro_delta_t * source_term_value) # solve FVM equations
+                micro_moments[i,:] = previous_values[i,:] - micro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus)
+                micro_moments[i,:] = self.time_integration.integrate(micro_moments[i,:],micro_source_term,micro_delta_t)
 
             t += micro_delta_t
 
@@ -1871,14 +1873,14 @@ class Micro_macro(Simulation):
                     macro_delta_t,
                     delta_x,
                     **kwargs) 
-                source_term_value = macro_source_term(previous_values[i,:],**kwargs) 
-                macro_moments[i,:] = (previous_values[i,:] - 
-                                      macro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + 
-                                      delta_x * macro_delta_t * source_term_value) # solve FVM equations
-            
+                macro_moments[i,:] = previous_values[i,:] - macro_delta_t/delta_x*(fluctuation_plus+fluctuation_minus)
+                macro_moments[i,:] = self.time_integration.integrate(macro_moments[i,:],macro_source_term,macro_delta_t)
+
             t += macro_delta_t
 
             # MATCHING
+            for idx in range(self.mesh.resolution+2):
+                micro_moments[idx, self.macro_order+2:] = np.multiply(micro_moments[idx, self.macro_order+2:],(macro_moments[idx, 0]/micro_moments[idx, 0]))
             micro_moments[:, :self.macro_order+2] = macro_moments
 
             step += 1
@@ -1962,7 +1964,7 @@ class Micro_macro(Simulation):
 class ClassicalGalerkinSimulation1D(Simulation):
 
     """
-    This interface represents a classical (not spatially adaptive) simulation in 1D with intrusive uncertainty.
+    This class represents a classical (not spatially adaptive) simulation in 1D with intrusive uncertainty.
 
     ...
 
@@ -2050,7 +2052,7 @@ class ClassicalGalerkinSimulation1D(Simulation):
         
         values = self._get_initial_conditions(self.mesh.cell_center_positions)
 
-        CFL = 0.3
+        CFL = 0.7
         t = 0
 
         def system_matrix(cell_values, **kwargs):
@@ -2059,13 +2061,13 @@ class ClassicalGalerkinSimulation1D(Simulation):
         def source_term(cell_values,delta_t, **kwargs):
             return self.pde_type.compute_source_term(self.mom_order, self.SG_order, cell_values, delta_t, **kwargs)
 
-        step=0
+        step = 0
         
         while t < t_end:
 
             # update boundary conditions
-            values[0,:] = self._update_boundary_conditions(values[1,:],'left')
-            values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values[self.mesh.resolution,:],'right')
+            values[0,:] = self._update_boundary_conditions(values,'left')
+            values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values,'right')
             
             denominator = values[:,0]
             if self.SG_order > 0:
@@ -2083,30 +2085,31 @@ class ClassicalGalerkinSimulation1D(Simulation):
                     for i in range(1, self.SG_order):
                         wave_speed_part2 += np.divide(values[:,2*self.SG_order+2+i]*values[:,2*self.SG_order+2+i],denominator*denominator)
             max_wave_speed_plus = np.max(np.abs(wave_speed_part1 + np.sqrt(wave_speed_part2)))
-            max_wave_speed_min = np.max(np.abs(wave_speed_part2 - np.sqrt(wave_speed_part2)))
+            max_wave_speed_min = np.max(np.abs(wave_speed_part1 - np.sqrt(wave_speed_part2)))
             max_speed = max(max_wave_speed_plus,max_wave_speed_min)
 
             delta_t = CFL*delta_x/max_speed
+            previous_values = np.copy(values)
 
             for i in range(1, self.mesh.resolution+1):
                 fluctuation_plus = self.spatial_discretization.compute_fluctuation(
-                    values[i-1,:],
-                    values[i,:],
+                    previous_values[i-1,:],
+                    previous_values[i,:],
                     system_matrix,
                     'positive',
                     delta_t,
                     delta_x,
                     **kwargs) 
                 fluctuation_minus = self.spatial_discretization.compute_fluctuation(
-                    values[i,:],
-                    values[i+1,:],
+                    previous_values[i,:],
+                    previous_values[i+1,:],
                     system_matrix,
                     'negative',
                     delta_t,
                     delta_x,
-                    **kwargs) 
-                source_term_value = source_term(values[i,:], delta_t, **kwargs) 
-                values[i,:] = values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus) + delta_t*source_term_value # solve FVM equations
+                    **kwargs)
+                values[i,:] = previous_values[i,:] - delta_t/delta_x*(fluctuation_plus+fluctuation_minus)
+                values[i,:] = self.time_integration.integrate(values[i,:],source_term,delta_t,**kwargs)
             print(t)
             t += delta_t
             step += 1
