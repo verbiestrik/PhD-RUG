@@ -219,7 +219,10 @@ class SWME1D(PDE):
         calculates the initial values for one specific physical position
     def compute_number_of_variables(self,order):
         computes the number of state variables in the PDE given the order of the moment model
-    def compute_all_breakdown_criteria(self,values,n,max_n_variables)
+    def compute_all_breakdown_criteria(self,values,orders,number_of_variables,n,delta_x,tolerance_up_height_gradient,
+                                       tolerance_down_height_gradient,tolerance_up_momentum_gradient,tolerance_down_momentum_gradient,
+                                       tolerance_up_moment_gradient,tolerance_down_moment_gradient,tolerance_up_last_moment,
+                                       tolerance_down_last_moment,tolerance_up_source,tolerance_down_source)
         computes the values of all breakdown criterion in each mesh cell
     def compute_breakdown_criterion(self,values,breakdown_criterion,n)
         computes the values of the given breakdown criterion in each mesh cell
@@ -3125,7 +3128,8 @@ class SWME1D(PDE):
                                    tolerance_up_last_moment = 0.01,
                                    tolerance_down_last_moment = 0.001,
                                    tolerance_up_source = 0.002,
-                                   tolerance_down_source = 0.0002) -> np.array:
+                                   tolerance_down_source = 0.0002,
+                                   **kwargs) -> np.array:
 
         """
         Compute ALL breakdown criteria for quantifying the required modelling complexity
@@ -3163,17 +3167,17 @@ class SWME1D(PDE):
         breakdown_criterion_flags = np.zeros(n)
         source_term_lastentry = np.zeros(n)
         for i in range(n):
-            source_term_lastentry[i] = self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],False)
+            source_term_lastentry[i] = self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],False,**kwargs)
 
         breakdown_estimators = np.zeros((n,max_order+4))
         for i in range(n):
-            breakdown_estimators[i,0] = np.abs(self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],False))
+            breakdown_estimators[i,0] = np.abs(self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],False,**kwargs))
             breakdown_estimators[i,1] = np.abs(values[i+1,number_of_variables[i+1]-1])
             breakdown_estimators[i,2] = np.abs((values[i+1,0] - values[i,0]))/delta_x
             breakdown_estimators[i,3] = np.abs((values[i+1,1] - values[i,1]))/delta_x
             for j in range(orders[i+1]):
                 breakdown_estimators[i,4+j] = np.abs((values[i+1,2+j])-values[i,2+j])/delta_x
-        breakdown_estimators[0,0] = np.abs(self.compute_source_term_lastentry(orders[1],values[1,:number_of_variables[1]],False))
+        breakdown_estimators[0,0] = np.abs(self.compute_source_term_lastentry(orders[1],values[1,:number_of_variables[1]],False,**kwargs))
         breakdown_estimators[0,1] = np.abs(values[1,number_of_variables[1]-1])
         breakdown_estimators[0,2] = np.abs((values[2,0] - values[1,0]))/delta_x
         breakdown_estimators[0,3] = np.abs((values[2,1] - values[1,1]))/delta_x
@@ -3309,7 +3313,7 @@ class SWME1D(PDE):
                 # If the order is 0, there are no moments and the above value is never used     
         elif breakdown_criterion == 'source_term':
             for i in range(n):
-                breakdown_criterion_values[i] = np.abs(self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],True))
+                breakdown_criterion_values[i] = np.abs(self.compute_source_term_lastentry(orders[i+1],values[i+1,:number_of_variables[i+1]],True,**kwargs))
         else:
             print('this criterion is not implemented yet')  
 
