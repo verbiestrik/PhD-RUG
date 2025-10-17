@@ -1,0 +1,102 @@
+##############################
+###### PDE INFORMATION #######
+##############################
+
+[pde_information]
+
+### True: one-dimensional, False: two-dimensional. Implemented: 1D
+1D = True
+
+### PDE type. Implemented: SWME1D, HSWME1D, VegetationSWME1D, SGSWME1D, HSGSWME1D
+pde_type = SGSWME1D
+
+# Specify friction parameters
+slipLength = 0.1
+viscosity = 0.1
+
+# Specify friction parameters for SGSWME1D and Monte Carlo SWME1D (viscosity above gets overruled). Implemented distr: uniform, normal
+distr = uniform
+mu = 0.1
+sigma = 0.01
+
+# Is the source term linear? Does not get read for SGSWME1D or HSGSWME1D
+linear_source = True
+
+# Specify initial conditions. Implemented: constantHeight_noVelocity, constantHeight_constantVelocity, linearHeight_noVelocity, damBreak_noVelocity,
+ damBreak_constantVelocity, lowDamBreak_linearVelocity, highDamBreak_linearVelocity, symmetric_damBreak, linearDamBreak_noVelocity, smoothWave_noVelocity,
+  smoothWave_constantVelocity, smooth_plus_damBreak
+initialCondition = lowDamBreak_withVelocity
+
+# For adaptive simulation, not possible for SGSWME1D or HSGSWME1D
+breakdown_criterion = damBreak_constantVelocity
+
+
+###############################
+###### GRID INFORMATION #######
+###############################
+
+[grid_information]
+
+### Only structured grids implemented currently
+structuredGrid = True
+
+# structuredGrid #
+# Number of grid points in x-direction and y-direction (if the simulation is 1D: only resolutionX is used)
+resolutionX = 1000
+resolutionY = 400
+
+# Physical boundaries of the domain (if the simulation is 1D: only x1boundary and x2boundary are used)
+x1boundary = -1
+x2boundary = 1
+y1boundary = -2
+y2boundary = 2
+
+
+#########################################
+##### Numerical method information ######
+#########################################
+
+[numerical_method_information]
+# End time
+t_end = 0.2
+
+# spatially_adaptive, classical, micro_macro. SGSWME1D and HSGSWME1D always classical
+method = classical
+
+# True: stochastic Galerkin simulation, False: simulation without intrusive uncertainty quantification
+stochasticGalerkin = True
+
+# True: Monte Carlo loop, False: no Monte Carlo loop
+monteCarlo = False
+
+
+### SPATIALLYADAPTIVE ###
+# spatial coupling: conservative, nonconservative
+coupling = conservative
+# Starting order of the adaptive simulation
+start_order = 5
+
+### CLASSICAL ###
+# Order of the model
+order = 1
+# In case monteCarlo = True, number of Monte Carlo samples
+n_MC = 10
+
+### STOCHASTIC GALERKIN (always classical) ###
+# Moment order of the model
+momOrder = 1
+# Stochastic Galerkin order of the model
+SGOrder = 0
+
+# Finite volume method type. Implemented: PVM
+fvm_type = PVM
+
+# PVM #
+# Polynomial viscosity method. Implemented: PRICE, LF
+pvm = PRICE
+
+# Time integration for source term. Implemented: ExplicitEuler, ImplicitEuler
+timeIntegrator = ImplicitEuler
+
+# Boundary condition. Implemented: INFLOW_OUTFLOW, PERIODIC
+boundaryCondition = INFLOW_OUTFLOW
