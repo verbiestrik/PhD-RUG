@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import PDE
 
 def visualisation(pde_type: PDE.PDE,
-                  spatially_adaptive: bool,
+                  method: str,
                   monte_carlo: bool,
                   stochastic_galerkin: bool,
                   resolutionX: int,
@@ -21,10 +21,12 @@ def visualisation(pde_type: PDE.PDE,
     color_3 = kwargs["color_3"] if "color_3" in kwargs else 'forestgreen'
 
     if not monte_carlo and not stochastic_galerkin:
-        if spatially_adaptive:
-            order = kwargs["orders"] if "orders" in kwargs else print("Orders should be specified for spatially adaptive plotting")
-            max_order = np.max([int(order_i) for order_i in order.split(',')])
+        if method == "spatially_adaptive":
+            max_order = kwargs["max_order"] if "max_order" in kwargs else print("max_order should be specified for spatially adaptive plotting")
             velocity_profile = pde_type.compute_vertical_velocity_profile(max_order, data_array, z)
+        
+        elif method == "micro_macro":
+            print("Plotting is not yet implemented for micro-macro.")
         
         else:
             order = kwargs["order"] if "order" in kwargs else print("Order should be specified for classical plotting")
@@ -98,7 +100,7 @@ def visualisation(pde_type: PDE.PDE,
             ax6.set_xlabel('x')
             ax6.legend()
     
-    elif monte_carlo or stochastic_galerkin and not spatially_adaptive:
+    elif monte_carlo or stochastic_galerkin and not method == 'spatially_adaptive' and not method == 'micro_macro':
         if monte_carlo and stochastic_galerkin:
             print("Stochastic Galerkin and a monte carlo loop cannot (and should not) be used at the same time")
         
@@ -203,7 +205,7 @@ def visualisation(pde_type: PDE.PDE,
 
 def visualisation_add(ax_arr,
                       pde_type: PDE.PDE,
-                      spatially_adaptive: bool,
+                      method: str,
                       monte_carlo: bool,
                       stochastic_galerkin: bool,
                       resolutionX: int,
@@ -219,10 +221,12 @@ def visualisation_add(ax_arr,
     color_3 = kwargs["color_3"] if "color_3" in kwargs else 'firebrick'
 
     if not monte_carlo and not stochastic_galerkin:
-        if spatially_adaptive:
-            order = kwargs["orders"] if "orders" in kwargs else print("Orders should be specified for spatially adaptive plotting")
-            max_order = np.max([int(order_i) for order_i in order.split(',')])
+        if method == "spatially_adaptive":
+            max_order = kwargs["max_order"] if "max_order" in kwargs else print("max_order should be specified for spatially adaptive plotting")
             velocity_profile = pde_type.compute_vertical_velocity_profile(max_order, data_array, z)
+        
+        elif method == "micro_macro":
+            print("Plotting is not yet implemented for micro-macro.")
         
         else:
             order = kwargs["order"] if "order" in kwargs else print("Order should be specified for classical plotting")
@@ -252,7 +256,7 @@ def visualisation_add(ax_arr,
         if max_order > 5:
             ax_arr[8].plot(data_array[:,0], data_array[:,8], '-', label=r'$\alpha_6$ for {}'.format(label), color=color_1)
     
-    elif monte_carlo or stochastic_galerkin and not spatially_adaptive:
+    elif monte_carlo or stochastic_galerkin and not method == 'spatially_adaptive' and not method == 'micro_macro':
         if monte_carlo and stochastic_galerkin:
             print("Stochastic Galerkin and a monte carlo loop cannot (and should not) be used at the same time")
         
