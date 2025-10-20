@@ -10,11 +10,11 @@ import timeit
 def main(config_file):
 
     config = configparser.ConfigParser()
-    config.read('Config-Files\{0}'.format(config_file))
+    config.read('Config-files/{0}'.format(config_file))
     pde_information = config['pde_information']
     grid_information = config['grid_information']
     numerical_method_information = config['numerical_method_information']
-
+    
     linear_source = pde_information['linear_source']
     time_integrator = numerical_method_information['timeIntegrator']
     linear_source_implicit = linear_source and time_integrator == 'ImplicitEuler'
@@ -43,7 +43,7 @@ def main(config_file):
                                     1,
                                     264)
     
-    elif pde_information['pde_type'] == 'SGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information.getboolean('spatiallyAdaptive') and not numerical_method_information.getboolean('monteCarlo'):
+    elif pde_information['pde_type'] == 'SGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro' and not numerical_method_information.getboolean('monteCarlo'):
         _pde = PDE.SGSWME1D(pde_information['initialCondition'],
                             pde_information['distr'],
                             pde_information.getfloat('mu'),
@@ -51,7 +51,7 @@ def main(config_file):
                             pde_information.getfloat('slipLength'),
                             hyperbolic=False)
     
-    elif pde_information['pde_type'] == 'HSGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information.getboolean('spatiallyAdaptive') and not numerical_method_information.getboolean('monteCarlo'):
+    elif pde_information['pde_type'] == 'HSGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro' and not numerical_method_information.getboolean('monteCarlo'):
         _pde = PDE.SGSWME1D(pde_information['initialCondition'],
                             pde_information['distr'],
                             pde_information.getfloat('mu'),
@@ -60,7 +60,7 @@ def main(config_file):
                             hyperbolic=True)
     
     elif pde_information['pde_type'] == 'SGSWME1D' or pde_information['pde_type'] == 'HSGSWME1D':
-        print("pde_type can only be SGSWME1D if stochasticGalerkin is True and spatiallyAdaptive and monteCarlo are False.")
+        print("pde_type can only be SGSWME1D if stochasticGalerkin is True and spatially_adaptive, micro_macro and monteCarlo are False.")
     
     else:
         print('This pde_type is not implemented yet.')
@@ -164,7 +164,7 @@ def main(config_file):
         if not numerical_method_information.getboolean('monteCarlo'):
             data_array = _simulation.run_simulation(numerical_method_information.getfloat('t_end'))
         
-        elif numerical_method_information.getboolean('monteCarlo') and pde_information['pde_type'] == 'SWME1D' and not numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information.getboolean('spatiallyAdaptive'):
+        elif numerical_method_information.getboolean('monteCarlo') and pde_information['pde_type'] == 'SWME1D' and not numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro':
             data_array = np.zeros((numerical_method_information.getint('n_MC'), grid_information.getint('resolutionX'), numerical_method_information.getint('order') + 3))
             
             if pde_information['distr'] == "normal":

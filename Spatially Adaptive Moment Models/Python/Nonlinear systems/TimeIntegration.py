@@ -82,8 +82,9 @@ class Implicit(TimeIntegration):
             final values 
 
         """
-        if self.linear:
+        if self.linear == True:
             end_values = rhs_f(initial_value,delta_t,**kwargs)@initial_value
+        
         else: 
             end_values = spopt.newton(self._compute_residual(initial_value,rhs_f,delta_t,**kwargs),initial_value,maxiter=100)
 
@@ -93,7 +94,8 @@ class Implicit(TimeIntegration):
     def _compute_residual(self,
                   initial_value: np.array,
                   rhs_f: Callable[...,np.array],
-                  delta_t: float) -> np.array:
+                  delta_t: float,
+                  **kwargs) -> np.array:
         
         """
         construct the residual function residual(x), the roots of which will be computed numerically
@@ -142,7 +144,8 @@ class Explicit(TimeIntegration):
     def integrate(self,
                   initial_value: np.array,
                   rhs_f: Callable[...,np.array],
-                  delta_t: float) -> np.array:
+                  delta_t: float,
+                  **kwargs) -> np.array:
         
         """
         integrates the equation dw/dt = rhs_f(w) starting from initial_value with a time step of delta_t
@@ -171,10 +174,10 @@ class ImplicitEuler(Implicit):
         super().__init__(linear_source)
 
     def _compute_residual(self,
-                  initial_value: np.array,
-                  rhs_f: Callable[...,np.array],
-                  delta_t: float,
-                  **kwargs) -> np.array:
+                          initial_value: np.array,
+                          rhs_f: Callable[...,np.array],
+                          delta_t: float,
+                          **kwargs) -> np.array:
         
         residual = lambda end_value : end_value - delta_t*rhs_f(end_value,delta_t,**kwargs) - initial_value
 

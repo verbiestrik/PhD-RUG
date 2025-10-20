@@ -2058,7 +2058,7 @@ class ClassicalGalerkinSimulation1D(Simulation):
         def system_matrix(cell_values, **kwargs):
             return self.pde_type.compute_system_matrix(self.mom_order, self.SG_order, cell_values, **kwargs)
 
-        def source_term(cell_values,delta_t, **kwargs):
+        def source_term(cell_values, delta_t, **kwargs):
             return self.pde_type.compute_source_term(self.mom_order, self.SG_order, cell_values, delta_t, **kwargs)
 
         step = 0
