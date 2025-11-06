@@ -13,6 +13,9 @@ def visualisation(pde_type: PDE.PDE,
                   data_array: np.array,
                   title: str,
                   label: str,
+                  fill: bool,
+                  ls: str,
+                  lw: float,
                   **kwargs):
     
     z = np.linspace(0,1,100)
@@ -51,52 +54,52 @@ def visualisation(pde_type: PDE.PDE,
             print("Spatially adaptive and deterministic classical simulations cannot be plotted for orders > 6 at this moment")
         
         ax1.set_title('Vertical Velocity Profile at x = {0}, x = {1} and x = {2} for {3}'.format(x1boundary + (x2boundary - x1boundary)/4, x1boundary + (x2boundary - x1boundary)/2, x1boundary + 3*(x2boundary - x1boundary)/4, title))
-        ax1.plot(velocity_profile[int(resolutionX/2),:], z)
+        ax1.plot(velocity_profile[int(resolutionX/2),:], z, linestyle=ls, linewidth=lw)
         ax1.set_ylabel('z')
         
         ax2.set_title('$h$ for {}'.format(title))
-        ax2.plot(data_array[:,0], data_array[:,1], '-', label='$h$ for {}'.format(label), color=color_1)
+        ax2.plot(data_array[:,0], data_array[:,1], label='$h$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
         ax2.set_xlabel('x')
         ax2.legend()
         
         ax3.set_title('$u_m$ for {}'.format(title))
-        ax3.plot(data_array[:,0], data_array[:,2], '-', label='$u_m$ for {}'.format(label), color=color_1)
+        ax3.plot(data_array[:,0], data_array[:,2], label='$u_m$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
         ax3.set_xlabel('x')
         ax3.legend()
 
         if max_order > 0:
             ax4.set_title(r'$\alpha_1$ for {}'.format(title))
-            ax4.plot(data_array[:,0], data_array[:,3], '-', label=r'$\alpha_1$ for {}'.format(label), color=color_1)
+            ax4.plot(data_array[:,0], data_array[:,3], label=r'$\alpha_1$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
             ax4.set_xlabel('x')
             ax4.legend()
         
         if max_order > 1:
             ax5.set_title(r'$\alpha_2$ for {}'.format(title))
-            ax5.plot(data_array[:,0], data_array[:,4], '-', label=r'$\alpha_2$ for {}'.format(label), color=color_1)
+            ax5.plot(data_array[:,0], data_array[:,4], label=r'$\alpha_2$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
             ax5.set_xlabel('x')
             ax5.legend()
         
         if max_order > 2:
             ax6.set_title(r'$\alpha_3$ for {}'.format(title))
-            ax6.plot(data_array[:,0], data_array[:,5], '-', label=r'$\alpha_3$ for {}'.format(label), color=color_1)
+            ax6.plot(data_array[:,0], data_array[:,5], label=r'$\alpha_3$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
             ax6.set_xlabel('x')
             ax6.legend()
         
         if max_order > 3:
             ax6.set_title(r'$\alpha_4$ for {}'.format(title))
-            ax6.plot(data_array[:,0], data_array[:,6], '-', label=r'$\alpha_4$ for {}'.format(label), color=color_1)
+            ax6.plot(data_array[:,0], data_array[:,6], label=r'$\alpha_4$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
             ax6.set_xlabel('x')
             ax6.legend()
 
         if max_order > 4:
             ax6.set_title(r'$\alpha_5$ for {}'.format(title))
-            ax6.plot(data_array[:,0], data_array[:,7], '-', label=r'$\alpha_5$ for {}'.format(label), color=color_1)
+            ax6.plot(data_array[:,0], data_array[:,7], label=r'$\alpha_5$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
             ax6.set_xlabel('x')
             ax6.legend()
 
         if max_order > 5:
             ax6.set_title(r'$\alpha_6$ for {}'.format(title))
-            ax6.plot(data_array[:,0], data_array[:,8], '-', label=r'$\alpha_6$ for {}'.format(label), color=color_1)
+            ax6.plot(data_array[:,0], data_array[:,8], label=r'$\alpha_6$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
             ax6.set_xlabel('x')
             ax6.legend()
     
@@ -130,8 +133,12 @@ def visualisation(pde_type: PDE.PDE,
                 fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2)
                 
                 ax4.set_title(r'$\alpha_1$ for {}'.format(title))
-                ax4.plot(data_array[0,:,0], alpha1_exp, '-', label=r'$\alpha_1$ for {}'.format(label), color=color_1)
-                ax4.fill_between(data_array[0,:,0], alpha1_exp - np.sqrt(alpha1_var), alpha1_exp + np.sqrt(alpha1_var),label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+                ax4.plot(data_array[0,:,0], alpha1_exp, label=r'$\alpha_1$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+                if fill == True:
+                    ax4.fill_between(data_array[0,:,0], alpha1_exp - np.sqrt(alpha1_var), alpha1_exp + np.sqrt(alpha1_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+                else:
+                    ax4.plot(data_array[0,:,0], alpha1_exp - np.sqrt(alpha1_var),label=r'$\alpha_1 - 1\sigma$ for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                    ax4.plot(data_array[0,:,0], alpha1_exp + np.sqrt(alpha1_var),label=r'$\alpha_1 + 1\sigma$ for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
                 ax4.set_xlabel('x')
                 ax4.legend()
             
@@ -155,7 +162,7 @@ def visualisation(pde_type: PDE.PDE,
             elif mom_order == 1:
                 fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2)
                 ax4.set_title(r'$\alpha_1$ for {}'.format(title))
-                ax4.plot(data_array[:,0], alpha1_exp, '-', label=r'$\alpha_1$ for {}'.format(label), color=color_1)
+                ax4.plot(data_array[:,0], alpha1_exp, label=r'$\alpha_1$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
                 ax4.fill_between(data_array[:,0], alpha1_exp - np.sqrt(alpha1_var), alpha1_exp + np.sqrt(alpha1_var),label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
                 ax4.set_xlabel('x')
                 ax4.legend()
@@ -168,22 +175,30 @@ def visualisation(pde_type: PDE.PDE,
             x = data_array[:,0]
                 
         ax1.set_title('Vertical Velocity Profile at x = {0}, x = {1} and x = {2} for {3}'.format(x1boundary + (x2boundary - x1boundary)/4, x1boundary + (x2boundary - x1boundary)/2, x1boundary + 3*(x2boundary - x1boundary)/4, title))
-        ax1.plot(velocity_profile_exp[int(resolutionX/4),:], z, label='$u$ at x=-1 for {}'.format(label), color=color_2)
+        ax1.plot(velocity_profile_exp[int(resolutionX/4),:], z, label='$u$ at x=-1 for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
         ax1.fill_betweenx(z, velocity_profile_exp[int(resolutionX/4),:] - np.sqrt(velocity_profile_var[int(resolutionX/4),:]), velocity_profile_exp[int(resolutionX/4),:] + np.sqrt(velocity_profile_var[int(resolutionX/4),:]), label='$1\sigma$ at x=-1 for {}'.format(label), color=color_2, alpha=0.2)
-        ax1.plot(velocity_profile_exp[int(resolutionX/2),:], z, label='$u$ at x=0 for {}'.format(label), color=color_1)
+        ax1.plot(velocity_profile_exp[int(resolutionX/2),:], z, label='$u$ at x=0 for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
         ax1.fill_betweenx(z, velocity_profile_exp[int(resolutionX/2),:] - np.sqrt(velocity_profile_var[int(resolutionX/2),:]), velocity_profile_exp[int(resolutionX/2),:] + np.sqrt(velocity_profile_var[int(resolutionX/2),:]), label='$1\sigma$ at x=0 for {}'.format(label), color=color_1, alpha=0.2)
-        ax1.plot(velocity_profile_exp[int(3*resolutionX/4),:], z, label='$u$ at x=1 for {}'.format(label), color=color_3)
+        ax1.plot(velocity_profile_exp[int(3*resolutionX/4),:], z, label='$u$ at x=1 for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
         ax1.fill_betweenx(z, velocity_profile_exp[int(3*resolutionX/4),:] - np.sqrt(velocity_profile_var[int(3*resolutionX/4),:]), velocity_profile_exp[int(3*resolutionX/4),:] + np.sqrt(velocity_profile_var[int(3*resolutionX/4),:]), label='$1\sigma$ at x=1 for {}'.format(label), color=color_3, alpha=0.2)
         ax1.set_ylabel('z')
         ax1.legend()
             
-        ax2.plot(x, h_exp, '-', label='$h$ for {}'.format(label), color=color_1)
-        ax2.fill_between(x, h_exp - np.sqrt(h_var), h_exp + np.sqrt(h_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        ax2.plot(x, h_exp, label='$h$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+        if fill == True:
+            ax2.fill_between(x, h_exp - np.sqrt(h_var), h_exp + np.sqrt(h_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        else:
+            ax2.plot(x, h_exp - np.sqrt(h_var), label='$h-1\sigma$ for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+            ax2.plot(x, h_exp + np.sqrt(h_var), label='$h+1\sigma$ for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
         ax2.set_xlabel('x')
         ax2.legend()
             
-        ax3.plot(x, um_exp, '-', label='$u_m$ for {}'.format(label), color=color_1)
-        ax3.fill_between(x, um_exp - np.sqrt(um_var), um_exp + np.sqrt(um_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        ax3.plot(x, um_exp, label='$u_m$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+        if fill == True:
+            ax3.fill_between(x, um_exp - np.sqrt(um_var), um_exp + np.sqrt(um_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        else:
+            ax3.plot(x, um_exp - np.sqrt(um_var), label='$u_m - 1\sigma$ for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+            ax3.plot(x, um_exp+- np.sqrt(um_var), label='$u_m + 1\sigma$ for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
         ax3.set_xlabel('x')
         ax3.legend()
 
@@ -214,6 +229,9 @@ def visualisation_add(ax_arr,
                       IC: str,
                       data_array: np.array,
                       label: str,
+                      fill: bool,
+                      ls: str,
+                      lw: float,
                       **kwargs):
     z = np.linspace(0,1,100)
     color_1 = kwargs["color_1"] if "color_1" in kwargs else 'tab:red'
@@ -234,27 +252,35 @@ def visualisation_add(ax_arr,
             velocity_profile = pde_type.compute_vertical_velocity_profile(order, data_array, z)
         
         
-        ax_arr[0].plot(velocity_profile[int(resolutionX/2),:], z)
-        ax_arr[1].plot(data_array[:,0], data_array[:,1], '-', label='$h$ for {}'.format(label), color=color_1)
-        ax_arr[2].plot(data_array[:,0], data_array[:,2], '-', label='$u_m$ for {}'.format(label), color=color_1)
+        ax_arr[0].plot(velocity_profile[int(resolutionX/2),:], z, linestyle=ls, linewidth=lw)
+        ax_arr[1].plot(data_array[:,0], data_array[:,1], label='$h$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+        ax_arr[1].legend()
+        ax_arr[2].plot(data_array[:,0], data_array[:,2], label='$u_m$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+        ax_arr[2].legend()
 
         if max_order > 0:
-            ax_arr[3].plot(data_array[:,0], data_array[:,3], '-', label=r'$\alpha_1$ for {}'.format(label), color=color_1)
+            ax_arr[3].plot(data_array[:,0], data_array[:,3], label=r'$\alpha_1$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+            ax_arr[3].legend()
         
         if max_order > 1:
-            ax_arr[4].plot(data_array[:,0], data_array[:,4], '-', label=r'$\alpha_2$ for {}'.format(label), color=color_1)
+            ax_arr[4].plot(data_array[:,0], data_array[:,4], label=r'$\alpha_2$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+            ax_arr[4].legend()
         
         if max_order > 2:
-            ax_arr[5].plot(data_array[:,0], data_array[:,5], '-', label=r'$\alpha_3$ for {}'.format(label), color=color_1)
+            ax_arr[5].plot(data_array[:,0], data_array[:,5], label=r'$\alpha_3$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+            ax_arr[5].legend()
         
         if max_order > 3:
-            ax_arr[6].plot(data_array[:,0], data_array[:,6], '-', label=r'$\alpha_4$ for {}'.format(label), color=color_1)
+            ax_arr[6].plot(data_array[:,0], data_array[:,6], label=r'$\alpha_4$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+            ax_arr[6].legend()
 
         if max_order > 4:
-            ax_arr[7].plot(data_array[:,0], data_array[:,7], '-', label=r'$\alpha_5$ for {}'.format(label), color=color_1)
+            ax_arr[7].plot(data_array[:,0], data_array[:,7], label=r'$\alpha_5$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+            ax_arr[7].legend()
 
         if max_order > 5:
-            ax_arr[8].plot(data_array[:,0], data_array[:,8], '-', label=r'$\alpha_6$ for {}'.format(label), color=color_1)
+            ax_arr[8].plot(data_array[:,0], data_array[:,8], label=r'$\alpha_6$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+            ax_arr[8].legend()
     
     elif monte_carlo or stochastic_galerkin and not method == 'spatially_adaptive' and not method == 'micro_macro':
         if monte_carlo and stochastic_galerkin:
@@ -283,8 +309,12 @@ def visualisation_add(ax_arr,
                     velocity_profile_exp[i,:] = um_exp[i]*(np.ones(len(z))) + alpha1_exp[i]*(np.ones(len(z)) - 2*z)
                     velocity_profile_var[i,:] = um_var[i]*(np.ones(len(z))) + alpha1_var[i]*(np.ones(len(z)) - 2*z)**2
                 
-                ax_arr[3].plot(data_array[0,:,0], alpha1_exp, '-', label=r'$\alpha_1$ for {}'.format(label), color=color_1)
-                ax_arr[3].fill_between(data_array[0,:,0], alpha1_exp - np.sqrt(alpha1_var), alpha1_exp + np.sqrt(alpha1_var),label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+                ax_arr[3].plot(data_array[0,:,0], alpha1_exp, label=r'$\alpha_1$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+                if fill == True:
+                    ax_arr[3].fill_between(data_array[0,:,0], alpha1_exp - np.sqrt(alpha1_var), alpha1_exp + np.sqrt(alpha1_var),label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+                else:
+                    ax_arr[3].plot(data_array[0,:,0], alpha1_exp - np.sqrt(alpha1_var) ,label=r'$\alpha_1-1\sigma$ for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                    ax_arr[3].plot(data_array[0,:,0], alpha1_exp + np.sqrt(alpha1_var) ,label=r'$\alpha_1+1\sigma$ for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
                 ax_arr[3].legend()
             
             else:
@@ -299,29 +329,41 @@ def visualisation_add(ax_arr,
             h_exp, h_var, um_exp, um_var, alpha1_exp, alpha1_var = pde_type.compute_exp_and_var(mom_order, SG_order, data_array[:,1:], True)
             
             if mom_order == 1:
-                ax_arr[3].plot(data_array[:,0], alpha1_exp, '-', label=r'$\alpha_1$ for {}'.format(label), color=color_1)
-                ax_arr[3].fill_between(data_array[:,0], alpha1_exp - np.sqrt(alpha1_var), alpha1_exp + np.sqrt(alpha1_var),label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+                ax_arr[3].plot(data_array[:,0], alpha1_exp, label=r'$\alpha_1$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+                if fill == True:
+                    ax_arr[3].fill_between(data_array[:,0], alpha1_exp - np.sqrt(alpha1_var), alpha1_exp + np.sqrt(alpha1_var),label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+                else:
+                    ax_arr[3].plot(data_array[:,0], alpha1_exp - np.sqrt(alpha1_var) ,label=r'$\alpha_1 - 1\sigma$ for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                    ax_arr[3].plot(data_array[:,0], alpha1_exp + np.sqrt(alpha1_var) ,label=r'$\alpha_1 + 1\sigma$ for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
                 ax_arr[3].legend()
 
-            else:
+            elif mom_order > 1:
                 print("This moment order is not implemented yet for the SGSWME1D")
             
             x = data_array[:,0]
                 
-        ax_arr[0].plot(velocity_profile_exp[int(resolutionX/4),:], z, '-', label='$u$ at x=-1 for {}'.format(label), color=color_2)
+        ax_arr[0].plot(velocity_profile_exp[int(resolutionX/4),:], z, label='$u$ at x=-1 for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
         ax_arr[0].fill_betweenx(z, velocity_profile_exp[int(resolutionX/4),:] - np.sqrt(velocity_profile_var[int(resolutionX/4),:]), velocity_profile_exp[int(resolutionX/4),:] + np.sqrt(velocity_profile_var[int(resolutionX/4),:]), label='$1\sigma$ at x=-1 for {}'.format(label), color=color_2, alpha=0.2)
-        ax_arr[0].plot(velocity_profile_exp[int(resolutionX/2),:], z, '-', label='$u$ at x=0 for {}'.format(label), color=color_1)
+        ax_arr[0].plot(velocity_profile_exp[int(resolutionX/2),:], z, label='$u$ at x=0 for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
         ax_arr[0].fill_betweenx(z, velocity_profile_exp[int(resolutionX/2),:] - np.sqrt(velocity_profile_var[int(resolutionX/2),:]), velocity_profile_exp[int(resolutionX/2),:] + np.sqrt(velocity_profile_var[int(resolutionX/2),:]), label='$1\sigma$ at x=0 for {}'.format(label), color=color_1, alpha=0.2)
-        ax_arr[0].plot(velocity_profile_exp[int(3*resolutionX/4),:], z, '-', label='$u$ at x=1 for {}'.format(label), color=color_3)
+        ax_arr[0].plot(velocity_profile_exp[int(3*resolutionX/4),:], z, label='$u$ at x=1 for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
         ax_arr[0].fill_betweenx(z, velocity_profile_exp[int(3*resolutionX/4),:] - np.sqrt(velocity_profile_var[int(3*resolutionX/4),:]), velocity_profile_exp[int(3*resolutionX/4),:] + np.sqrt(velocity_profile_var[int(3*resolutionX/4),:]), label='$1\sigma$ at x=1 for {}'.format(label), color=color_3, alpha=0.2)
         ax_arr[0].legend()
  
-        ax_arr[1].plot(x, h_exp, '-', label='$h$ for {}'.format(label), color=color_1)
-        ax_arr[1].fill_between(x, h_exp - np.sqrt(h_var), h_exp + np.sqrt(h_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        ax_arr[1].plot(x, h_exp, label='$h$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+        if fill == True:
+            ax_arr[1].fill_between(x, h_exp - np.sqrt(h_var), h_exp + np.sqrt(h_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        else:
+            ax_arr[1].plot(x, h_exp - np.sqrt(h_var), label='$h - 1\sigma$ for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+            ax_arr[1].plot(x, h_exp + np.sqrt(h_var), label='$h + 1\sigma$ for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
         ax_arr[1].legend()
             
-        ax_arr[2].plot(x, um_exp, '-', label='$u_m$ for {}'.format(label), color=color_1)
-        ax_arr[2].fill_between(x, um_exp - np.sqrt(um_var), um_exp + np.sqrt(um_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        ax_arr[2].plot(x, um_exp, label='$u_m$ for {}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
+        if fill == True:
+            ax_arr[2].fill_between(x, um_exp - np.sqrt(um_var), um_exp + np.sqrt(um_var), label='$1\sigma$ for {}'.format(label), color=color_1, alpha=0.2)
+        else:
+            ax_arr[2].plot(x, um_exp - np.sqrt(um_var), label='$u_m-1\sigma$ for {}'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+            ax_arr[2].plot(x, um_exp + np.sqrt(um_var), label='$u_m+1\sigma$ for {}'.format(label), color=color_3, linestyle=ls, linewidth=lw)
         ax_arr[2].legend()
 
     
