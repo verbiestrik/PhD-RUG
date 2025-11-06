@@ -1,8 +1,0 @@
-
-# post_processing method in Simulation class uses information from PDE class: implement this.
-
-# computing the wave speeds should be done in the PDE class: implement this
-
-# add parameter breakdown_criterion to the simulation class (perhaps in the PDE class)
-
-# impement vegetation term to SWME
