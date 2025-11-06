@@ -4872,6 +4872,64 @@ class SGSWME1D(PDE):
                     r0 = values[4]
                     r1 = values[5]
 
+                    '''
+                    B = np.zeros(A.shape)
+
+                    h_plus = h0 + h1
+                    h_min  = h0 - h1
+                    q_plus = q0 + q1
+                    q_min  = q0 - q1
+                    r_plus = r0 + r1
+                    r_min  = r0 - r1
+
+                    u_plus = q_plus/h_plus
+                    u_min  = q_min/h_min
+                    a_plus = r_plus/h_plus
+                    a_min  = r_min/h_min
+
+                    B[0][0] = 0
+                    B[0][1] = 0
+                    B[0][2] = 1
+                    B[0][3] = 0
+                    B[0][4] = 0
+                    B[0][5] = 0
+
+                    B[1][0] = 0
+                    B[1][1] = 0
+                    B[1][2] = 0
+                    B[1][3] = 1
+                    B[1][4] = 0
+                    B[1][5] = 0
+
+                    B[2][0] = -a_min**2/6 + g*h_min/2 - u_min**2/2 - a_plus**2/6 + g*h_plus/2 - u_plus**2/2
+                    B[2][1] =  a_min**2/6 - g*h_min/2 + u_min**2/2 - a_plus**2/6 + g*h_plus/2 - u_plus**2/2
+                    B[2][2] =  u_min + u_plus
+                    B[2][3] = -u_min + u_plus
+                    B[2][4] = (a_min  + a_plus)/3
+                    B[2][5] = (-a_min + a_plus)/3
+
+                    B[3][0] =  a_min**2/6 - g*h_min/2 + u_min**2/2 - a_plus**2/6 + g*h_plus/2 - u_plus**2/2
+                    B[3][1] = -a_min**2/6 + g*h_min/2 - u_min**2/2 - a_plus**2/6 + g*h_plus/2 - u_plus**2/2
+                    B[3][2] = -u_min + u_plus
+                    B[3][3] =  u_min + u_plus
+                    B[3][4] = (-a_min + a_plus)/3
+                    B[3][5] = (a_min  + a_plus)/3
+
+                    B[4][0] = -a_min*u_min - a_plus*u_plus
+                    B[4][1] =  a_min*u_min - a_plus*u_plus
+                    B[4][2] =  a_min + a_plus
+                    B[4][3] = -a_min + a_plus
+                    B[4][4] = (u_min  + u_plus)/2
+                    B[4][5] = (-u_min + u_plus)/2
+
+                    B[5][0] =  a_min*u_min - a_plus*u_plus
+                    B[5][1] = -a_min*u_min - a_plus*u_plus
+                    B[5][2] = -a_min + a_plus
+                    B[5][3] =  a_min + a_plus
+                    B[5][4] = (-u_min + u_plus)/2
+                    B[5][5] = (u_min + u_plus)/2
+                    '''
+
                     A[0][0] = 0
                     A[0][1] = 0
                     A[0][2] = 1
@@ -4903,8 +4961,8 @@ class SGSWME1D(PDE):
                     A[4][0] = (-2*((h0**2 + h1**2)*q0 - 2*h0*h1*q1)*r0 - 2*((h0**2 + h1**2)*q1 - 2*h0*h1*q0)*r1)/((h0**2 - h1**2)**2)
                     A[4][1] = (-2*((h0**2 + h1**2)*q1 - 2*h0*h1*q0)*r0 - 2*((h0**2 + h1**2)*q0 - 2*h0*h1*q1)*r1)/((h0**2 - h1**2)**2)
                     A[4][2] = (2*(h0*r0 - h1*r1))/(h0**2 - h1**2)
-                    A[4][3] = (h0*q0 - h1*q1)/(h0**2 - h1**2)
-                    A[4][4] = (2*(h0*r1 - h1*r0))/(h0**2 - h1**2)
+                    A[4][3] = (2*(h0*r1 - h1*r0))/(h0**2 - h1**2)
+                    A[4][4] = (h0*q0 - h1*q1)/(h0**2 - h1**2)
                     A[4][5] = (h0*q1 - h1*q0)/(h0**2 - h1**2)
                     
                     A[5][0] = (-2*((h0**2 + h1**2)*q1 - 2*h0*h1*q0)*r0 - 2*((h0**2 + h1**2)*q0 - 2*h0*h1*q1)*r1)/((h0**2 - h1**2)**2)
@@ -4991,7 +5049,7 @@ class SGSWME1D(PDE):
                             + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *r2)/denominator)**2                \
                             - (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *r0)/denominator                    \
                             + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *r1)/denominator                    \
-                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *r2)/denominator)**2)/3.  
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *r2)/denominator)**2)/3.
                     A[3][1] = g*h1                                                                                                                  \
                             - (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                    \
                             + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
@@ -5521,15 +5579,24 @@ class SGSWME1D(PDE):
                     A[6][5] = (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *r0)/denominator                    \
                             + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *r1)/denominator                    \
                             + (2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                         *r2)/denominator
-                    A[6][6] = ((2*(h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)            *q0)/denominator                    \
-                            + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q1)/denominator                    \
-                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q2)/denominator)/2.
-                    A[6][7] = ((2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                        *q0)/denominator                    \
-                            + (2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                      *q1)/denominator                    \
-                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q2)/denominator)/2.
-                    A[6][8] = ((2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                         *q0)/denominator                    \
-                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q1)/denominator                    \
-                            + (2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                         *q2)/denominator)/2.
+                    #A[6][6] = ((2*(h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)            *q0)/denominator                    \
+                    #        + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q1)/denominator                    \
+                    #        + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q2)/denominator)/2.
+                    A[6][6] = ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q0)/denominator                    \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                    \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator
+                    #A[6][7] = ((2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                        *q0)/denominator                    \
+                    #        + (2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                      *q1)/denominator                    \
+                    #        + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q2)/denominator)/2.
+                    A[6][7] = ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q0)/denominator                    \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                    \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator
+                    #A[6][8] = ((2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                         *q0)/denominator                    \
+                    #        + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                *q1)/denominator                    \
+                    #        + (2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                         *q2)/denominator)/2.
+                    A[6][8] = (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q0)/denominator                    \
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator
                     A[7][0] = -(((2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                          *q1)/(np.sqrt(5)*denominator)                   \
                             + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q1)/denominator                    \
                             + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator)                   \
@@ -5670,26 +5737,35 @@ class SGSWME1D(PDE):
                             + (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *r0)/denominator                    \
                             + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *r1)/denominator                    \
                             + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *r2)/denominator))/np.sqrt(5)
-                    A[7][6] = (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                    \
-                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                    \
-                            + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q1)/denominator                    \
+                    #A[7][6] = (((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                          *q0)/denominator                    \
+                    #        + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                    \
+                    #        + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q1)/denominator                    \
+                    #        + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))              *q1)/(np.sqrt(5)*denominator)                   \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator                    \
+                    #        + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                     *(q0 + (2*q2)/np.sqrt(5)))/denominator)/2.
+                    A[7][6] = ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q1)/denominator                    \
                             + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))              *q1)/(np.sqrt(5)*denominator)                   \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator                    \
-                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                     *(q0 + (2*q2)/np.sqrt(5)))/denominator)/2.
-                    A[7][7] = (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                    \
-                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                    *q1)/(np.sqrt(5)*denominator)                   \
-                            + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q1)/denominator                    \
-                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                    \
-                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                  *(q0 + (2*q2)/np.sqrt(5)))/denominator                    \
-                            + (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                    \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
-                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/np.sqrt(5))/2.
-                    A[7][8] = ((2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                            *q1)/(np.sqrt(5)*denominator)                   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                     *(q0 + (2*q2)/np.sqrt(5)))/denominator
+                    #A[7][7] = (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                    \
+                    #        + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                    *q1)/(np.sqrt(5)*denominator)                   \
+                    #        + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                         *q1)/denominator                    \
+                    #        + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                    \
+                    #        + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                  *(q0 + (2*q2)/np.sqrt(5)))/denominator                    \
+                    #        + (2*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                        *q0)/denominator                    \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
+                    #        + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/np.sqrt(5))/2.
+                    A[7][7] = (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                    *q1)/(np.sqrt(5)*denominator)                   \
+                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                    \
+                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                  *(q0 + (2*q2)/np.sqrt(5)))/denominator
+                    #A[7][8] = ((2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                            *q1)/(np.sqrt(5)*denominator)                   \
+                    #        + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q1)/denominator                    \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator                    \
+                    #        + (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                    \
+                    #        + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                    \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator))/np.sqrt(5))/2.
+                    A[7][8] = (2*(h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                             *q1)/(np.sqrt(5)*denominator)                   \
                             + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q1)/denominator                    \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator                    \
-                            + (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                    \
-                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                    \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator))/np.sqrt(5))/2.
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                            *(q0 + (2*q2)/np.sqrt(5)))/denominator
                     A[8][0] = -(((2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                 *q1)/(np.sqrt(5)*denominator)                   \
                             + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                    \
                             + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)                   \
@@ -5830,26 +5906,35 @@ class SGSWME1D(PDE):
                             + (2*np.sqrt(5)*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))             *r0)/denominator                    \
                             + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *r1)/denominator                    \
                             + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *r2)/denominator))/7.
-                    A[8][6] = ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                    \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
-                            + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                             *q1)/(np.sqrt(5)*denominator)                   \
-                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator                    \
+                    #A[8][6] = ((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                           *q0)/denominator                    \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
+                    #        + (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                             *q1)/(np.sqrt(5)*denominator)                   \
+                    #        + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator                    \
+                    #        + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q2)/denominator                    \
+                    #        + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))   *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)/2.
+                    A[8][6] = (2*(-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                             *q1)/(np.sqrt(5)*denominator)                   \
                             + ((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)               *q2)/denominator                    \
-                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))   *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator)/2.
-                    A[8][7] = ((2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                         *q1)/(np.sqrt(5)*denominator)                   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))   *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator
+                    #A[8][7] = ((2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                         *q1)/(np.sqrt(5)*denominator)                   \
+                    #        + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q2)/denominator                    \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                         *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator                    \
+                    #        + (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                    \
+                    #        + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                    \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator))/np.sqrt(5))/2.
+                    A[8][7] = (2*(h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                          *q1)/(np.sqrt(5)*denominator)                   \
                             + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q2)/denominator                    \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                         *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator                    \
-                            + (2*(((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                       *q0)/denominator                    \
-                            + ((h0**2 + (2*np.sqrt(5)*h0*h2)/7. - h2**2)                                        *q1)/denominator                    \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q2)/denominator))/np.sqrt(5))/2.
-                    A[8][8] = (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                    \
-                            + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                    *q1)/(np.sqrt(5)*denominator)                   \
-                            + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                    \
-                            + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q2)/denominator                    \
-                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator                    \
-                            + (2*np.sqrt(5)*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))             *q0)/denominator                    \
-                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
-                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/7.)/2.
+                            + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                         *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator
+                    #A[8][8] = (((h0**2 - (4*h1**2)/5. + (24*h0*h2)/(7.*np.sqrt(5)) + (4*h2**2)/7.)              *q0)/denominator                    \
+                    #        + (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                    *q1)/(np.sqrt(5)*denominator)                   \
+                    #        + ((-(h0*h1) + (4*h1*h2)/(7.*np.sqrt(5)))                                           *q1)/denominator                    \
+                    #        + (2*((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                          *q2)/denominator                    \
+                    #        + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator                    \
+                    #        + (2*np.sqrt(5)*((((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))             *q0)/denominator                    \
+                    #        + (((-2*h0*h1)/np.sqrt(5) + h1*h2)                                                  *q1)/denominator                    \
+                    #        + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                                           *q2)/denominator))/7.)/2.
+                    A[8][8] = (2*((-2*h0*h1)/np.sqrt(5) + h1*h2)                                    *q1)/(np.sqrt(5)*denominator)                   \
+                            + (((2*h1**2)/np.sqrt(5) - h0*h2 - (2*h2**2)/np.sqrt(5))                            *q2)/denominator                    \
+                            + ((h0**2 - h1**2 + (2*h0*h2)/np.sqrt(5))                  *(q0 + (2*np.sqrt(5)*q2)/7.))/denominator
             else:
                 print("This stochastic Galerkin order is not implemented yet for mom_order=1")
         
@@ -7201,7 +7286,6 @@ class SGSWME1D(PDE):
                     func2_exp = values[:,1]
             
             elif SG_order == 1:
-                print(values.shape)
                 func1_exp = values[:,0]
                 func1_var = np.square(values[:,1])
                 
