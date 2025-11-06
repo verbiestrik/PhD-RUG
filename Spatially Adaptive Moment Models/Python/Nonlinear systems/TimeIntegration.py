@@ -82,7 +82,7 @@ class Implicit(TimeIntegration):
             final values 
 
         """
-        if self.linear == True:
+        if self.linear:
             end_values = rhs_f(initial_value,delta_t,**kwargs)@initial_value
         
         else: 
