@@ -206,15 +206,15 @@ class ClassicalSimulation1D(Simulation):
             values[0,:] = self._update_boundary_conditions(values, 'left')
             values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values,'right')
             
-            wave_speed_sqrt = values[:,0]*g
-            for i in range(self.order):
-                wave_speed_sqrt += np.divide(values[:,i+2]*values[:,i+2],values[:,0]*values[:,0])
-            max_wave_speed_plus = np.max(np.abs(np.divide(values[:,1],values[:,0]) + np.sqrt(wave_speed_sqrt)))
-            max_wave_speed_min = np.max(np.abs(np.divide(values[:,1],values[:,0]) - np.sqrt(wave_speed_sqrt)))
-            max_speed = max(max_wave_speed_plus,max_wave_speed_min)
+            #wave_speed_sqrt = values[:,0]*g
+            #for i in range(self.order):
+                #wave_speed_sqrt += np.divide(values[:,i+2]*values[:,i+2],values[:,0]*values[:,0])
+            #max_wave_speed_plus = np.max(np.abs(np.divide(values[:,1],values[:,0]) + np.sqrt(wave_speed_sqrt)))
+            #max_wave_speed_min = np.max(np.abs(np.divide(values[:,1],values[:,0]) - np.sqrt(wave_speed_sqrt)))
+            #max_speed = max(max_wave_speed_plus,max_wave_speed_min)
 
-            delta_t = CFL*delta_x/max_speed #TODO implement CFL condition'
-            #delta_t = 0.0005
+            #delta_t = CFL*delta_x/max_speed #TODO implement CFL condition'
+            delta_t = 0.0005
 
             previous_values = np.copy(values)
 
@@ -2069,26 +2069,27 @@ class ClassicalGalerkinSimulation1D(Simulation):
             values[0,:] = self._update_boundary_conditions(values,'left')
             values[self.mesh.resolution+1,:] = self._update_boundary_conditions(values,'right')
             
-            denominator = values[:,0]
-            if self.SG_order > 0:
-                for i in range(1, self.SG_order):
-                    denominator += values[:,i]
-            wave_speed_part1 = np.divide(values[:,self.SG_order+1], denominator)
-            wave_speed_part2 = values[:,0]*g
-            if self.SG_order > 0:
-                for i in range(1, self.SG_order):
-                    wave_speed_part1 += np.divide(values[:,self.SG_order+1+i], denominator)
-                    wave_speed_part2 += values[:,i]*g
-            if self.mom_order > 0:
-                wave_speed_part2 += np.divide(values[:,2*self.SG_order+2]*values[:,2*self.SG_order+2],denominator*denominator)
-                if self.SG_order > 0:
-                    for i in range(1, self.SG_order):
-                        wave_speed_part2 += np.divide(values[:,2*self.SG_order+2+i]*values[:,2*self.SG_order+2+i],denominator*denominator)
-            max_wave_speed_plus = np.max(np.abs(wave_speed_part1 + np.sqrt(wave_speed_part2)))
-            max_wave_speed_min = np.max(np.abs(wave_speed_part1 - np.sqrt(wave_speed_part2)))
-            max_speed = max(max_wave_speed_plus,max_wave_speed_min)
+            #denominator = values[:,0]
+            #if self.SG_order > 0:
+            #    for i in range(1, self.SG_order):
+            #        denominator += values[:,i]
+            #wave_speed_part1 = np.divide(values[:,self.SG_order+1], denominator)
+            #wave_speed_part2 = values[:,0]*g
+            #if self.SG_order > 0:
+            #    for i in range(1, self.SG_order):
+            #        wave_speed_part1 += np.divide(values[:,self.SG_order+1+i], denominator)
+            #        wave_speed_part2 += values[:,i]*g
+            #if self.mom_order > 0:
+            #    wave_speed_part2 += np.divide(values[:,2*self.SG_order+2]*values[:,2*self.SG_order+2],denominator*denominator)
+            #    if self.SG_order > 0:
+            #        for i in range(1, self.SG_order):
+            #            wave_speed_part2 += np.divide(values[:,2*self.SG_order+2+i]*values[:,2*self.SG_order+2+i],denominator*denominator)
+            #max_wave_speed_plus = np.max(np.abs(wave_speed_part1 + np.sqrt(wave_speed_part2)))
+            #max_wave_speed_min = np.max(np.abs(wave_speed_part1 - np.sqrt(wave_speed_part2)))
+            #max_speed = max(max_wave_speed_plus,max_wave_speed_min)
 
-            delta_t = CFL*delta_x/max_speed
+            #delta_t = CFL*delta_x/max_speed
+            delta_t = 0.0005
             previous_values = np.copy(values)
 
             for i in range(1, self.mesh.resolution+1):
