@@ -3018,6 +3018,22 @@ class SWME1D(PDE):
             if order > 5:
                 initial_values[7] = 0 
         
+        elif initial_condition == 'smoothWave_linearVelocity':
+            initial_values[0] = 1 + np.exp(3*np.cos(np.pi*(position + 0.5)))/np.exp(4)
+            initial_values[1] = 0.25*initial_values[0]
+            if order > 0:
+                initial_values[2] = -0.25*initial_values[0]
+            if order > 1:
+                initial_values[3] = 0 
+            if order > 2:
+                initial_values[4] = 0 
+            if order > 3:
+                initial_values[5] = 0 
+            if order > 4:
+                initial_values[6] = 0
+            if order > 5:
+                initial_values[7] = 0 
+        
         elif initial_condition == 'smooth_plus_damBreak':
             x0 = -7
             x1 = 7
@@ -7115,6 +7131,60 @@ class SGSWME1D(PDE):
                     initial_values[4] = 0
                     initial_values[5] = 0
                     initial_values[6] = 0*initial_values[0]
+                    initial_values[7] = 0
+                    initial_values[8] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+            
+            else:
+                print("This moment order is not implemented yet for the SGSWME1D")
+        
+        elif initial_condition == 'smoothWave_linearVelocity':
+            if mom_order == 0:
+                if SG_order == 0:
+                    initial_values[0] = 1 + np.exp(3*np.cos(np.pi*(position + 0.5)))/np.exp(4)
+                    initial_values[1] = 0.25*initial_values[0]
+
+                elif SG_order == 1:
+                    initial_values[0] = 1 + np.exp(3*np.cos(np.pi*(position + 0.5)))/np.exp(4)
+                    initial_values[1] = 0
+                    initial_values[2] = 0.25*initial_values[0]
+                    initial_values[3] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 1 + np.exp(3*np.cos(np.pi*(position + 0.5)))/np.exp(4)
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0.25*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                
+                else:
+                    print("This stochastic Galerkin order is not implemented yet for mom_order=0")
+            
+            elif mom_order == 1:
+                if SG_order == 0:
+                    initial_values[0] = 1 + np.exp(3*np.cos(np.pi*(position + 0.5)))/np.exp(4)
+                    initial_values[1] = 0.25*initial_values[0]
+                    initial_values[2] = -0.25*initial_values[0]
+
+                elif SG_order == 1:
+                    initial_values[0] = 1 + np.exp(3*np.cos(np.pi*(position + 0.5)))/np.exp(4)
+                    initial_values[1] = 0
+                    initial_values[2] = 0.25*initial_values[0]
+                    initial_values[3] = 0
+                    initial_values[4] = -0.25*initial_values[0]
+                    initial_values[5] = 0
+                
+                elif SG_order == 2:
+                    initial_values[0] = 1 + np.exp(3*np.cos(np.pi*(position + 0.5)))/np.exp(4)
+                    initial_values[1] = 0
+                    initial_values[2] = 0
+                    initial_values[3] = 0.25*initial_values[0]
+                    initial_values[4] = 0
+                    initial_values[5] = 0
+                    initial_values[6] = -0.25*initial_values[0]
                     initial_values[7] = 0
                     initial_values[8] = 0
                 

@@ -1,6 +1,6 @@
 import numpy as np
 
-N_A = 20
+N_A = 40
 N_B = 60
 
 pde_type    = 'SWME1D'
