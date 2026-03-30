@@ -1,81 +1,46 @@
-##############################
-###### PDE INFORMATION #######
-##############################
-
 [pde_information]
-
-### True: one-dimensional, False: two-dimensional
 1D = True
-
-### PDE type. Implemented: SWME1D, HSWME1D
-pde_type = HSWME1D
-    # SWME1D, HSWME1D #
-    # Specify friction model. Implemented: Newton
+pde_type = RechargeSWME1D
 frictionModel = Newton
-        # Newton #
-        # Specify friction parameters
-slipLength = 0.5
-viscosity = 0
 
-linear_source = True
+# keep old SWME friction inactive for this first test
+slipLength = 1.0
+viscosity = 0.0
+linear_source = False
+hyperbolic = False
 
-# Specify initial conditions. 
-# SWME1D, HSWME1D: damBreak_noVelocity, constantHeight_noVelocity, constantHeight_constantVelocity, 
-                   #linearHeight_noVelocity, damBreak_constantVelocity, smooth_wave, symmetric_damBreak,
-                   #smooth_plus_damBreak
-initialCondition = smooth_wave_smallHeightGradient
-
+# use an existing simple initial condition
+initialCondition = constantHeight_noVelocity
 breakdown_criterion = nothing
 
-###############################
-###### GRID INFORMATION #######
-###############################
+# recharge parameters
+rainfall_rate = 0.20
+horton_f0 = 0.05
+horton_fc = 0.01
+horton_k = 1.0
+
 
 [grid_information]
-
-### Only structured grids implemented currently
 structuredGrid = True
+resolutionX = 100
+resolutionY = 1
 
-    # structuredGrid #
-    # Number of grid points in x-direction and y-direction (if the simulation is 1D: only resolutionX is used)
-resolutionX = 500
-resolutionY = 800
-    # Physical boundaries of the domain (if the simulation is 1D: only x1boundary and x2boundary are used)
-x1boundary = -2
-x2boundary = 2.5
-y1boundary = -2
-y2boundary = 2
+x1boundary = 0.0
+x2boundary = 1.0
+y1boundary = 0.0
+y2boundary = 1.0
 
-
-#########################################
-##### Numerical method information ######
-#########################################
 
 [numerical_method_information]
-# End time
-t_end = 0.5
+t_end = 5.0
 
-# spatially_adaptive, classical, micro_macro
 method = classical
-    ### SPATIALLYADAPTIVE ###
-    # spatial coupling: conservative, nonconservative
 coupling = conservative
-    # Starting order of the adaptive simulation
-start_order = 5
-    ### CLASSICAL ###
-    # Order of the model
-order = 0
+start_order = 1
+order = 1
 
-
-# Finite volume method type. Implemented: PVM
 fvm_type = PVM
+pvm = LF
 
-    # PVM #
-    # Polynomial viscosity method. Implemented: PRICE, LF
-pvm = Roe
-
-# Time integration for source term. Implemented: ExplicitEuler, ImplicitEuler, Exact
-timeIntegrator = ImplicitEuler
-
-# Boundary condition. Implemented: INFLOW_OUTFLOW, PERIODIC
-boundaryCondition = INFLOW_OUTFLOW
+timeIntegrator = ExplicitEuler
+boundaryCondition = PERIODIC

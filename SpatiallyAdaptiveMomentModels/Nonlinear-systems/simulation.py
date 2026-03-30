@@ -202,6 +202,10 @@ class ClassicalSimulation1D(Simulation):
             return self.pde_type.compute_source_term(self.order,cell_values,delta_t)
 
         step = 0
+        
+        # Define a history array for plotting to serve as a buffer for debugging.
+        history = []
+        save_every = 10
 
         while t < t_end:
 
@@ -224,15 +228,42 @@ class ClassicalSimulation1D(Simulation):
 
             for i in range(1,self.mesh.resolution+1):
                 values[i,:] = values[i,:] - delta_t/delta_x*(fluctuations_plus[i-1,:]+fluctuations_min[i,:])
-                values[i,:] = self.time_integration.integrate(values[i,:],source_term,delta_t)
+
+                if hasattr(self.pde_type, "set_source_context"):
+                    x_i = self.mesh.cell_center_positions[i - 1]
+                    self.pde_type.set_source_context(
+                        time = t,
+                        dt = delta_t,
+                        cell_index = i - 1,
+                        x = x_i,
+                    )
+                values[i,:] = self.time_integration.integrate(
+                    values[i,:],
+                    source_term,
+                    delta_t)
             print()
             print('time: '+str(t))
             print('step size: '+str(delta_t))
             print()
+
+            # Saving sequence
+            if step % save_every == 0:
+                snapshot = self._post_processing(values.copy())
+                history.append({
+                    "step": step,
+                    "time": t,
+                    "data": snapshot,
+                    "mean_h": np.mean(snapshot[:, 1]),
+                    "mean_u_m": np.mean(snapshot[:, 2]),
+                    "mean_a1": np.mean(snapshot[:, 3]),
+                    "min_h": np.min(snapshot[:, 1]),
+                    "max_h": np.max(snapshot[:, 1]),
+                })
             t += delta_t
             step += 1
 
         simulation_data = self._post_processing(values)
+        self.history = history
         return simulation_data
 
     def _get_initial_conditions(self,

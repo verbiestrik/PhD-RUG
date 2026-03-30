@@ -2,3 +2,29 @@
 ###################
 *.pyc
 *.txt
+
+# Linux
+*~
+.Trash-*
+
+# Cache
+__pycache__/
+
+# Virtual Environment
+.venv/
+
+# All executable, database or log files
+*.pdf
+*.png
+*.PNG
+*.gif
+*.csv
+*.jpg
+*.jpeg
+logfile.txt
+
+# Workspace
+*.code-workspace
+
+# Allow
+!requirements.txt
