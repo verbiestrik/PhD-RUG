@@ -5,7 +5,7 @@ from .source_terms import compute_recharge_source
 #from .initial_conditions import get_recharge_initial_condition
 
 __all__ = [
-    #"RechargeSWME1D",  # Not yet implemented
+    "RechargeSWME1D",
     "HortonInfiltration",
     "SourceContext",
     "compute_recharge_source",
