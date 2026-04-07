@@ -1,10 +1,4 @@
-# Packages
-import os
-
-# Make a post-processing directory if it doesn't exist
-os.makedirs('Data-processing/Output', exist_ok=True)
-
-# Import local modules
+# Packages & Local Imports
 import simulation
 import pde
 import mesh
@@ -15,9 +9,26 @@ import pandas as pd
 import configparser
 import timeit
 
-# Import Recharge specific setup
-from recharge.recharge_pde import RechargeSWME1D
-from recharge.laws import HortonInfiltration
+# Recharge Specific Imports. Everything is written as a try-except block to
+# avoid import errors in case the recharge module never merges with the main
+# branch. 
+try: 
+    import os
+    from recharge.recharge_pde import RechargeSWME1D
+    from recharge.laws import HortonInfiltration
+
+    # Define a global boolean flag that establishes if the recharge module 
+    # was introduced at runtime.
+    HAS_RECHARGE = True
+
+    # Make a post-processing directory if one doesn't exist. 
+    # Compartmentalize the recharge results in a separate folder but in the same
+    # Results/ directory.
+    os.makedirs('Data-processing/Results/Recharge', exist_ok=True)
+
+except ImportError:
+    # Silent fail, don't print an if statement
+    HAS_RECHARGE = False
 
 def main():
 
@@ -70,20 +81,31 @@ def main():
                         True,
                         exact_source_computation)
     elif pde_information['pde_type'] == 'RechargeSWME1D':
+        if not HAS_RECHARGE:
+            raise ImportError(
+                "Config requests pde_type='RechargeSWME1D' but the recharge module  "
+                "is not available in this branch/environment."
+            )
+        
+        # Build the infiltration object
         infiltration_model = HortonInfiltration(
-            f0 = float(pde_information['horton_f0']),
-            fc = float(pde_information['horton_fc']),
-            k = float(pde_information['horton_k'])
+            f0 = pde_information.getfloat('horton_f0'),
+            fc = pde_information.getfloat('horton_fc'),
+            k = pde_information.getfloat('horton_k'),
         )
+
+        # Build the pde object
         _pde = RechargeSWME1D(
             pde_information['initialCondition'],
-            float(pde_information['viscosity']),
-            float(pde_information['slipLength']),
-            pde_information.getboolean('hyperbolic', fallback=False),
+            pde_information.getfloat('viscosity'),
+            pde_information.getfloat('slipLength'),
+            pde_information.getboolean('hyperbolic', fallback=False),    
             pde_information.getboolean('linear_source', fallback=False),
-            float(pde_information['rainfall_rate']),
-            infiltration_model
-        )
+            pde_information.getfloat('rainfall_rate'),
+            infiltration_model,
+            pde_information.getfloat('f_R', fallback=1.0),
+            pde_information.getfloat('f_I', fallback=0.0),
+            )
     else:
         print('PDE_type is not implemented yet')
     
@@ -195,79 +217,100 @@ def main():
                 pde_information['initialCondition'],
                 _spatialDiscretization,
                 _time_integration)
+        
+        # Modify the old plotting code to be slighly more readable.
+        swme_plot_types = ['SWME1D', 'HSWME1D']
+        if HAS_RECHARGE:
+            swme_plot_types.append('RechargeSWME1D')
 
-        if pde_information['pde_type'] in ['SWME1D','HSWME1D','RechargeSWME1D']:
-            if numerical_method_information['method'] == 'spatially_adaptive' or\
-                numerical_method_information['method'] == 'smoothedAdaptive' or\
-                    numerical_method_information['method'] == 'interpolatedAdaptive':
-                _plotting = plotting.SWME1DPlotAdaptive(_pde,_mesh,_simulation)
+        if pde_information['pde_type'] in swme_plot_types:
+            if numerical_method_information['method'] in [
+                'spatially_adaptive',
+                'smoothedAdaptive',
+                'interpolatedAdaptive'
+            ]:
+                _plotting = plotting.SWME1DPlotAdaptive(_pde, _mesh, _simulation)
             elif numerical_method_information['method'] == 'classical':
-                _plotting = plotting.SWME1DPlotClassical(_pde,_mesh,_simulation)
-        elif pde_information['pde_type'] == 'HME' or pde_information['pde_type'] == 'Grad':
-            if numerical_method_information['method'] == 'spatially_adaptive' or\
-                numerical_method_information['method'] == 'smoothedAdaptive' or\
-                    numerical_method_information['method'] == 'interpolatedAdaptive':
-                _plotting = plotting.HME1DPlotAdaptive(_pde,_mesh,_simulation)
+                _plotting = plotting.SWME1DPlotClassical(_pde, _mesh, _simulation)
+        elif pde_information['pde_type'] in ['HME', 'Grad']:
+            if numerical_method_information['method'] in [
+                'spatially_adaptive',
+                'smoothedAdaptive',
+                'interpolatedAdaptive'
+            ]:
+                _plotting = plotting.HME1DPlotAdaptive(_pde, _mesh, _simulation)
             elif numerical_method_information['method'] == 'classical':
-                _plotting = plotting.HME1DPlotClassical(_pde,_mesh,_simulation)
+                _plotting = plotting.HME1DPlotClassical(_pde, _mesh, _simulation)
     
         start = timeit.default_timer()
+        if (
+            HAS_RECHARGE 
+            and pde_information['pde_type'] == 'RechargeSWME1D'
+            and numerical_method_information['method'] == 'classical'
+        ):
+            # Store the history in the simulation object
+            _simulation.store_history = True
+            # Store every 1 time step. Adjust to larger values to reduce storage.
+            _simulation.history_stride = 1
+
         data_array = _simulation.run_simulation(numerical_method_information.getfloat('t_end'))
 
-        # Final snapshot
-        final_df = pd.DataFrame(data_array, columns=["x", "h", "u_m", "a1"])
-        final_df.to_csv(
-            "Data-processing/Output/recharge_final_state.csv",
-            index=False
-        )
+        # Recharge specific post-processing
+        if HAS_RECHARGE and pde_information['pde_type'] == 'RechargeSWME1D':
+            final_df = pd.DataFrame(data_array, columns=["x", "h", "u_m", "a1"])
+            final_df.to_csv(
+                "Data-processing/Results/Recharge/recharge_results.csv",
+                index=False,
+            )
 
-        # Full history
-        if hasattr(_simulation, "history"):
-            field_rows = []
-            summary_rows = []
+            if hasattr(_simulation, "history") and len(_simulation.history) > 0:
+                field_rows = []
+                summary_rows = []
 
-            for entry in _simulation.history:
-                step = entry["step"]
-                time = entry["time"]
-                snapshot = entry["data"]
+                for entry in _simulation.history:
+                    step = entry["step"]
+                    time = entry["time"]
+                    snapshot = entry["data"]
 
-                # snapshot columns: x, h, u_m, a1
-                for row in snapshot:
-                    field_rows.append({
+                    for row in snapshot:
+                        field_rows.append({
+                            "step": step,
+                            "time": time,
+                            "x": row[0],
+                            "h": row[1],
+                            "u_m": row[2],
+                            "a1": row[3],
+                        })
+
+                    summary_rows.append({
                         "step": step,
                         "time": time,
-                        "x": row[0],
-                        "h": row[1],
-                        "u_m": row[2],
-                        "a1": row[3],
+                        "mean_h": snapshot[:, 1].mean(),
+                        "mean_u_m": snapshot[:, 2].mean(),
+                        "mean_a1": snapshot[:, 3].mean(),
+                        "min_h": snapshot[:, 1].min(),
+                        "max_h": snapshot[:, 1].max(),
                     })
-
-                summary_rows.append({
-                    "step": step,
-                    "time": time,
-                    "mean_h": entry["mean_h"],
-                    "mean_u_m": entry["mean_u_m"],
-                    "mean_a1": entry["mean_a1"],
-                    "min_h": entry["min_h"],
-                    "max_h": entry["max_h"],
-                })
-
-            field_df = pd.DataFrame(field_rows)
-            summary_df = pd.DataFrame(summary_rows)
-
-            field_df.to_csv(
-                "Data-processing/Output/recharge_history.csv",
-                index=False
-            )
-            summary_df.to_csv(
-                "Data-processing/Output/recharge_summary.csv",
-                index=False
-            )
+                
+                pd.DataFrame(field_rows).to_csv(
+                    "Data-processing/Results/Recharge/recharge_field_history.csv",
+                    index=False,
+                )
+                pd.DataFrame(summary_rows).to_csv(
+                    "Data-processing/Results/Recharge/recharge_summary_history.csv",
+                    index=False,
+                )
 
         stop = timeit.default_timer()
         print('Time: ', stop - start)
         data_frame = pd.DataFrame(data_array)
-        _plotting.plot(data_array)
+
+        # Making the plotting call safe
+        if '_plotting' in locals():
+            _plotting.plot(data_array)
+        else: 
+            print("No plotting class defined for pde_type =", 
+                  pde_information['pde_type'])
         # data_frame.to_csv('Data-processing/Output/test.csv', index=False,header=False)
         # data_frame.to_csv(
         #     'Data-processing/Results/KineticMomentEquations/smoothAndShockTube_order10_relaxation0.1_time1.0_3000.csv',

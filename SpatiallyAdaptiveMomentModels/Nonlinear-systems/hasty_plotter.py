@@ -4,11 +4,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-OUTPUT_DIR = "Data-processing/Output"
+OUTPUT_DIR = "Data-processing/Results/Recharge"
 FIG_DIR = "Data-processing/Figures"
 
-SUMMARY_FILE = os.path.join(OUTPUT_DIR, "recharge_summary.csv")
-HISTORY_FILE = os.path.join(OUTPUT_DIR, "recharge_history.csv")
+SUMMARY_FILE = os.path.join(OUTPUT_DIR, "recharge_summary_history.csv")
+HISTORY_FILE = os.path.join(OUTPUT_DIR, "recharge_field_history.csv")
 
 os.makedirs(FIG_DIR, exist_ok=True)
 

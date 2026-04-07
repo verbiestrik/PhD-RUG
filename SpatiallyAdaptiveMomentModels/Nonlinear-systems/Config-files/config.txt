@@ -8,9 +8,11 @@ slipLength = 1.0
 viscosity = 0.0
 linear_source = False
 hyperbolic = False
+f_R = 1.0
+f_I = 0.0
 
 # use an existing simple initial condition
-initialCondition = constantHeight_noVelocity
+initialCondition = constantHeight_constantVelocity
 breakdown_criterion = nothing
 
 # recharge parameters

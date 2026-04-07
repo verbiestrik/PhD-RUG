@@ -182,6 +182,53 @@ class ClassicalSimulation1D(Simulation):
         self.spatial_discretization = spatial_discretization
         self.time_integration = time_integration
 
+        # Optional generic history storage
+        # If enabled, post-processed snapshots of the solution are stored every
+        # `self.history_stride` time steps. This mechanism is solver-agnostic
+        # and can be used by any PDE model that needs time-history output for
+        # debugging, post-processing, visualization or generic export.
+        self.store_history = False                      # boolean storage flag
+        self.history_stride = 10                        # stride for storing
+        self.history = []                               # array to store in
+
+    def _store_snapshot(self,
+                        values : np.ndarray,
+                        step : int,
+                        time : float) -> None:
+        """
+        Optionally store a post-processed snapshot of the current solution.
+
+        This method provides a generic time-history mechanism for the classical
+        solver. If history storage is enabled, the current solution is 
+        post-processed and appended to `self.history` at the prescribed stride
+        interval.
+
+        Parameters
+        ----------
+        values : numpy.ndarray
+            Current state array, including ghost cells.
+        step : int
+            Current time-step index.
+        time : float
+            Physical time associated with the stored state..
+
+        Returns
+        -------
+        None
+        """
+        if not self.store_history:
+            return
+        
+        if step % self.history_stride != 0:
+            return
+        
+        snapshot = self._post_processing(values.copy())
+        self.history.append({
+            "step" : step,
+            "time" : time,
+            "data" : snapshot,
+        })
+
     def run_simulation(self,
                        t_end: float,
                        g = 1) -> np.ndarray:
@@ -194,18 +241,19 @@ class ClassicalSimulation1D(Simulation):
 
         CFL = 0.5 #TODO: put CFL number in config file
         t = 0
+        
+        # Initialize history storage if enabled.
+        # The initial condition is stored as snapshot 0 so that exported histories
+        # include both the starting state and the later evolved states.
+        step = 0 
+        self.history = []
+        self._store_snapshot(values, step=0, time=t)
 
         def system_matrix(cell_values):
             return self.pde_type.compute_system_matrix(self.order,cell_values)
 
         def source_term(cell_values,delta_t):
             return self.pde_type.compute_source_term(self.order,cell_values,delta_t)
-
-        step = 0
-        
-        # Define a history array for plotting to serve as a buffer for debugging.
-        history = []
-        save_every = 10
 
         while t < t_end:
 
@@ -229,6 +277,12 @@ class ClassicalSimulation1D(Simulation):
             for i in range(1,self.mesh.resolution+1):
                 values[i,:] = values[i,:] - delta_t/delta_x*(fluctuations_plus[i-1,:]+fluctuations_min[i,:])
 
+                # Generic source-context hook.
+                # The recharge PDE, as well as some other PDE models may require
+                # runtime metadata in addition to the local cell state. Variables
+                # like current time, timestep or cell position.
+                # If the PDE object provides a `set_source_context(...)` method,
+                # pass that information before the source integration step.
                 if hasattr(self.pde_type, "set_source_context"):
                     x_i = self.mesh.cell_center_positions[i - 1]
                     self.pde_type.set_source_context(
@@ -246,24 +300,14 @@ class ClassicalSimulation1D(Simulation):
             print('step size: '+str(delta_t))
             print()
 
-            # Saving sequence
-            if step % save_every == 0:
-                snapshot = self._post_processing(values.copy())
-                history.append({
-                    "step": step,
-                    "time": t,
-                    "data": snapshot,
-                    "mean_h": np.mean(snapshot[:, 1]),
-                    "mean_u_m": np.mean(snapshot[:, 2]),
-                    "mean_a1": np.mean(snapshot[:, 3]),
-                    "min_h": np.min(snapshot[:, 1]),
-                    "max_h": np.max(snapshot[:, 1]),
-                })
+
             t += delta_t
             step += 1
 
+            # Store history snapshot if enabled
+            self._store_snapshot(values, step = step, time = t)
+
         simulation_data = self._post_processing(values)
-        self.history = history
         return simulation_data
 
     def _get_initial_conditions(self,
