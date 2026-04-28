@@ -10,7 +10,7 @@ import timeit
 def main(config_file):
 
     config = configparser.ConfigParser()
-    config.read('Config-files/{0}'.format(config_file))
+    config.read('Config-Files/{0}'.format(config_file))
     pde_information = config['pde_information']
     grid_information = config['grid_information']
     numerical_method_information = config['numerical_method_information']
@@ -187,19 +187,19 @@ def main(config_file):
         print('Time: ', stop - start)
 
         if numerical_method_information['method'] == 'spatially_adaptive':
-            np.save("Data\data_{0}_start_order={1}_coupling={2}_nu={3}_lambda={4}_IC={5}_T={6}_integrator={7}.npy".format(pde_information['pde_type'], int(numerical_method_information['start_order']), numerical_method_information['coupling'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_start_order={1}_coupling={2}_nu={3}_lambda={4}_IC={5}_T={6}_integrator={7}.npy".format(pde_information['pde_type'], int(numerical_method_information['start_order']), numerical_method_information['coupling'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
         
         elif numerical_method_information['method'] == 'micro_macro':
-            np.save("Data\data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}_T={5}_integrator={6}.npy".format(pde_information['pde_type'], numerical_method_information['orders'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}_T={5}_integrator={6}.npy".format(pde_information['pde_type'], numerical_method_information['orders'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
 
         elif numerical_method_information.getboolean('monteCarlo'):
-            np.save("Data\data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('order'), numerical_method_information.getint('n_MC'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('order'), numerical_method_information.getint('n_MC'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
         
         elif numerical_method_information.getboolean('stochasticGalerkin'):
-            np.save("Data\data_{0}_{1}_MO={2}_SO={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('momOrder'),numerical_method_information.getint('SGOrder'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_{1}_MO={2}_SO={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('momOrder'),numerical_method_information.getint('SGOrder'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
         
         else:
-            np.save("Data\data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}_integrator={6}.npy".format(pde_information['pde_type'], numerical_method_information['order'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}_integrator={6}.npy".format(pde_information['pde_type'], numerical_method_information['order'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
     
     else:
         print('2D is not implemented yet.')
