@@ -586,7 +586,8 @@ class SWME1D(PDE):
 
     def compute_system_matrix_diff(self,
                                    order_low: int,
-                                   values: np.array) -> np.array:
+                                   values: np.array,
+                                   **kwargs) -> np.array:
         
         g = kwargs["g"] if "g" in kwargs else 1
         A_diff = np.zeros((order_low+2,order_low+2)) 
@@ -3288,7 +3289,8 @@ class SWME1D(PDE):
                                    number_of_variables: list,
                                    breakdown_criterion: str,
                                    n,
-                                   delta_x) -> np.array:
+                                   delta_x,
+                                   **kwargs) -> np.array:
         breakdown_criterion_values = np.zeros(n)
         
         if breakdown_criterion == 'height_gradient':
