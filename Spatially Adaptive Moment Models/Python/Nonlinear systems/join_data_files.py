@@ -13,8 +13,8 @@ IC          = 'lowDamBreak_linearVelocity'
 T           = 0.2
 integrator  = 'ImplicitEuler'
 
-data_array_A = np.load("Data\data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_type, distr, order, N_A, mu, sigma, slip_length, IC, T, integrator))
-data_array_B = np.load("Data\data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_type, distr, order, N_B, mu, sigma, slip_length, IC, T, integrator))
+data_array_A = np.load("Data/data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_type, distr, order, N_A, mu, sigma, slip_length, IC, T, integrator))
+data_array_B = np.load("Data/data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_type, distr, order, N_B, mu, sigma, slip_length, IC, T, integrator))
 
 data_array_C = np.concatenate((data_array_A, data_array_B), axis=0)
-np.save("Data\data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_type, distr, order, N_A+N_B, mu, sigma, slip_length, IC, T, integrator), data_array_C)
+np.save("Data/data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_type, distr, order, N_A+N_B, mu, sigma, slip_length, IC, T, integrator), data_array_C)
