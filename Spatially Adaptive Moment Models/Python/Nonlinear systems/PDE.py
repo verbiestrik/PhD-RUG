@@ -6979,7 +6979,7 @@ class SGSWME1D(PDE):
                 s0 = values[6]
                 s1 = values[7]
 
-                if self.disr == "normal":
+                if self.distr == "normal":
                     S[0] = 0
                     S[1] = 0
                     S[2] = (-(h0*(q0 + r0 + s0)*mu) + h1*(q1 + r1 + s1)*mu + h1*(q0 + r0 + s0)*sigma - h0*(q1 + r1 + s1)*sigma)/((h0 - h1)*(h0 + h1)*slip_length)
@@ -9141,6 +9141,8 @@ class SGSWME1D(PDE):
             
             func3_exp = np.zeros(len(values[:,0]))
             func3_var = np.zeros(len(values[:,0]))
+            func4_exp = np.zeros(len(values[:,0]))
+            func4_var = np.zeros(len(values[:,0]))
             
         elif mom_order == 1:
             if SG_order == 0:
@@ -9224,6 +9226,9 @@ class SGSWME1D(PDE):
             
             else:    
                 print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+            
+            func4_exp = np.zeros(len(values[:,0]))
+            func4_var = np.zeros(len(values[:,0]))
         
         elif mom_order == 2:
             if SG_order == 0:
