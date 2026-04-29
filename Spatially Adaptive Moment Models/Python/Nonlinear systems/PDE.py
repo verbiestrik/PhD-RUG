@@ -7036,7 +7036,7 @@ class SGSWME1D(PDE):
                 s1 = values[10]
                 s2 = values[11]
 
-                if self.disr == "normal":
+                if self.distr == "normal":
                     print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
                 
                 elif self.distr == "uniform":
