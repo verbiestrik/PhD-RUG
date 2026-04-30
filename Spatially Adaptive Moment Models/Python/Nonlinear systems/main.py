@@ -24,6 +24,7 @@ def main(config_file):
                           pde_information.getfloat('viscosity'),
                           pde_information.getfloat('slipLength'),
                           hyperbolic=False,
+                          linearised=False,
                           linear_source=linear_source_implicit)
     
     elif pde_information['pde_type'] == 'HSWME1D':
@@ -31,36 +32,46 @@ def main(config_file):
                           pde_information.getfloat('viscosity'),
                           pde_information.getfloat('slipLength'),
                           hyperbolic=True,
+                          linearised=False,
                           linear_source=linear_source_implicit)
     
+    elif pde_information['pde_type'] == 'SWLME1D':
+        _pde = PDE.SWME1D(pde_information['initialCondition'],
+                          pde_information.getfloat('viscosity'),
+                          pde_information.getfloat('slipLength'),
+                          hyperbolic=False,
+                          linearised=True,
+                          linear_source=linear_source_implicit)
+
     elif pde_information['pde_type'] == 'VegetationSWME1D':
         _pde = PDE.VegetationSWME1D(pde_information['initialCondition'],
                                     pde_information.getfloat('viscosity'),
                                     pde_information.getfloat('slipLength'),
+                                    False,
                                     False,
                                     linear_source_implicit,
                                     0.008,
                                     1,
                                     264)
     
-    elif pde_information['pde_type'] == 'SGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro' and not numerical_method_information.getboolean('monteCarlo'):
-        _pde = PDE.SGSWME1D(pde_information['initialCondition'],
+    elif pde_information['pde_type'] == 'SGSWLME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro' and not numerical_method_information.getboolean('monteCarlo'):
+        _pde = PDE.SGSWLME1D(pde_information['initialCondition'],
                             pde_information['distr'],
                             pde_information.getfloat('mu'),
                             pde_information.getfloat('sigma'),
                             pde_information.getfloat('slipLength'),
                             hyperbolic=False)
     
-    elif pde_information['pde_type'] == 'HSGSWME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro' and not numerical_method_information.getboolean('monteCarlo'):
-        _pde = PDE.SGSWME1D(pde_information['initialCondition'],
+    elif pde_information['pde_type'] == 'HSGSWLME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro' and not numerical_method_information.getboolean('monteCarlo'):
+        _pde = PDE.SGSWLME1D(pde_information['initialCondition'],
                             pde_information['distr'],
                             pde_information.getfloat('mu'),
                             pde_information.getfloat('sigma'),
                             pde_information.getfloat('slipLength'),
                             hyperbolic=True)
     
-    elif pde_information['pde_type'] == 'SGSWME1D' or pde_information['pde_type'] == 'HSGSWME1D':
-        print("pde_type can only be SGSWME1D if stochasticGalerkin is True and spatially_adaptive, micro_macro and monteCarlo are False.")
+    elif pde_information['pde_type'] == 'SGSWLME1D' or pde_information['pde_type'] == 'HSGSWLME1D':
+        print("pde_type can only be SGSWLME1D if stochasticGalerkin is True and spatially_adaptive, micro_macro and monteCarlo are False.")
     
     else:
         print('This pde_type is not implemented yet.')
@@ -164,7 +175,7 @@ def main(config_file):
         if not numerical_method_information.getboolean('monteCarlo'):
             data_array = _simulation.run_simulation(numerical_method_information.getfloat('t_end'))
         
-        elif numerical_method_information.getboolean('monteCarlo') and pde_information['pde_type'] == 'SWME1D' and not numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro':
+        elif numerical_method_information.getboolean('monteCarlo') and pde_information['pde_type'] == 'SWLME1D' and not numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro':
             data_array = np.zeros((numerical_method_information.getint('n_MC'), grid_information.getint('resolutionX'), numerical_method_information.getint('order') + 3))
             
             if pde_information['distr'] == "normal":
@@ -181,25 +192,25 @@ def main(config_file):
                 print("This distribution is not implemented yet for the Monte Carlo loop.")
         
         else:
-            print("Monte Carlo loop can only be used on pde_type SWME1D and cannot be used in combination with stochasticGalerkin, spatially_adaptive and/or micro_macro.")
+            print("Monte Carlo loop can only be used on pde_type SWLME1D and cannot be used in combination with stochasticGalerkin, spatially_adaptive and/or micro_macro.")
         
         stop = timeit.default_timer()
         print('Time: ', stop - start)
 
         if numerical_method_information['method'] == 'spatially_adaptive':
-            np.save("Data/data_{0}_start_order={1}_coupling={2}_nu={3}_lambda={4}_IC={5}_T={6}_integrator={7}.npy".format(pde_information['pde_type'], int(numerical_method_information['start_order']), numerical_method_information['coupling'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_start_order={1}_coupling={2}_nu={3}_lambda={4}_IC={5}_T={6}.npy".format(pde_information['pde_type'], int(numerical_method_information['start_order']), numerical_method_information['coupling'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
         
         elif numerical_method_information['method'] == 'micro_macro':
-            np.save("Data/data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}_T={5}_integrator={6}.npy".format(pde_information['pde_type'], numerical_method_information['orders'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_orders={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_information['pde_type'], numerical_method_information['orders'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
 
         elif numerical_method_information.getboolean('monteCarlo'):
-            np.save("Data/data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('order'), numerical_method_information.getint('n_MC'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_{1}_order={2}_N={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('order'), numerical_method_information.getint('n_MC'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
         
         elif numerical_method_information.getboolean('stochasticGalerkin'):
-            np.save("Data/data_{0}_{1}_MO={2}_SO={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}_integrator={9}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('momOrder'),numerical_method_information.getint('SGOrder'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_{1}_MO={2}_SO={3}_mu={4}_sigma={5}_lambda={6}_IC={7}_T={8}.npy".format(pde_information['pde_type'], pde_information['distr'], numerical_method_information.getint('momOrder'),numerical_method_information.getint('SGOrder'), pde_information.getfloat('mu'), pde_information.getfloat('sigma'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
         
         else:
-            np.save("Data/data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}_integrator={6}.npy".format(pde_information['pde_type'], numerical_method_information['order'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end'), numerical_method_information['timeIntegrator']), data_array)
+            np.save("Data/data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_information['pde_type'], numerical_method_information['order'], pde_information.getfloat('viscosity'), pde_information.getfloat('slipLength'), pde_information['initialCondition'], numerical_method_information.getfloat('t_end')), data_array)
     
     else:
         print('2D is not implemented yet.')
