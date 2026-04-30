@@ -246,6 +246,7 @@ class SWME1D(PDE):
                  viscosity: float,
                  slip_length: float,
                  hyperbolic: bool,
+                 linearised: bool,
                  linear_source: bool):
         """
         Constructs all the necessary attributes for the SWME1D object.
@@ -265,6 +266,7 @@ class SWME1D(PDE):
         self.viscosity = viscosity
         self.slip_length = slip_length
         self.hyperbolic = hyperbolic
+        self.linearised = linearised
         self.linear_source = linear_source
 
     def compute_system_matrix(self,
@@ -280,8 +282,8 @@ class SWME1D(PDE):
         if order == 0:
             A[0][0] = 0
             A[0][1] = 1
-            A[1][0] = g*h - um*um
-            A[1][1] = 2.*um
+            A[1][0] = g*h - um**2
+            A[1][1] = 2*um
         
         elif order == 1:
             alpha1 = values[2]/values[0]
@@ -289,7 +291,7 @@ class SWME1D(PDE):
             A[0][0] = 0
             A[0][1] = 1
             A[0][2] = 0
-            A[1][0] = g*h - um*um - alpha1*alpha1/3
+            A[1][0] = g*h - um**2 - alpha1**2/3
             A[1][1] = 2*um
             A[1][2] = 2*alpha1/3
             A[2][0] = -2*um*alpha1
@@ -300,60 +302,107 @@ class SWME1D(PDE):
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
+            if self.linearised:
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[2][0] = -2*um*alpha1
+                A[2][1] = 2*alpha1
+                A[2][2] = um
+                A[2][3] = 0
+                A[3][0] = -2*um*alpha2
+                A[3][1] = 2*alpha2
+                A[3][2] = 0
+                A[3][3] = um
 
-            A[0][0] = 0
-            A[0][1] = 1
-            A[0][2] = 0
-            A[0][3] = 0
-            A[1][0] = g*h - um*um - alpha1*alpha1/3 - alpha2*alpha2/5
-            A[1][1] = 2*um
-            A[1][2] = 2*alpha1/3
-            A[1][3] = 2*alpha2/5
-            A[2][0] = -2/5*alpha1*(5*um + 2*alpha2)
-            A[2][1] = 2*alpha1
-            A[2][2] = um + alpha2
-            A[2][3] = 3*alpha1/5
-            A[3][0] = -2/21*(7*alpha1*alpha1 + 3*alpha2*(7*um + alpha2))
-            A[3][1] = 2*alpha2
-            A[3][2] = alpha1/3
-            A[3][3] = um + 3/7*alpha2
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[2][0] = -2/5*alpha1*(5*um + 2*alpha2)
+                A[2][1] = 2*alpha1
+                A[2][2] = um + alpha2
+                A[2][3] = 3*alpha1/5
+                A[3][0] = -2/21*(7*alpha1**2 + 3*alpha2*(7*um + alpha2))
+                A[3][1] = 2*alpha2
+                A[3][2] = alpha1/3
+                A[3][3] = um + 3/7*alpha2
         
         elif order == 3:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
+            if self.linearised:
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[0][4] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5 - alpha3**2/7
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[1][4] = 2*alpha3/7
+                A[2][0] = -2*um*alpha1
+                A[2][1] = 2*alpha1
+                A[2][2] = um
+                A[2][3] = 0
+                A[2][4] = 0
+                A[3][0] = -2*um*alpha2
+                A[3][1] = 2*alpha2
+                A[3][2] = 0
+                A[3][3] = um
+                A[3][4] = 0
+                A[4][0] = -2*um*alpha3
+                A[4][1] = 2*alpha3
+                A[4][2] = 0
+                A[4][3] = 0
+                A[4][4] = um
 
-            A[0][0] = 0
-            A[0][1] = 1
-            A[0][2] = 0
-            A[0][3] = 0
-            A[0][4] = 0
-            A[1][0] = g*h - um*um - alpha1*alpha1/3 - alpha2*alpha2/5 - alpha3*alpha3/7
-            A[1][1] = 2*um
-            A[1][2] = 2*alpha1/3
-            A[1][3] = 2*alpha2/5
-            A[1][4] = 2*alpha3/7
-            A[2][0] = -2/35*(7*alpha1*(5*um + 2*alpha2) + 9*alpha2*alpha3)
-            A[2][1] = 2*alpha1
-            A[2][2] = um + alpha2
-            A[2][3] = 3*(alpha1 + alpha3)/5
-            A[2][4] = 3*alpha2/7
-            A[3][0] = -2/21*(3*alpha2*(7*um + alpha2)+(alpha1 + alpha3)*(7*alpha1 + 2*alpha3))
-            A[3][1] = 2*alpha2
-            A[3][2] = alpha1/3 + 9*alpha3/7
-            A[3][3] = um + 3/7*alpha2
-            A[3][4] = 4*alpha1/7 + alpha3/3
-            A[4][0] = -2*um*alpha3 - 2*alpha2*(9*alpha1 + 4*alpha3)/15 
-            A[4][1] = 2*alpha3
-            A[4][2] = 0
-            A[4][3] = 2*(alpha1 + alpha3)/5
-            A[4][4] = um + alpha2/3
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[0][4] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5 - alpha3**2/7
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[1][4] = 2*alpha3/7
+                A[2][0] = -2/35*(7*alpha1*(5*um + 2*alpha2) + 9*alpha2*alpha3)
+                A[2][1] = 2*alpha1
+                A[2][2] = um + alpha2
+                A[2][3] = 3*(alpha1 + alpha3)/5
+                A[2][4] = 3*alpha2/7
+                A[3][0] = -2/21*(3*alpha2*(7*um + alpha2)+(alpha1 + alpha3)*(7*alpha1 + 2*alpha3))
+                A[3][1] = 2*alpha2
+                A[3][2] = alpha1/3 + 9*alpha3/7
+                A[3][3] = um + 3/7*alpha2
+                A[3][4] = 4*alpha1/7 + alpha3/3
+                A[4][0] = -2*um*alpha3 - 2*alpha2*(9*alpha1 + 4*alpha3)/15 
+                A[4][1] = 2*alpha3
+                A[4][2] = 0
+                A[4][3] = 2*(alpha1 + alpha3)/5
+                A[4][4] = um + alpha2/3
         
         elif order == 4:
             alpha1 = values[2]/values[0]
@@ -361,53 +410,86 @@ class SWME1D(PDE):
             alpha3 = values[4]/values[0]
             alpha4 = values[5]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
+            if self.linearised:
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[0][4] = 0
+                A[0][5] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5 - alpha3**2/7 - alpha4**2/9
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[1][4] = 2*alpha3/7
+                A[1][5] = 2*alpha4/9
+                A[2][0] = -2*um*alpha1
+                A[2][1] = 2*alpha1
+                A[2][2] = um
+                A[2][3] = 0
+                A[2][4] = 0
+                A[2][5] = 0
+                A[3][0] = -2*um*alpha2
+                A[3][1] = 2*alpha2
+                A[3][2] = 0
+                A[3][3] = um
+                A[3][4] = 0
+                A[3][5] = 0
+                A[4][0] = -2*um*alpha3
+                A[4][1] = 2*alpha3
+                A[4][2] = 0
+                A[4][3] = 0
+                A[4][4] = um
+                A[4][5] = 0
+                A[5][0] = -2*um*alpha4
+                A[5][1] = 2*alpha4
+                A[5][2] = 0
+                A[5][3] = 0
+                A[5][4] = 0
+                A[5][5] = um
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+                    alpha4 = 0
 
-            A[0][0] = 0
-            A[0][1] = 1
-            A[0][2] = 0
-            A[0][3] = 0
-            A[0][4] = 0
-            A[0][5] = 0
-            A[1][0] = g*h - um*um - alpha1*alpha1/3. - alpha2*alpha2/5. - \
-            alpha3*alpha3/7. - alpha4*alpha4/9.
-            A[1][1] = 2*um
-            A[1][2] = (2*alpha1)/3.
-            A[1][3] = (2*alpha2)/5.
-            A[1][4] = (2*alpha3)/7.
-            A[1][5] = (2*alpha4)/9.
-            A[2][0] = (-2*(21*alpha1*(5*um + 2*alpha2) + alpha3*(27*alpha2 + \
-            20*alpha4)))/105.
-            A[2][1] = 2*alpha1
-            A[2][2] = um + alpha2
-            A[2][3] = (3*(alpha1 + alpha3))/5.
-            A[2][4] = (3*(alpha2 + alpha4))/7.
-            A[2][5] = alpha3/3.
-            A[3][0] = (-2*(99*alpha2*alpha2 + 33*(alpha1 + alpha3)*(7*alpha1 + \
-            2*alpha3) + 50*alpha4*alpha4 + 99*alpha2*(7*um + 2*alpha4)))/693.
-            A[3][1] = 2*alpha2
-            A[3][2] = alpha1/3. + (9*alpha3)/7.
-            A[3][3] = um + (3*alpha2)/7. + (16*alpha4)/21.
-            A[3][4] = (4*alpha1)/7. + alpha3/3.
-            A[3][5] = (3*alpha2)/7. + (185*alpha4)/693.
-            A[4][0] = alpha1*((-6*alpha2)/5. - (8*alpha4)/9.) - (2*alpha3*(165*um \
-            + 44*alpha2 + 30*alpha4))/165.
-            A[4][1] = 2*alpha3
-            A[4][2] = (14*alpha4)/9.
-            A[4][3] = (2*(alpha1 + alpha3))/5.
-            A[4][4] = um + (alpha2 + alpha4)/3.
-            A[4][5] = (5*alpha1)/9. + (3*alpha3)/11.
-            A[5][0] = -2*um*alpha4 - (2*(1287*alpha2*alpha2 + \
-            65*alpha3*(44*alpha1 + 9*alpha3) + 1300*alpha2*alpha4 + \
-            405*alpha4*alpha4))/5005.
-            A[5][1] = 2*alpha4
-            A[5][2] = (-2*alpha3)/7.
-            A[5][3] = (6*alpha2)/35. + (30*alpha4)/77.
-            A[5][4] = (3*alpha1)/7. + (3*alpha3)/11.
-            A[5][5] = um + (23*alpha2)/77. + (243*alpha4)/1001.
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[0][4] = 0
+                A[0][5] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5 - alpha3**2/7 - alpha4**2/9
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[1][4] = 2*alpha3/7
+                A[1][5] = 2*alpha4/9
+                A[2][0] = -2*(21*alpha1*(5*um + 2*alpha2) + alpha3*(27*alpha2 + 20*alpha4))/105
+                A[2][1] = 2*alpha1
+                A[2][2] = um + alpha2
+                A[2][3] = 3*(alpha1 + alpha3)/5
+                A[2][4] = 3*(alpha2 + alpha4)/7
+                A[2][5] = alpha3/3
+                A[3][0] = -2*(99*alpha2*alpha2 + 33*(alpha1 + alpha3)*(7*alpha1 + 2*alpha3) + 50*alpha4*alpha4 + 99*alpha2*(7*um + 2*alpha4))/693
+                A[3][1] = 2*alpha2
+                A[3][2] = alpha1/3 + 9*alpha3/7
+                A[3][3] = um + 3*alpha2/7 + 16*alpha4/21
+                A[3][4] = 4*alpha1/7 + alpha3/3
+                A[3][5] = 3*alpha2/7 + 185*alpha4/693
+                A[4][0] = alpha1*((-6*alpha2)/5 - (8*alpha4)/9) - (2*alpha3*(165*um + 44*alpha2 + 30*alpha4))/165
+                A[4][1] = 2*alpha3
+                A[4][2] = 14*alpha4/9
+                A[4][3] = 2*(alpha1 + alpha3)/5
+                A[4][4] = um + (alpha2 + alpha4)/3
+                A[4][5] = 5*alpha1/9 + 3*alpha3/11
+                A[5][0] = -2*um*alpha4 - 2*(1287*alpha2*alpha2 + 65*alpha3*(44*alpha1 + 9*alpha3) + 1300*alpha2*alpha4 + 405*alpha4*alpha4)/5005
+                A[5][1] = 2*alpha4
+                A[5][2] = -2*alpha3/7
+                A[5][3] = 6*alpha2/35 + 30*alpha4/77
+                A[5][4] = 3*alpha1/7 + 3*alpha3/11
+                A[5][5] = um + 23*alpha2/77 + 243*alpha4/1001
         
         elif order == 5:
             alpha1 = values[2]/values[0]
@@ -416,168 +498,115 @@ class SWME1D(PDE):
             alpha4 = values[5]/values[0]
             alpha5 = values[6]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
-                alpha5 = 0
+            if self.linearised:
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[0][4] = 0
+                A[0][5] = 0
+                A[0][6] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5 - alpha3**2/7 - alpha4**2/9 - alpha5**2/11
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[1][4] = 2*alpha3/7
+                A[1][5] = 2*alpha4/9
+                A[1][6] = 2*alpha5/11
+                A[2][0] = -2*um*alpha1
+                A[2][1] = 2*alpha1
+                A[2][2] = um
+                A[2][3] = 0
+                A[2][4] = 0
+                A[2][5] = 0
+                A[2][6] = 0
+                A[3][0] = -2*um*alpha2
+                A[3][1] = 2*alpha2
+                A[3][2] = 0
+                A[3][3] = um
+                A[3][4] = 0
+                A[3][5] = 0
+                A[3][6] = 0
+                A[4][0] = -2*um*alpha3
+                A[4][1] = 2*alpha3
+                A[4][2] = 0
+                A[4][3] = 0
+                A[4][4] = um
+                A[4][5] = 0
+                A[4][6] = 0
+                A[5][0] = -2*um*alpha4
+                A[5][1] = 2*alpha4
+                A[5][2] = 0
+                A[5][3] = 0
+                A[5][4] = 0
+                A[5][5] = um
+                A[5][6] = 0
+                A[6][0] = -2*um*alpha5
+                A[6][1] = 2*alpha5
+                A[6][2] = 0
+                A[6][3] = 0
+                A[6][4] = 0
+                A[6][5] = 0
+                A[6][6] = um
 
-            A[0][0] = 0
-            A[0][1] = 1
-            A[0][2] = 0
-            A[0][3] = 0
-            A[0][4] = 0
-            A[0][5] = 0
-            A[0][6] = 0
-            A[1][0] = g*h - um*um - alpha1*alpha1/3. - alpha2*alpha2/5. - \
-            alpha3*alpha3/7. - alpha4*alpha4/9. - alpha5*alpha5/11.
-            A[1][1] = 2*um
-            A[1][2] = (2*alpha1)/3.
-            A[1][3] = (2*alpha2)/5.
-            A[1][4] = (2*alpha3)/7.
-            A[1][5] = (2*alpha4)/9.
-            A[1][6] = (2*alpha5)/11.
-            A[2][0] = (-2*alpha1*(5*um + 2*alpha2))/5. - (18*alpha2*alpha3)/35. - \
-            (2*alpha4*(44*alpha3 + 35*alpha5))/231.
-            A[2][1] = 2*alpha1
-            A[2][2] = um + alpha2
-            A[2][3] = (3*(alpha1 + alpha3))/5.
-            A[2][4] = (3*(alpha2 + alpha4))/7.
-            A[2][5] = (alpha3 + alpha5)/3.
-            A[2][6] = (3*alpha4)/11.
-            A[3][0] = (-2*(429*(alpha1 + alpha3)*(7*alpha1 + 2*alpha3) + \
-            13*(99*alpha2*alpha2 + 50*alpha4*alpha4 + 99*alpha2*(7*um + \
-            2*alpha4)) + 1950*alpha3*alpha5 + 525*alpha5*alpha5))/9009.
-            A[3][1] = 2*alpha2
-            A[3][2] = alpha1/3. + (9*alpha3)/7.
-            A[3][3] = um + (3*alpha2)/7. + (16*alpha4)/21.
-            A[3][4] = (4*alpha1)/7. + alpha3/3. + (125*alpha5)/231.
-            A[3][5] = (3*alpha2)/7. + (185*alpha4)/693.
-            A[3][6] = (80*alpha3)/231. + (95*alpha5)/429.
-            A[4][0] = -2*um*alpha3 + alpha1*((-6*alpha2)/5. - (8*alpha4)/9.) - \
-            (4*alpha4*(13*alpha3 + 10*alpha5))/143. - (4*alpha2*(22*alpha3 + \
-            25*alpha5))/165.
-            A[4][1] = 2*alpha3
-            A[4][2] = (14*alpha4)/9.
-            A[4][3] = (2*(alpha1 + alpha3))/5. + (10*alpha5)/11.
-            A[4][4] = um + (alpha2 + alpha4)/3.
-            A[4][5] = (5*alpha1)/9. + (3*(alpha3 + alpha5))/11.
-            A[4][6] = (14*(13*alpha2 + 7*alpha4))/429.
-            A[5][0] = (-2*(1287*alpha2*alpha2 + 5005*um*alpha4 + \
-            1300*alpha2*alpha4 + 405*alpha4*alpha4 + 45*(alpha3 + \
-            alpha5)*(13*alpha3 + 7*alpha5) + 65*alpha1*(44*alpha3 + \
-            35*alpha5)))/5005.
-            A[5][1] = 2*alpha4
-            A[5][2] = (-2*alpha3)/7. + (20*alpha5)/11.
-            A[5][3] = (6*alpha2)/35. + (30*alpha4)/77.
-            A[5][4] = (3*(143*alpha1 + 91*alpha3 + 115*alpha5))/1001.
-            A[5][5] = um + (23*alpha2)/77. + (243*alpha4)/1001.
-            A[5][6] = (6*(91*alpha1 + 41*alpha3 + 35*alpha5))/1001.
-            A[6][0] = (-2*(819*um*alpha5 + 30*alpha2*(13*alpha3 + 7*alpha5) + \
-            alpha4*(455*alpha1 + 180*alpha3 + 126*alpha5)))/819.
-            A[6][1] = 2*alpha5
-            A[6][2] = (-5*alpha4)/9.
-            A[6][3] = (5*alpha5)/13.
-            A[6][4] = (5*(alpha2 + alpha4))/21.
-            A[6][5] = (4*alpha1)/9. + (3*(alpha3 + alpha5))/13.
-            A[6][6] = um + (11*alpha2)/39. + (8*alpha4)/39.
-        
-        elif order == 6:
-            alpha1 = values[2]/values[0]
-            alpha2 = values[3]/values[0]
-            alpha3 = values[4]/values[0]
-            alpha4 = values[5]/values[0]
-            alpha5 = values[6]/values[0]
-            alpha6 = values[7]/values[0]
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+                    alpha4 = 0
+                    alpha5 = 0
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
-                alpha5 = 0
-                alpha6 = 0
-
-            A[0][0] = 0
-            A[0][1] = 1
-            A[0][2] = 0
-            A[0][3] = 0
-            A[0][4] = 0
-            A[0][5] = 0
-            A[0][6] = 0
-            A[0][7] = 0
-            A[1][0] = g*h - um*um - alpha1*alpha1/3. - alpha2*alpha2/5. - \
-            alpha3*alpha3/7. - alpha4*alpha4/9. - alpha5*alpha5/11. - \
-            alpha6*alpha6/13.
-            A[1][1] = 2*um
-            A[1][2] = (2*alpha1)/3.
-            A[1][3] = (2*alpha2)/5.
-            A[1][4] = (2*alpha3)/7.
-            A[1][5] = (2*alpha4)/9.
-            A[1][6] = (2*alpha5)/11.
-            A[1][7] = (2*alpha5)/13.
-            A[2][0] = (-2*alpha1*(5*um + 2*alpha2))/5. - (18*alpha2*alpha3)/35. - \
-            (8*alpha3*alpha4)/21. - (2*alpha5*(65*alpha4 + 54*alpha5))/429.
-            A[2][1] = 2*alpha1
-            A[2][2] = um + alpha2
-            A[2][3] = (3*(alpha1 + alpha3))/5.
-            A[2][4] = (3*(alpha2 + alpha4))/7.
-            A[2][5] = (alpha3 + alpha5)/3.
-            A[2][6] = (3*(alpha4 + alpha5))/11.
-            A[2][7] = (3*alpha5)/13.
-            A[3][0] = (-2*(1287*alpha2*alpha2 + 429*(alpha1 + alpha3)*(7*alpha1 + \
-            2*alpha3) + 1287*alpha2*(7*um + 2*alpha4) + 1950*alpha3*alpha5 + \
-            525*alpha5*alpha5 + (10*alpha4 + 21*alpha5)*(65*alpha4 + \
-            21*alpha5)))/9009.
-            A[3][1] = 2*alpha2
-            A[3][2] = alpha1/3. + (9*alpha3)/7.
-            A[3][3] = um + (3*alpha2)/7. + (16*alpha4)/21.
-            A[3][4] = (4*alpha1)/7. + alpha3/3. + (125*alpha5)/231.
-            A[3][5] = (3*alpha2)/7. + (185*alpha4)/693. + (60*alpha5)/143.
-            A[3][6] = (80*alpha3)/231. + (95*alpha5)/429.
-            A[3][7] = (125*alpha4 + 81*alpha5)/429.
-            A[4][0] = (-2*(143*alpha1*(27*alpha2 + 20*alpha4) + \
-            78*alpha2*(22*alpha3 + 25*alpha5) + 15*alpha5*(60*alpha4 + 49*alpha5) \
-            + 15*alpha3*(429*um + 78*alpha4 + 100*alpha5)))/6435.
-            A[4][1] = 2*alpha3
-            A[4][2] = (14*alpha4)/9.
-            A[4][3] = (2*(alpha1 + alpha3))/5. + (10*alpha5)/11.
-            A[4][4] = um + alpha2/3. + alpha4/3. + (25*alpha5)/39.
-            A[4][5] = (5*alpha1)/9. + (3*(alpha3 + alpha5))/11.
-            A[4][6] = (14*(13*alpha2 + 7*(alpha4 + alpha5)))/429.
-            A[4][7] = (2*(25*alpha3 + 14*alpha5))/143.
-            A[5][0] = (-2*(21879*alpha2*alpha2 + 6885*alpha4*alpha4 + 765*(alpha3 \
-            + alpha5)*(13*alpha3 + 7*alpha5) + 1105*alpha1*(44*alpha3 + \
-            35*alpha5) + 4410*alpha6*alpha6 + 595*alpha4*(143*um + 20*alpha5) + \
-            425*alpha2*(52*alpha4 + 63*alpha5)))/85085.
-            A[5][1] = 2*alpha4
-            A[5][2] = (-2*alpha3)/7. + (20*alpha5)/11.
-            A[5][3] = (6*(143*alpha2 + 325*alpha4 + 875*alpha5))/5005.
-            A[5][4] = (3*(143*alpha1 + 91*alpha3 + 115*alpha5))/1001.
-            A[5][5] = um + (299*alpha2 + 243*alpha4 + 287*alpha5)/1001.
-            A[5][6] = (6*(91*alpha1 + 41*alpha3 + 35*alpha5))/1001.
-            A[5][7] = (6*(85*(2*alpha2 + alpha4) + 74*alpha5))/2431.
-            A[6][0] = (-2*(510*alpha2*(13*alpha3 + 7*alpha5) + \
-            51*alpha3*(60*alpha4 + 49*alpha5) + 119*alpha1*(65*alpha4 + \
-            54*alpha5) + 21*alpha5*(663*um + 102*alpha4 + 80*alpha5)))/13923.
-            A[6][1] = 2*alpha5
-            A[6][2] = (-5*alpha4)/9. + (27*alpha5)/13.
-            A[6][3] = (5*alpha5)/13.
-            A[6][4] = (5*(alpha2 + alpha4))/21. + (14*alpha5)/39.
-            A[6][5] = (4*alpha1)/9. + (3*(alpha3 + alpha5))/13.
-            A[6][6] = um + (11*alpha2)/39. + (8*(alpha4 + alpha5))/39.
-            A[6][7] = (119*alpha1 + 51*alpha3 + 40*alpha5)/221.
-            A[7][0] = (-100*alpha3*alpha3)/231. - (14*alpha3*alpha5)/33. - \
-            2*um*alpha5 - (2*alpha2*(25*alpha4 + 14*alpha5))/55. - \
-            (4*(19*(85*alpha4*alpha4 + 459*alpha1*alpha5 + 60*alpha5*alpha5) + \
-            2394*alpha4*alpha5 + 900*alpha6*alpha6))/31977.
-            A[7][1] = 2*alpha5
-            A[7][2] = (-9*alpha5)/11.
-            A[7][3] = (-5*alpha4)/33. + (21*alpha5)/55.
-            A[7][4] = (25*alpha3 + 49*alpha5)/231.
-            A[7][5] = (3*alpha2)/11. + (19*alpha4)/99. + (42*alpha5)/187.
-            A[7][6] = (255*alpha1 + 119*alpha3 + 104*alpha5)/561.
-            A[7][7] = um + (3*alpha2)/11. + (104*alpha4)/561. + \
-            (600*alpha5)/3553.
+                A[0][0] = 0
+                A[0][1] = 1
+                A[0][2] = 0
+                A[0][3] = 0
+                A[0][4] = 0
+                A[0][5] = 0
+                A[0][6] = 0
+                A[1][0] = g*h - um**2 - alpha1**2/3 - alpha2**2/5 - alpha3**2/7 - alpha4**2/9 - alpha5**2/11
+                A[1][1] = 2*um
+                A[1][2] = 2*alpha1/3
+                A[1][3] = 2*alpha2/5
+                A[1][4] = 2*alpha3/7
+                A[1][5] = 2*alpha4/9
+                A[1][6] = 2*alpha5/11
+                A[2][0] = -2*alpha1*(5*um + 2*alpha2)/5 - 18*alpha2*alpha3/35 - 2*alpha4*(44*alpha3 + 35*alpha5)/231
+                A[2][1] = 2*alpha1
+                A[2][2] = um + alpha2
+                A[2][3] = 3*(alpha1 + alpha3)/5
+                A[2][4] = 3*(alpha2 + alpha4)/7
+                A[2][5] = (alpha3 + alpha5)/3
+                A[2][6] = 3*alpha4/11
+                A[3][0] = -2*(429*(alpha1 + alpha3)*(7*alpha1 + 2*alpha3) + 13*(99*alpha2**2 + 50*alpha4**2 + 99*alpha2*(7*um + 2*alpha4)) \
+                        + 1950*alpha3*alpha5 + 525*alpha5**2)/9009
+                A[3][1] = 2*alpha2
+                A[3][2] = alpha1/3 + 9*alpha3/7
+                A[3][3] = um + 3*alpha2/7 + 16*alpha4/21
+                A[3][4] = 4*alpha1/7 + alpha3/3 + 125*alpha5/231
+                A[3][5] = 3*alpha2/7 + 185*alpha4/693
+                A[3][6] = 80*alpha3/231 + 95*alpha5/429
+                A[4][0] = -2*um*alpha3 + alpha1*(-6*alpha2/5 - 8*alpha4/9) - 4*alpha4*(13*alpha3 + 10*alpha5)/143 - 4*alpha2*(22*alpha3 + 25*alpha5)/165
+                A[4][1] = 2*alpha3
+                A[4][2] = 14*alpha4/9
+                A[4][3] = 2*(alpha1 + alpha3)/5 + 10*alpha5/11
+                A[4][4] = um + (alpha2 + alpha4)/3
+                A[4][5] = 5*alpha1/9 + 3*(alpha3 + alpha5)/11
+                A[4][6] = 14*(13*alpha2 + 7*alpha4)/429
+                A[5][0] = -2*(1287*alpha2*alpha2 + 5005*um*alpha4 + 1300*alpha2*alpha4 + 405*alpha4*alpha4 \
+                        + 45*(alpha3 + alpha5)*(13*alpha3 + 7*alpha5) + 65*alpha1*(44*alpha3 + 35*alpha5))/5005
+                A[5][1] = 2*alpha4
+                A[5][2] = -2*alpha3/7 + 20*alpha5/11
+                A[5][3] = 6*alpha2/35 + 30*alpha4/77
+                A[5][4] = 3*(143*alpha1 + 91*alpha3 + 115*alpha5)/1001
+                A[5][5] = um + 23*alpha2/77 + 243*alpha4/1001
+                A[5][6] = 6*(91*alpha1 + 41*alpha3 + 35*alpha5)/1001
+                A[6][0] = -2*(819*um*alpha5 + 30*alpha2*(13*alpha3 + 7*alpha5) + alpha4*(455*alpha1 + 180*alpha3 + 126*alpha5))/819
+                A[6][1] = 2*alpha5
+                A[6][2] = -5*alpha4/9
+                A[6][3] = 5*alpha5/13
+                A[6][4] = 5*(alpha2 + alpha4)/21
+                A[6][5] = 4*alpha1/9 + 3*(alpha3 + alpha5)/13
+                A[6][6] = um + 11*alpha2/39 + 8*alpha4/39
         
         else:
             print("This order is not implemented for the system matrix of the SWME1D-PDE.")
@@ -602,27 +631,35 @@ class SWME1D(PDE):
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
+            if self.linearised:
+                print("system matrix diff is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
 
-            A_diff[1][0] = -0.2*alpha2*alpha2
-            A_diff[2][0] = (-4*alpha1*alpha2)/5.
-            A_diff[2][2] = alpha2
+                A_diff[1][0] = -0.2*alpha2*alpha2
+                A_diff[2][0] = (-4*alpha1*alpha2)/5.
+                A_diff[2][2] = alpha2
 
         elif order_low == 2:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
+            if self.linearised:
+                print("system matrix diff is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
 
-            A_diff[1][0] = -1./7.*alpha3*alpha3
-            A_diff[2][0] = (-18*alpha2*alpha3)/35.
-            A_diff[2][3] = (3*alpha3)/5.
-            A_diff[3][0] = (-2*alpha3*(9*alpha1 + 2*alpha3))/21.
-            A_diff[3][2] = (9*alpha3)/7.
+                A_diff[1][0] = -1./7.*alpha3*alpha3
+                A_diff[2][0] = (-18*alpha2*alpha3)/35.
+                A_diff[2][3] = (3*alpha3)/5.
+                A_diff[3][0] = (-2*alpha3*(9*alpha1 + 2*alpha3))/21.
+                A_diff[3][2] = (9*alpha3)/7.
         
         elif order_low == 3:
             alpha1 = values[2]/values[0]
@@ -630,19 +667,23 @@ class SWME1D(PDE):
             alpha3 = values[4]/values[0]
             alpha4 = values[5]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
+            if self.linearised:
+                print("system matrix diff is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+                    alpha4 = 0
 
-            A_diff[1][0] = -1./9.*alpha4*alpha4
-            A_diff[2][0] = (-8*alpha3*alpha4)/21.
-            A_diff[2][4] = (3*alpha4)/7.
-            A_diff[3][0] = (-4*alpha4*(99*alpha2 + 25*alpha4))/693.
-            A_diff[3][3] = (16*alpha4)/21.
-            A_diff[4][0] = (-4*(22*alpha1 + 9*alpha3)*alpha4)/99.
-            A_diff[4][2] = (14*alpha4)/9.
-            A_diff[4][4] = alpha4/3.
+                A_diff[1][0] = -1./9.*alpha4*alpha4
+                A_diff[2][0] = (-8*alpha3*alpha4)/21.
+                A_diff[2][4] = (3*alpha4)/7.
+                A_diff[3][0] = (-4*alpha4*(99*alpha2 + 25*alpha4))/693.
+                A_diff[3][3] = (16*alpha4)/21.
+                A_diff[4][0] = (-4*(22*alpha1 + 9*alpha3)*alpha4)/99.
+                A_diff[4][2] = (14*alpha4)/9.
+                A_diff[4][4] = alpha4/3.
         
         elif order_low == 4:
             alpha1 = values[2]/values[0]
@@ -651,24 +692,28 @@ class SWME1D(PDE):
             alpha4 = values[5]/values[0]
             alpha5 = values[6]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
-                alpha5 = 0
+            if self.linearised:
+                print("system matrix diff is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+                    alpha4 = 0
+                    alpha5 = 0
 
-            A_diff[1][0] = -1/11.*alpha5*alpha5
-            A_diff[2][0] = (-10*alpha4*alpha5)/33.
-            A_diff[2][5] = alpha5/3.
-            A_diff[3][0] = (-50*alpha5*(26*alpha3 + 7*alpha5))/3003.
-            A_diff[3][4] = (125*alpha5)/231.
-            A_diff[4][0] = (-20*(13*alpha2 + 6*alpha4)*alpha5)/429.
-            A_diff[4][3] = (10*alpha5)/11.
-            A_diff[4][5] = (3*alpha5)/11.
-            A_diff[5][0] = (-2*alpha5*(455*alpha1 + 180*alpha3 + \
-            63*alpha5))/1001.
-            A_diff[5][2] = (20*alpha5)/11.
-            A_diff[5][4] = (345*alpha5)/1001.
+                A_diff[1][0] = -1/11.*alpha5*alpha5
+                A_diff[2][0] = (-10*alpha4*alpha5)/33.
+                A_diff[2][5] = alpha5/3.
+                A_diff[3][0] = (-50*alpha5*(26*alpha3 + 7*alpha5))/3003.
+                A_diff[3][4] = (125*alpha5)/231.
+                A_diff[4][0] = (-20*(13*alpha2 + 6*alpha4)*alpha5)/429.
+                A_diff[4][3] = (10*alpha5)/11.
+                A_diff[4][5] = (3*alpha5)/11.
+                A_diff[5][0] = (-2*alpha5*(455*alpha1 + 180*alpha3 + \
+                63*alpha5))/1001.
+                A_diff[5][2] = (20*alpha5)/11.
+                A_diff[5][4] = (345*alpha5)/1001.
         
         elif order_low == 5:
             alpha1 = values[2]/values[0]
@@ -678,28 +723,32 @@ class SWME1D(PDE):
             alpha5 = values[6]/values[0]
             alpha6 = values[7]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
-                alpha5 = 0
-                alpha6 = 0
+            if self.linearised:
+                print("system matrix diff is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+                    alpha4 = 0
+                    alpha5 = 0
+                    alpha6 = 0
 
-            A_diff[1][0] = -1/13.*alpha6*alpha6
-            A_diff[2][0] = (-36*alpha5*alpha6)/143.
-            A_diff[2][6] = (3*alpha6)/11.
-            A_diff[3][0] = (-2*alpha6*(25*alpha4 + 7*alpha6))/143.
-            A_diff[3][5] = (60*alpha6)/143.
-            A_diff[4][0] = (-2*(100*alpha3 + 49*alpha5)*alpha6)/429.
-            A_diff[4][4] = (25*alpha6)/39.
-            A_diff[4][6] = (98*alpha6)/429.
-            A_diff[5][0] = (-2*alpha6*(765*alpha2 + 340*alpha4 + 126*alpha6))/2431.
-            A_diff[5][3] = (150*alpha6)/143.
-            A_diff[5][5] = (41*alpha6)/143.
-            A_diff[6][0] = (-2*(306*alpha1 + 119*alpha3 + 80*alpha5)*alpha6)/663.
-            A_diff[6][2] = (27*alpha6)/13.
-            A_diff[6][4] = (14*alpha6)/39.
-            A_diff[6][6] = (8*alpha6)/39.
+                A_diff[1][0] = -1/13.*alpha6*alpha6
+                A_diff[2][0] = (-36*alpha5*alpha6)/143.
+                A_diff[2][6] = (3*alpha6)/11.
+                A_diff[3][0] = (-2*alpha6*(25*alpha4 + 7*alpha6))/143.
+                A_diff[3][5] = (60*alpha6)/143.
+                A_diff[4][0] = (-2*(100*alpha3 + 49*alpha5)*alpha6)/429.
+                A_diff[4][4] = (25*alpha6)/39.
+                A_diff[4][6] = (98*alpha6)/429.
+                A_diff[5][0] = (-2*alpha6*(765*alpha2 + 340*alpha4 + 126*alpha6))/2431.
+                A_diff[5][3] = (150*alpha6)/143.
+                A_diff[5][5] = (41*alpha6)/143.
+                A_diff[6][0] = (-2*(306*alpha1 + 119*alpha3 + 80*alpha5)*alpha6)/663.
+                A_diff[6][2] = (27*alpha6)/13.
+                A_diff[6][4] = (14*alpha6)/39.
+                A_diff[6][6] = (8*alpha6)/39.
         
         else:
             print("This order is not implemented for the system matrix diff of the SWME1D-PDE.")
@@ -731,48 +780,60 @@ class SWME1D(PDE):
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
+            if self.linearised:
+                print("system matrix last row is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
 
-            A_last_row[0][0] = (-6*alpha1*alpha2)/5.
-            A_last_row[0][1] = 0
-            A_last_row[0][2] = 0
-            A_last_row[0][3] = (2*alpha1)/5.
-        
+                A_last_row[0][0] = (-6*alpha1*alpha2)/5.
+                A_last_row[0][1] = 0
+                A_last_row[0][2] = 0
+                A_last_row[0][3] = (2*alpha1)/5.
+            
         elif order == 3:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
+            if self.linearised:
+                print("system matrix last row is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
 
-            A_last_row[0][0] = (-2*(1287*alpha2*alpha2 + 65*alpha3*(44*alpha1 + \
-            9*alpha3)))/5005.
-            A_last_row[0][1] = 0
-            A_last_row[0][2] = (-2*alpha3)/7.
-            A_last_row[0][3] = (6*alpha2)/35.
-            A_last_row[0][4] = (3*alpha1)/7. + (3*alpha3)/11.
-        
+                A_last_row[0][0] = (-2*(1287*alpha2*alpha2 + 65*alpha3*(44*alpha1 + \
+                9*alpha3)))/5005.
+                A_last_row[0][1] = 0
+                A_last_row[0][2] = (-2*alpha3)/7.
+                A_last_row[0][3] = (6*alpha2)/35.
+                A_last_row[0][4] = (3*alpha1)/7. + (3*alpha3)/11.
+            
         elif order == 4:
             alpha1 = values[2]/values[0]
             alpha2 = values[3]/values[0]
             alpha3 = values[4]/values[0]
             alpha4 = values[5]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
+            if self.linearised:
+                print("system matrix last row is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+                    alpha4 = 0
 
-            A_last_row[0][0] = (-2*(390*alpha2*alpha3 + (455*alpha1 + \
-            180*alpha3)*alpha4))/819.
-            A_last_row[0][1] = 0
-            A_last_row[0][2] = (-5*alpha4)/9.
-            A_last_row[0][3] = 0
-            A_last_row[0][4] = (5*(alpha2 + alpha4))/21.
-            A_last_row[0][5] = (4*alpha1)/9. + (3*alpha3)/13.
+                A_last_row[0][0] = (-2*(390*alpha2*alpha3 + (455*alpha1 + \
+                180*alpha3)*alpha4))/819.
+                A_last_row[0][1] = 0
+                A_last_row[0][2] = (-5*alpha4)/9.
+                A_last_row[0][3] = 0
+                A_last_row[0][4] = (5*(alpha2 + alpha4))/21.
+                A_last_row[0][5] = (4*alpha1)/9. + (3*alpha3)/13.
         
         elif order == 5:
             alpha1 = values[2]/values[0]
@@ -781,21 +842,25 @@ class SWME1D(PDE):
             alpha4 = values[5]/values[0]
             alpha5 = values[6]/values[0]
 
-            if self.hyperbolic:
-                alpha2 = 0
-                alpha3 = 0
-                alpha4 = 0
-                alpha5 = 0
+            if self.linearised:
+                print("system matrix last row is not implemented for the SWLME1D-PDE.")
+            
+            else:
+                if self.hyperbolic:
+                    alpha2 = 0
+                    alpha3 = 0
+                    alpha4 = 0
+                    alpha5 = 0
 
-            A_last_row[0][0] = (-100*alpha3*alpha3)/231. - (10*alpha2*alpha4)/11. \
-            - (14*alpha3*alpha5)/33. - (4*(85*alpha4*alpha4 + 459*alpha1*alpha5 + \
-            60*alpha5*alpha5))/1683.
-            A_last_row[0][1] = 0
-            A_last_row[0][2] = (-9*alpha5)/11.
-            A_last_row[0][3] = (-5*alpha4)/33.
-            A_last_row[0][4] = (25*alpha3 + 49*alpha5)/231.
-            A_last_row[0][5] = (3*alpha2)/11. + (19*alpha4)/99.
-            A_last_row[0][6] = (255*alpha1 + 119*alpha3 + 104*alpha5)/561.
+                A_last_row[0][0] = (-100*alpha3*alpha3)/231. - (10*alpha2*alpha4)/11. \
+                - (14*alpha3*alpha5)/33. - (4*(85*alpha4*alpha4 + 459*alpha1*alpha5 + \
+                60*alpha5*alpha5))/1683.
+                A_last_row[0][1] = 0
+                A_last_row[0][2] = (-9*alpha5)/11.
+                A_last_row[0][3] = (-5*alpha4)/33.
+                A_last_row[0][4] = (25*alpha3 + 49*alpha5)/231.
+                A_last_row[0][5] = (3*alpha2)/11. + (19*alpha4)/99.
+                A_last_row[0][6] = (255*alpha1 + 119*alpha3 + 104*alpha5)/561.
         
         else:
             print("This order is not implemented for the system matrix last row of the SWME1D-PDE.")
@@ -3396,6 +3461,7 @@ class VegetationSWME1D(SWME1D):
                 viscosity: float,
                 slip_length: float,
                 hyperbolic: bool,
+                linearised: bool,
                 diameter: float,
                 CD: float,
                 surface_density: float):
@@ -3423,6 +3489,7 @@ class VegetationSWME1D(SWME1D):
         self.viscosity = viscosity
         self.slip_length = slip_length
         self.hyperbolic = hyperbolic
+        self.linearised = linearised
         self.diameter = diameter
         self.CD = CD
         self.surface_density = surface_density
@@ -4233,7 +4300,7 @@ class VegetationSWME1D(SWME1D):
         return S
 
 
-class SGSWME1D(PDE):
+class SGSWLME1D(PDE):
 
     """
     This class represents the one-dimensional stochastic Galerkin Shallow Water Moment Equations (SGSWME1D).
@@ -5971,8 +6038,8 @@ class SGSWME1D(PDE):
                 A[0][1] = 1
                 A[0][2] = 0
                 A[0][3] = 0
-                A[1][0] = -2/3*(-15*g*h0**3 + 15*q0**2 + 5*r0**2 + 3*s0**2)/h0**2
-                A[1][1] = (2*q0)/h0
+                A[1][0] = -1/15*(-15*g*h0**3 + 15*q0**2 + 5*r0**2 + 3*s0**2)/h0**2
+                A[1][1] = 2*q0/h0
                 A[1][2] = (2*r0)/(3*h0)
                 A[1][3] = (2*s0)/(5*h0)
                 A[2][0] = (-2*q0*r0)/h0**2
@@ -6011,7 +6078,7 @@ class SGSWME1D(PDE):
                     A[1][5] = 0
                     A[1][6] = 0
                     A[1][7] = 0
-                    A[2][0] = -2/3*(-15*g*h0*(h0**2 - h1**2)**2 - 4*h0*h1*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) + h0**2*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)) \
+                    A[2][0] = -1/15*(-15*g*h0*(h0**2 - h1**2)**2 - 4*h0*h1*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) + h0**2*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)) \
                             + h1**2*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)))/(h0**2 - h1**2)**2
                     A[2][1] = (15*g*h1*(h0**2 - h1**2)**2 - 2*h0**2*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) - 2*h1**2*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) \
                             + 2*h0*h1*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)))/(15*(h0**2 - h1**2)**2)
@@ -6023,7 +6090,7 @@ class SGSWME1D(PDE):
                     A[2][7] = (2*(-(h1*s0) + h0*s1))/(5*(h0**2 - h1**2))
                     A[3][0] = (15*g*h1*(h0**2 - h1**2)**2 - 2*h0**2*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) - 2*h1**2*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) \
                             + 2*h0*h1*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)))/(15*(h0**2 - h1**2)**2)
-                    A[3][1] = -2/3*(-15*g*h0*(h0**2 - h1**2)**2 - 4*h0*h1*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) + h0**2*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)) \
+                    A[3][1] = -1/15*(-15*g*h0*(h0**2 - h1**2)**2 - 4*h0*h1*(15*q0*q1 + 5*r0*r1 + 3*s0*s1) + h0**2*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)) \
                             + h1**2*(15*q0**2 + 15*q1**2 + 5*r0**2 + 5*r1**2 + 3*(s0**2 + s1**2)))/(h0**2 - h1**2)**2
                     A[3][2] = (2*(-(h1*q0) + h0*q1))/(h0**2 - h1**2)
                     A[3][3] = (2*h0*q0 - 2*h1*q1)/(h0**2 - h1**2)
@@ -6120,7 +6187,7 @@ class SGSWME1D(PDE):
                     A[2][9]   = 0
                     A[2][10]  = 0
                     A[2][11]  = 0
-                    A[3][0]   = -2/3*(-15*g*h0*(1225*h0**6 + 1680*np.sqrt(5)*h0**5*h2 + 12*np.sqrt(5)*h0*h2*(21*h1**2 + 5*h2**2)*(-9*h1**2 + 7*h2**2) \
+                    A[3][0]   = -1/15*(-15*g*h0*(1225*h0**6 + 1680*np.sqrt(5)*h0**5*h2 + 12*np.sqrt(5)*h0*h2*(21*h1**2 + 5*h2**2)*(-9*h1**2 + 7*h2**2) \
                               + 30*h0**4*(-147*h1**2 + 61*h2**2) - 4*np.sqrt(5)*h0**3*h2*(441*h1**2 + 425*h2**2) + 20*(9*h1**2*h2 - 7*h2**3)**2 \
                               + h0**2*(3969*h1**4 + 6210*h1**2*h2**2 - 3135*h2**4)) + 180*(147*h1**4 - 250*h1**2*h2**2 + 115*h2**4)*q0**2 \
                               + 19575*h1**2*h2**2*q1**2 + 18375*h2**4*q1**2 - 28350*h1**3*h2*q1*q2 - 45150*h1*h2**3*q1*q2 + 33075*h1**4*q2**2 - 11025*h1**2*h2**2*q2**2 \
@@ -6880,78 +6947,244 @@ class SGSWME1D(PDE):
                     print("This distribution is not implemented yet for mom_order=1 and SG_order=2")
 
                 elif self.distr == "uniform":
-                    S[0] = 0
-                    S[1] = 0
-                    S[2] = 0
-                    S[3] = (-35*h0**2*(3*mu*q0 + np.sqrt(3)*sigma*q1 + 3*mu*r0 + np.sqrt(3)*sigma*r1) + 42*mu*h1**2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2) \
-                         + h2**2*(-60*mu*q0 + 35*np.sqrt(3)*sigma*q1 + 42*np.sqrt(5)*mu*q2 - 60*mu*r0 + 35*np.sqrt(3)*sigma*r1 + 42*np.sqrt(5)*mu*r2) - h1*h2*(4*np.sqrt(15)*sigma*q0 \
-                         + 12*np.sqrt(5)*mu*q1 + 35*np.sqrt(3)*sigma*q2 + 4*np.sqrt(15)*sigma*r0 + 12*np.sqrt(5)*mu*r1 + 35*np.sqrt(3)*sigma*r2) + h0*(-(h2*(72*np.sqrt(5)*mu*q0 \
-                         + 10*np.sqrt(15)*sigma*q1 - 105*mu*q2 + 72*np.sqrt(5)*mu*r0 + 10*np.sqrt(15)*sigma*r1 - 105*mu*r2)) + 7*h1*(5*np.sqrt(3)*sigma*q0 + 15*mu*q1 + 2*np.sqrt(15)*sigma*q2 \
-                         + 5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2)))/(3.*slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2)))
-                    S[4] = (-7*h0**2*(5*np.sqrt(3)*sigma*q0 + 15*mu*q1 + 2*np.sqrt(15)*sigma*q2 + 5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2) + h0*(21*h1*(5*mu*q0 + 3*np.sqrt(3)*sigma*q1 \
-                         + 2*np.sqrt(5)*mu*q2 + 5*mu*r0 + 3*np.sqrt(3)*sigma*r1 + 2*np.sqrt(5)*mu*r2) - h2*(10*np.sqrt(15)*sigma*q0 + 30*np.sqrt(5)*mu*q1 - 7*np.sqrt(3)*sigma*q2 + 10*np.sqrt(15)*sigma*r0 \
-                         + 30*np.sqrt(5)*mu*r1 - 7*np.sqrt(3)*sigma*r2)) + h2*(-3*h1*(4*np.sqrt(5)*mu*q0 + 6*np.sqrt(15)*sigma*q1 + 35*mu*q2 + 4*np.sqrt(5)*mu*r0 + 6*np.sqrt(15)*sigma*r1 + 35*mu*r2) \
-                         + h2*(8*np.sqrt(3)*sigma*q0 + 105*mu*q1 + 14*np.sqrt(15)*sigma*q2 + 8*np.sqrt(3)*sigma*r0 + 105*mu*r1 + 14*np.sqrt(15)*sigma*r2)))/(3.*slip_length*(35*h0**3 \
-                         + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2)))
-                    S[5] = (14*np.sqrt(5)*h2**2*(3*mu*q0 + np.sqrt(3)*sigma*q1 + 3*mu*r0 + np.sqrt(3)*sigma*r1) - 21*mu*h1**2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2) - 7*h0**2*(2*np.sqrt(15)*sigma*q1 \
-                         + 15*mu*q2 + 2*np.sqrt(15)*sigma*r1 + 15*mu*r2) - h1*h2*(8*np.sqrt(3)*sigma*q0 + 105*mu*q1 + 14*np.sqrt(15)*sigma*q2 + 8*np.sqrt(3)*sigma*r0 + 105*mu*r1 + 14*np.sqrt(15)*sigma*r2) \
-                         + h0*(h2*(105*mu*q0 - 20*np.sqrt(3)*sigma*q1 - 42*np.sqrt(5)*mu*q2 + 105*mu*r0 - 20*np.sqrt(3)*sigma*r1 - 42*np.sqrt(5)*mu*r2) + 14*h1*(np.sqrt(15)*sigma*q0 + 3*np.sqrt(5)*mu*q1 \
-                         + 2*np.sqrt(3)*sigma*q2 + np.sqrt(15)*sigma*r0 + 3*np.sqrt(5)*mu*r1 + 2*np.sqrt(3)*sigma*r2)))/(3.*slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) \
-                         - 3*h0*(21*h1**2 + 5*h2**2)))
-                    S[6] = (-1225*h0**5*(3*mu*q0 + np.sqrt(3)*sigma*q1 + 3*mu*r0 + np.sqrt(3)*sigma*r1) + 35*h0**4*(-140*slip_length*(3*mu*r0 + np.sqrt(3)*sigma*r1) - h2*(144*np.sqrt(5)*mu*q0 + 34*np.sqrt(15)*sigma*q1 \
-                         - 105*mu*q2 + 144*np.sqrt(5)*mu*r0 + 34*np.sqrt(15)*sigma*r1 - 105*mu*r2) + 7*h1*(5*np.sqrt(3)*sigma*q0 + 15*mu*q1 + 2*np.sqrt(15)*sigma*q2 + 5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2)) \
-                         + 5*h0**3*(147*h1**2*(13*mu*q0 + 3*np.sqrt(3)*sigma*q1 - 2*np.sqrt(5)*mu*q2 + 13*mu*r0 + 3*np.sqrt(3)*sigma*r1 - 2*np.sqrt(5)*mu*r2) + h2*(-56*slip_length*(72*np.sqrt(5)*mu*r0 + 10*np.sqrt(15)*sigma*r1 \
-                         - 105*mu*r2) + h2*(-1833*mu*q0 + 110*np.sqrt(3)*sigma*q1 + 798*np.sqrt(5)*mu*q2 - 1833*mu*r0 + 110*np.sqrt(3)*sigma*r1 + 798*np.sqrt(5)*mu*r2)) + 7*h1*(h2*(20*np.sqrt(15)*sigma*q0 + 60*np.sqrt(5)*mu*q1 \
-                         + 13*np.sqrt(3)*sigma*q2 + 20*np.sqrt(15)*sigma*r0 + 60*np.sqrt(5)*mu*r1 + 13*np.sqrt(3)*sigma*r2) + 56*slip_length*(5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2))) - h0*(2646*mu*h1**4 \
-                         * (2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2) - 63*h1**3*h2*(14*np.sqrt(15)*sigma*q0 + 42*np.sqrt(5)*mu*q1 + 55*np.sqrt(3)*sigma*q2 + 14*np.sqrt(15)*sigma*r0 + 42*np.sqrt(5)*mu*r1 + 55*np.sqrt(3)*sigma*r2) \
-                         - 5*h2**3*(16*slip_length*(-291*np.sqrt(5)*mu*r0 + 35*np.sqrt(15)*sigma*r1 + 504*mu*r2) + h2*(1188*mu*q0 + 35*np.sqrt(3)*sigma*q1 - 420*np.sqrt(5)*mu*q2 + 1188*mu*r0 + 35*np.sqrt(3)*sigma*r1 - 420*np.sqrt(5)*mu*r2)) \
-                         + 9*h1**2*h2*(-112*slip_length*(31*np.sqrt(5)*mu*r0 + 5*np.sqrt(15)*sigma*r1 - 40*mu*r2) + h2*(440*mu*q0 + 345*np.sqrt(3)*sigma*q1 + 14*np.sqrt(5)*mu*q2 + 440*mu*r0 + 345*np.sqrt(3)*sigma*r1 + 14*np.sqrt(5)*mu*r2)) \
-                         + 5*h1*h2**2*(h2*(86*np.sqrt(15)*sigma*q0 + 258*np.sqrt(5)*mu*q1 + 91*np.sqrt(3)*sigma*q2 + 86*np.sqrt(15)*sigma*r0 + 258*np.sqrt(5)*mu*r1 + 91*np.sqrt(3)*sigma*r2) + 192*slip_length*(4*np.sqrt(3)*sigma*r0 + 12*mu*r1 \
-                         + 7*np.sqrt(15)*sigma*r2))) + 2*(378*mu*h1**4*(h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2) + 14*slip_length*(-2*r0 + np.sqrt(5)*r2)) + 5*h2**4*(7*h2*(12*np.sqrt(5)*mu*q0 - 7*np.sqrt(15)*sigma*q1 - 42*mu*q2 \
-                         + 12*np.sqrt(5)*mu*r0 - 7*np.sqrt(15)*sigma*r1 - 42*mu*r2) - 2*slip_length*(828*mu*r0 + 245*np.sqrt(3)*sigma*r1 - 168*np.sqrt(5)*mu*r2)) - 3*h1**2*h2**2*(h2*(376*np.sqrt(5)*mu*q0 - 105*np.sqrt(15)*sigma*q1 \
-                         - 1120*mu*q2 + 376*np.sqrt(5)*mu*r0 - 105*np.sqrt(15)*sigma*r1 - 1120*mu*r2) + 6*slip_length*(-1000*mu*r0 + 145*np.sqrt(3)*sigma*r1 + 434*np.sqrt(5)*mu*r2)) - 9*h1**3*h2*(42*slip_length*(2*np.sqrt(15)*sigma*r0 \
-                         + 6*np.sqrt(5)*mu*r1 - 5*np.sqrt(3)*sigma*r2) + 5*h2*(4*np.sqrt(3)*sigma*q0 + 12*mu*q1 + 7*np.sqrt(15)*sigma*q2 + 4*np.sqrt(3)*sigma*r0 + 12*mu*r1 + 7*np.sqrt(15)*sigma*r2)) + 5*h1*h2**3*(2*slip_length*(110*np.sqrt(15)*sigma*r0 \
-                         + 330*np.sqrt(5)*mu*r1 + 301*np.sqrt(3)*sigma*r2) + 7*h2*(4*np.sqrt(3)*sigma*q0 + 12*mu*q1 + 7*np.sqrt(15)*sigma*q2 + 4*np.sqrt(3)*sigma*r0 + 12*mu*r1 + 7*np.sqrt(15)*sigma*r2))) - h0**2*(441*h1**3*(5*np.sqrt(3)*sigma*q0 \
-                         + 15*mu*q1 + 2*np.sqrt(15)*sigma*q2 + 5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2) - 63*h1**2*(37*mu*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2) + 140*slip_length*(mu*r0 - np.sqrt(3)*sigma*r1 \
-                         - 2*np.sqrt(5)*mu*r2)) - 5*h2**2*(h2*(222*np.sqrt(5)*mu*q0 + 296*np.sqrt(15)*sigma*q1 + 693*mu*q2 + 222*np.sqrt(5)*mu*r0 + 296*np.sqrt(15)*sigma*r1 + 693*mu*r2) + 12*slip_length*(-1101*mu*r0 + 130*np.sqrt(3)*sigma*r1 \
-                         + 462*np.sqrt(5)*mu*r2)) + 15*h1*h2*(-28*slip_length*(4*np.sqrt(15)*sigma*r0 + 12*np.sqrt(5)*mu*r1 - 19*np.sqrt(3)*sigma*r2) + h2*(67*np.sqrt(3)*sigma*q0 + 201*mu*q1 + 70*np.sqrt(15)*sigma*q2 + 67*np.sqrt(3)*sigma*r0 \
-                         + 201*mu*r1 + 70*np.sqrt(15)*sigma*r2))))/(slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2)
-                    S[7] = -((245*h0**5*(5*np.sqrt(3)*sigma*q0 + 15*mu*q1 + 2*np.sqrt(15)*sigma*q2 + 5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2) - 35*h0**4*(21*h1*(5*mu*q0 + 3*np.sqrt(3)*sigma*q1 + 2*np.sqrt(5)*mu*q2 + 5*mu*r0 \
-                         + 3*np.sqrt(3)*sigma*r1 + 2*np.sqrt(5)*mu*r2) - h2*(34*np.sqrt(15)*sigma*q0 + 102*np.sqrt(5)*mu*q1 + 41*np.sqrt(3)*sigma*q2 + 34*np.sqrt(15)*sigma*r0 + 102*np.sqrt(5)*mu*r1 + 41*np.sqrt(3)*sigma*r2) \
-                         - 28*slip_length*(5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2)) + h0*h2*(-189*h1**3*(14*np.sqrt(5)*mu*q0 + 12*np.sqrt(15)*sigma*q1 + 55*mu*q2 + 14*np.sqrt(5)*mu*r0 + 12*np.sqrt(15)*sigma*r1 + 55*mu*r2) \
-                         + 3*h1*h2*(h2*(430*np.sqrt(5)*mu*q0 + 204*np.sqrt(15)*sigma*q1 + 455*mu*q2 + 430*np.sqrt(5)*mu*r0 + 204*np.sqrt(15)*sigma*r1 + 455*mu*r2) + 960*slip_length*(4*mu*r0 + 6*np.sqrt(3)*sigma*r1 + 7*np.sqrt(5)*mu*r2)) \
-                         - h2**2*(16*slip_length*(-149*np.sqrt(15)*sigma*r0 + 525*np.sqrt(5)*mu*r1 + 350*np.sqrt(3)*sigma*r2) + h2*(580*np.sqrt(3)*sigma*q0 + 525*mu*q1 - 308*np.sqrt(15)*sigma*q2 + 580*np.sqrt(3)*sigma*r0 + 525*mu*r1 \
-                         - 308*np.sqrt(15)*sigma*r2)) + 9*h1**2*(-560*slip_length*(np.sqrt(15)*sigma*r0 + 3*np.sqrt(5)*mu*r1 + 2*np.sqrt(3)*sigma*r2) + 3*h2*(52*np.sqrt(3)*sigma*q0 + 345*mu*q1 + 28*np.sqrt(15)*sigma*q2 \
-                         + 52*np.sqrt(3)*sigma*r0 + 345*mu*r1 + 28*np.sqrt(15)*sigma*r2))) + 2*h2*(27*h1**3*(42*slip_length*mu*(2*np.sqrt(5)*r0 - 5*r2) + 5*h2*(4*mu*q0 + 6*np.sqrt(3)*sigma*q1 + 7*np.sqrt(5)*mu*q2 + 4*mu*r0 \
-                         + 6*np.sqrt(3)*sigma*r1 + 7*np.sqrt(5)*mu*r2)) - 3*h1*h2**2*(2*slip_length*(550*np.sqrt(5)*mu*r0 + 384*np.sqrt(15)*sigma*r1 + 1505*mu*r2) + 35*h2*(4*mu*q0 + 6*np.sqrt(3)*sigma*q1 + 7*np.sqrt(5)*mu*q2 + 4*mu*r0 \
-                         + 6*np.sqrt(3)*sigma*r1 + 7*np.sqrt(5)*mu*r2)) - 9*h1**2*h2*(h2*(8*np.sqrt(15)*sigma*q0 + 105*np.sqrt(5)*mu*q1 + 70*np.sqrt(3)*sigma*q2 + 8*np.sqrt(15)*sigma*r0 + 105*np.sqrt(5)*mu*r1 + 70*np.sqrt(3)*sigma*r2) \
-                         + 2*slip_length*(44*np.sqrt(3)*sigma*r0 - 435*mu*r1 - 112*np.sqrt(15)*sigma*r2)) + h2**3*(7*h2*(8*np.sqrt(15)*sigma*q0 + 105*np.sqrt(5)*mu*q1 + 70*np.sqrt(3)*sigma*q2 + 8*np.sqrt(15)*sigma*r0 + 105*np.sqrt(5)*mu*r1 \
-                         + 70*np.sqrt(3)*sigma*r2) + 2*slip_length*(820*np.sqrt(3)*sigma*r0 + 3675*mu*r1 + 112*np.sqrt(15)*sigma*r2))) + h0**2*(1323*h1**3*(5*mu*q0 + 3*np.sqrt(3)*sigma*q1 + 2*np.sqrt(5)*mu*q2 + 5*mu*r0 + 3*np.sqrt(3)*sigma*r1 \
-                         + 2*np.sqrt(5)*mu*r2) + 9*h1*h2*(28*slip_length*(-20*np.sqrt(5)*mu*r0 + 6*np.sqrt(15)*sigma*r1 + 95*mu*r2) + 5*h2*(67*mu*q0 + 69*np.sqrt(3)*sigma*q1 + 70*np.sqrt(5)*mu*q2 + 67*mu*r0 + 69*np.sqrt(3)*sigma*r1 + 70*np.sqrt(5)*mu*r2)) \
-                         + 63*h1**2*(27*np.sqrt(3)*sigma*h2*(q2 + r2) + 28*slip_length*(5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2)) - h2**2*(h2*(832*np.sqrt(15)*sigma*q0 + 4440*np.sqrt(5)*mu*q1 + 2555*np.sqrt(3)*sigma*q2 \
-                         + 832*np.sqrt(15)*sigma*r0 + 4440*np.sqrt(5)*mu*r1 + 2555*np.sqrt(3)*sigma*r2) + 12*slip_length*(-295*np.sqrt(3)*sigma*r0 + 1950*mu*r1 + 476*np.sqrt(15)*sigma*r2))) - h0**3*(441*h1**2*(5*np.sqrt(3)*sigma*q0 + 15*mu*q1 \
-                         + 2*np.sqrt(15)*sigma*q2 + 5*np.sqrt(3)*sigma*r0 + 15*mu*r1 + 2*np.sqrt(15)*sigma*r2) + 21*h1*(h2*(100*np.sqrt(5)*mu*q0 + 42*np.sqrt(15)*sigma*q1 + 65*mu*q2 + 100*np.sqrt(5)*mu*r0 + 42*np.sqrt(15)*sigma*r1 + 65*mu*r2) \
-                         + 280*slip_length*(5*mu*r0 + 3*np.sqrt(3)*sigma*r1 + 2*np.sqrt(5)*mu*r2)) + h2*(-280*slip_length*(10*np.sqrt(15)*sigma*r0 + 30*np.sqrt(5)*mu*r1 - 7*np.sqrt(3)*sigma*r2) + h2*(-395*np.sqrt(3)*sigma*q0 + 1650*mu*q1 \
-                         + 868*np.sqrt(15)*sigma*q2 - 395*np.sqrt(3)*sigma*r0 + 1650*mu*r1 + 868*np.sqrt(15)*sigma*r2))))/(slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2))
-                    S[8] = (-245*h0**5*(2*np.sqrt(15)*sigma*q1 + 15*mu*q2 + 2*np.sqrt(15)*sigma*r1 + 15*mu*r2) + 35*h0**4*(-28*slip_length*(2*np.sqrt(15)*sigma*r1 + 15*mu*r2) + h2*(105*mu*q0 - 68*np.sqrt(3)*sigma*q1 - 114*np.sqrt(5)*mu*q2 \
-                         + 105*mu*r0 - 68*np.sqrt(3)*sigma*r1 - 114*np.sqrt(5)*mu*r2) + 14*h1*(np.sqrt(15)*sigma*q0 + 3*np.sqrt(5)*mu*q1 + 2*np.sqrt(3)*sigma*q2 + np.sqrt(15)*sigma*r0 + 3*np.sqrt(5)*mu*r1 + 2*np.sqrt(3)*sigma*r2)) \
-                         + h0**3*(-294*h1**2*(5*np.sqrt(5)*mu*q0 - 3*np.sqrt(15)*sigma*q1 - 35*mu*q2 + 5*np.sqrt(5)*mu*r0 - 3*np.sqrt(15)*sigma*r1 - 35*mu*r2) + 5*h2*(h2*(798*np.sqrt(5)*mu*q0 + 44*np.sqrt(15)*sigma*q1 - 693*mu*q2 \
-                         + 798*np.sqrt(5)*mu*r0 + 44*np.sqrt(15)*sigma*r1 - 693*mu*r2) + 56*slip_length*(105*mu*r0 - 20*np.sqrt(3)*sigma*r1 - 42*np.sqrt(5)*mu*r2)) + 7*h1*(560*slip_length*(np.sqrt(15)*sigma*r0 + 3*np.sqrt(5)*mu*r1 \
-                         + 2*np.sqrt(3)*sigma*r2) + h2*(200*np.sqrt(3)*sigma*q0 + 195*mu*q1 + 26*np.sqrt(15)*sigma*q2 + 200*np.sqrt(3)*sigma*r0 + 195*mu*r1 + 26*np.sqrt(15)*sigma*r2))) - h0**2*(882*h1**3*(np.sqrt(15)*sigma*q0 + 3*np.sqrt(5)*mu*q1 \
-                         + 2*np.sqrt(3)*sigma*q2 + np.sqrt(15)*sigma*r0 + 3*np.sqrt(5)*mu*r1 + 2*np.sqrt(3)*sigma*r2) + 63*h1**2*(mu*h2*(185*q0 - 52*np.sqrt(5)*q2 + 185*r0 - 52*np.sqrt(5)*r2) + 56*slip_length*(5*np.sqrt(5)*mu*r0 \
-                         + np.sqrt(15)*sigma*r1 - 5*mu*r2)) - 5*h2**2*(12*slip_length*(462*np.sqrt(5)*mu*r0 + 52*np.sqrt(15)*sigma*r1 - 441*mu*r2) + h2*(693*mu*q0 + 592*np.sqrt(3)*sigma*q1 + 420*np.sqrt(5)*mu*q2 + 693*mu*r0 + 592*np.sqrt(3)*sigma*r1 \
-                         + 420*np.sqrt(5)*mu*r2)) + 6*h1*h2*(h2*(67*np.sqrt(15)*sigma*q0 + 525*np.sqrt(5)*mu*q1 + 350*np.sqrt(3)*sigma*q2 + 67*np.sqrt(15)*sigma*r0 + 525*np.sqrt(5)*mu*r1 + 350*np.sqrt(3)*sigma*r2) + 14*slip_length*(-40*np.sqrt(3)*sigma*r0 \
-                         + 285*mu*r1 + 38*np.sqrt(15)*sigma*r2))) + h0*(1323*mu*h1**4*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2) + 63*h1**3*h2*(28*np.sqrt(3)*sigma*q0 + 165*mu*q1 + 22*np.sqrt(15)*sigma*q2 + 28*np.sqrt(3)*sigma*r0 \
-                         + 165*mu*r1 + 22*np.sqrt(15)*sigma*r2) - 70*h2**3*(h2*(30*np.sqrt(5)*mu*q0 - np.sqrt(15)*sigma*q1 - 42*mu*q2 + 30*np.sqrt(5)*mu*r0 - np.sqrt(15)*sigma*r1 - 42*mu*r2) - 8*slip_length*(72*mu*r0 + 10*np.sqrt(3)*sigma*r1 \
-                         - 21*np.sqrt(5)*mu*r2)) - 9*h1**2*h2*(h2*(14*np.sqrt(5)*mu*q0 + 138*np.sqrt(15)*sigma*q1 + 595*mu*q2 + 14*np.sqrt(5)*mu*r0 + 138*np.sqrt(15)*sigma*r1 + 595*mu*r2) + 560*slip_length*(8*mu*r0 - 2*np.sqrt(3)*sigma*r1 \
-                         - 7*np.sqrt(5)*mu*r2)) - h1*h2**2*(192*slip_length*(8*np.sqrt(15)*sigma*r0 + 105*np.sqrt(5)*mu*r1 + 70*np.sqrt(3)*sigma*r2) + h2*(860*np.sqrt(3)*sigma*q0 + 1365*mu*q1 + 182*np.sqrt(15)*sigma*q2 + 860*np.sqrt(3)*sigma*r0 \
-                         + 1365*mu*r1 + 182*np.sqrt(15)*sigma*r2))) - 2*(189*mu*h1**4*(-28*np.sqrt(5)*slip_length*r0 + 70*slip_length*r2 + 5*h2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2)) + 70*h2**4*(7*h2*(3*mu*q0 + np.sqrt(3)*sigma*q1 \
-                         + 3*mu*r0 + np.sqrt(3)*sigma*r1) + 2*slip_length*(-12*np.sqrt(5)*mu*r0 + 7*np.sqrt(15)*sigma*r1 + 42*mu*r2)) - 3*h1**2*h2**2*(-6*slip_length*(434*np.sqrt(5)*mu*r0 + 58*np.sqrt(15)*sigma*r1 - 245*mu*r2) + 35*h2*(32*mu*q0 \
-                         + 6*np.sqrt(3)*sigma*q1 - 7*np.sqrt(5)*mu*q2 + 32*mu*r0 + 6*np.sqrt(3)*sigma*r1 - 7*np.sqrt(5)*mu*r2)) + 9*h1**3*h2*(h2*(8*np.sqrt(15)*sigma*q0 + 105*np.sqrt(5)*mu*q1 + 70*np.sqrt(3)*sigma*q2 + 8*np.sqrt(15)*sigma*r0 \
-                         + 105*np.sqrt(5)*mu*r1 + 70*np.sqrt(3)*sigma*r2) + 42*slip_length*(4*np.sqrt(3)*sigma*r0 - 15*mu*r1 - 2*np.sqrt(15)*sigma*r2)) - h1*h2**3*(7*h2*(8*np.sqrt(15)*sigma*q0 + 105*np.sqrt(5)*mu*q1 + 70*np.sqrt(3)*sigma*q2 \
-                         + 8*np.sqrt(15)*sigma*r0 + 105*np.sqrt(5)*mu*r1 + 70*np.sqrt(3)*sigma*r2) + 2*slip_length*(1100*np.sqrt(3)*sigma*r0 + 4515*mu*r1 + 602*np.sqrt(15)*sigma*r2))))/(slip_length*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 \
-                         + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2)
-                
+                    S[0]  = 0
+                    S[1]  = 0
+                    S[2]  = 0
+                    S[3]  = (42*h1**2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2)*mu - 35*h0**2*(3*q0*mu + 3*r0*mu + 3*s0*mu + np.sqrt(3)*q1*sigma + np.sqrt(3)*r1*sigma + np.sqrt(3)*s1*sigma) \
+                          + h2**2*(-60*q0*mu + 42*np.sqrt(5)*q2*mu - 60*r0*mu + 42*np.sqrt(5)*r2*mu - 60*s0*mu + 42*np.sqrt(5)*s2*mu + 35*np.sqrt(3)*q1*sigma + 35*np.sqrt(3)*r1*sigma + 35*np.sqrt(3)*s1*sigma) \
+                          - h0*h2*(72*np.sqrt(5)*q0*mu - 105*q2*mu + 72*np.sqrt(5)*r0*mu - 105*r2*mu + 72*np.sqrt(5)*s0*mu - 105*s2*mu + 10*np.sqrt(15)*q1*sigma + 10*np.sqrt(15)*r1*sigma + 10*np.sqrt(15)*s1*sigma) \
+                          - h1*h2*(12*np.sqrt(5)*q1*mu + 12*np.sqrt(5)*r1*mu + 12*np.sqrt(5)*s1*mu + 4*np.sqrt(15)*q0*sigma + 35*np.sqrt(3)*q2*sigma + 4*np.sqrt(15)*r0*sigma + 35*np.sqrt(3)*r2*sigma + 4*np.sqrt(15)*s0*sigma + 35*np.sqrt(3)*s2*sigma) \
+                          + 7*h0*h1*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma)) \
+                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
+                    S[4]  = (21*h0*h1*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 5*s0*mu + 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma + 3*np.sqrt(3)*s1*sigma) \
+                          - 3*h1*h2*(4*np.sqrt(5)*q0*mu + 35*q2*mu + 4*np.sqrt(5)*r0*mu + 35*r2*mu + 4*np.sqrt(5)*s0*mu + 35*s2*mu + 6*np.sqrt(15)*q1*sigma + 6*np.sqrt(15)*r1*sigma + 6*np.sqrt(15)*s1*sigma) \
+                          - h0*h2*(30*np.sqrt(5)*q1*mu + 30*np.sqrt(5)*r1*mu + 30*np.sqrt(5)*s1*mu + 10*np.sqrt(15)*q0*sigma - 7*np.sqrt(3)*q2*sigma + 10*np.sqrt(15)*r0*sigma - 7*np.sqrt(3)*r2*sigma + 10*np.sqrt(15)*s0*sigma - 7*np.sqrt(3)*s2*sigma) \
+                          - 7*h0**2*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma) \
+                          + h2**2*(105*q1*mu + 105*r1*mu + 105*s1*mu + 8*np.sqrt(3)*q0*sigma + 14*np.sqrt(15)*q2*sigma + 8*np.sqrt(3)*r0*sigma + 14*np.sqrt(15)*r2*sigma + 8*np.sqrt(3)*s0*sigma + 14*np.sqrt(15)*s2*sigma)) \
+                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
+                    S[5]  = (-21*h1**2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
+                          + h0*h2*(105*q0*mu - 42*np.sqrt(5)*q2*mu + 105*r0*mu - 42*np.sqrt(5)*r2*mu + 105*s0*mu - 42*np.sqrt(5)*s2*mu - 20*np.sqrt(3)*q1*sigma - 20*np.sqrt(3)*r1*sigma - 20*np.sqrt(3)*s1*sigma) \
+                          + 14*np.sqrt(5)*h2**2*(3*q0*mu + 3*r0*mu + 3*s0*mu + np.sqrt(3)*q1*sigma + np.sqrt(3)*r1*sigma + np.sqrt(3)*s1*sigma) \
+                          - 7*h0**2*(15*q2*mu + 15*r2*mu + 15*s2*mu + 2*np.sqrt(15)*q1*sigma + 2*np.sqrt(15)*r1*sigma + 2*np.sqrt(15)*s1*sigma) \
+                          + 14*h0*h1*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + 3*np.sqrt(5)*s1*mu + np.sqrt(15)*q0*sigma + 2*np.sqrt(3)*q2*sigma + np.sqrt(15)*r0*sigma + 2*np.sqrt(3)*r2*sigma + np.sqrt(15)*s0*sigma + 2*np.sqrt(3)*s2*sigma) \
+                          - h1*h2*(105*q1*mu + 105*r1*mu + 105*s1*mu + 8*np.sqrt(3)*q0*sigma + 14*np.sqrt(15)*q2*sigma + 8*np.sqrt(3)*r0*sigma + 14*np.sqrt(15)*r2*sigma + 8*np.sqrt(3)*s0*sigma + 14*np.sqrt(15)*s2*sigma)) \
+                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
+                    S[6]  = -((1225*h0**5*(3*q0*mu + 3*r0*mu + 3*s0*mu + np.sqrt(3)*q1*sigma + np.sqrt(3)*r1*sigma + np.sqrt(3)*s1*sigma) \
+                          + 35*h0**4*(140*slip_length*(3*r0*mu + np.sqrt(3)*r1*sigma) + h2*(144*np.sqrt(5)*q0*mu - 105*q2*mu + 144*np.sqrt(5)*r0*mu - 105*r2*mu + 144*np.sqrt(5)*s0*mu - 105*s2*mu \
+                          + 34*np.sqrt(15)*q1*sigma + 34*np.sqrt(15)*r1*sigma + 34*np.sqrt(15)*s1*sigma) - 7*h1*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma \
+                          + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma)) \
+                          - 5*h0**3*(147*h1**2*(13*q0*mu - 2*np.sqrt(5)*q2*mu + 13*r0*mu - 2*np.sqrt(5)*r2*mu + 13*s0*mu - 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma + 3*np.sqrt(3)*s1*sigma) \
+                          + h2*(-56*slip_length*(72*np.sqrt(5)*r0*mu - 105*r2*mu + 10*np.sqrt(15)*r1*sigma) + h2*(-1833*q0*mu + 798*np.sqrt(5)*q2*mu \
+                          - 1833*r0*mu + 798*np.sqrt(5)*r2*mu - 1833*s0*mu + 798*np.sqrt(5)*s2*mu + 110*np.sqrt(3)*q1*sigma + 110*np.sqrt(3)*r1*sigma + 110*np.sqrt(3)*s1*sigma)) \
+                          + 7*h1*(56*slip_length*(15*r1*mu + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma) + h2*(60*np.sqrt(5)*q1*mu + 60*np.sqrt(5)*r1*mu + 60*np.sqrt(5)*s1*mu \
+                          + 20*np.sqrt(15)*q0*sigma + 13*np.sqrt(3)*q2*sigma + 20*np.sqrt(15)*r0*sigma + 13*np.sqrt(3)*r2*sigma + 20*np.sqrt(15)*s0*sigma + 13*np.sqrt(3)*s2*sigma))) \
+                          + h0*(2646*h1**4*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2)*mu - 63*h1**3*h2*(42*np.sqrt(5)*q1*mu + 42*np.sqrt(5)*r1*mu \
+                          + 42*np.sqrt(5)*s1*mu + 14*np.sqrt(15)*q0*sigma + 55*np.sqrt(3)*q2*sigma + 14*np.sqrt(15)*r0*sigma + 55*np.sqrt(3)*r2*sigma + 14*np.sqrt(15)*s0*sigma + 55*np.sqrt(3)*s2*sigma) \
+                          - 5*h2**3*(16*slip_length*(-291*np.sqrt(5)*r0*mu + 504*r2*mu + 35*np.sqrt(15)*r1*sigma) \
+                          + h2*(1188*q0*mu - 420*np.sqrt(5)*q2*mu + 1188*r0*mu - 420*np.sqrt(5)*r2*mu + 1188*s0*mu - 420*np.sqrt(5)*s2*mu + 35*np.sqrt(3)*q1*sigma + 35*np.sqrt(3)*r1*sigma + 35*np.sqrt(3)*s1*sigma)) \
+                          + 9*h1**2*h2*(-112*slip_length*(31*np.sqrt(5)*r0*mu - 40*r2*mu + 5*np.sqrt(15)*r1*sigma) \
+                          + h2*(440*q0*mu + 14*np.sqrt(5)*q2*mu + 440*r0*mu + 14*np.sqrt(5)*r2*mu + 440*s0*mu + 14*np.sqrt(5)*s2*mu + 345*np.sqrt(3)*q1*sigma + 345*np.sqrt(3)*r1*sigma + 345*np.sqrt(3)*s1*sigma)) \
+                          + 5*h1*h2**2*(192*slip_length*(12*r1*mu + 4*np.sqrt(3)*r0*sigma + 7*np.sqrt(15)*r2*sigma) \
+                          + h2*(258*np.sqrt(5)*q1*mu + 258*np.sqrt(5)*r1*mu + 258*np.sqrt(5)*s1*mu + 86*np.sqrt(15)*q0*sigma + 91*np.sqrt(3)*q2*sigma \
+                          + 86*np.sqrt(15)*r0*sigma + 91*np.sqrt(3)*r2*sigma + 86*np.sqrt(15)*s0*sigma + 91*np.sqrt(3)*s2*sigma))) \
+                          - 2*(378*h1**4*(h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2) \
+                          + 14*(-2*r0 + np.sqrt(5)*r2)*slip_length)*mu - 3*h1**2*h2**2*(6*slip_length*(-1000*r0*mu + 434*np.sqrt(5)*r2*mu + 145*np.sqrt(3)*r1*sigma) \
+                          + h2*(376*np.sqrt(5)*q0*mu - 1120*q2*mu + 376*np.sqrt(5)*r0*mu - 1120*r2*mu + 376*np.sqrt(5)*s0*mu - 1120*s2*mu - 105*np.sqrt(15)*q1*sigma - 105*np.sqrt(15)*r1*sigma - 105*np.sqrt(15)*s1*sigma)) \
+                          + 5*h2**4*(-2*slip_length*(828*r0*mu - 168*np.sqrt(5)*r2*mu + 245*np.sqrt(3)*r1*sigma) + 7*h2*(12*np.sqrt(5)*q0*mu - 42*q2*mu + 12*np.sqrt(5)*r0*mu \
+                          - 42*r2*mu + 12*np.sqrt(5)*s0*mu - 42*s2*mu - 7*np.sqrt(15)*q1*sigma - 7*np.sqrt(15)*r1*sigma - 7*np.sqrt(15)*s1*sigma)) \
+                          - 9*h1**3*h2*(42*slip_length*(6*np.sqrt(5)*r1*mu + np.sqrt(3)*(2*np.sqrt(5)*r0 - 5*r2)*sigma) \
+                          + 5*h2*(12*q1*mu + 12*r1*mu + 12*s1*mu + 4*np.sqrt(3)*q0*sigma + 7*np.sqrt(15)*q2*sigma + 4*np.sqrt(3)*r0*sigma + 7*np.sqrt(15)*r2*sigma + 4*np.sqrt(3)*s0*sigma + 7*np.sqrt(15)*s2*sigma)) \
+                          + 5*h1*h2**3*(660*np.sqrt(5)*r1*slip_length*mu + 2*np.sqrt(3)*(110*np.sqrt(5)*r0 + 301*r2)*slip_length*sigma \
+                          + 7*h2*(12*q1*mu + 12*r1*mu + 12*s1*mu + 4*np.sqrt(3)*q0*sigma + 7*np.sqrt(15)*q2*sigma + 4*np.sqrt(3)*r0*sigma + 7*np.sqrt(15)*r2*sigma + 4*np.sqrt(3)*s0*sigma + 7*np.sqrt(15)*s2*sigma))) \
+                          + h0**2*(441*h1**3*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma) \
+                          - 63*h1**2*(37*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu + 140*slip_length*(r0*mu - 2*np.sqrt(5)*r2*mu - np.sqrt(3)*r1*sigma)) \
+                          - 5*h2**2*(12*slip_length*(-1101*r0*mu + 462*np.sqrt(5)*r2*mu + 130*np.sqrt(3)*r1*sigma) \
+                          + h2*(222*np.sqrt(5)*q0*mu + 693*q2*mu + 222*np.sqrt(5)*r0*mu + 693*r2*mu + 222*np.sqrt(5)*s0*mu + 693*s2*mu + 296*np.sqrt(15)*q1*sigma + 296*np.sqrt(15)*r1*sigma + 296*np.sqrt(15)*s1*sigma)) \
+                          + 15*h1*h2*(-28*slip_length*(12*np.sqrt(5)*r1*mu + 4*np.sqrt(15)*r0*sigma - 19*np.sqrt(3)*r2*sigma) \
+                          + h2*(201*q1*mu + 201*r1*mu + 201*s1*mu + 67*np.sqrt(3)*q0*sigma + 70*np.sqrt(15)*q2*sigma + 67*np.sqrt(3)*r0*sigma + 70*np.sqrt(15)*r2*sigma + 67*np.sqrt(3)*s0*sigma + 70*np.sqrt(15)*s2*sigma)))) \
+                          /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length))
+                    S[7]  = (-245*h0**5*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma) \
+                          + 35*h0**4*(-28*slip_length*(15*r1*mu + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma) \
+                          + 21*h1*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 5*s0*mu + 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma + 3*np.sqrt(3)*s1*sigma) \
+                          - h2*(102*np.sqrt(5)*q1*mu + 102*np.sqrt(5)*r1*mu + 102*np.sqrt(5)*s1*mu + 34*np.sqrt(15)*q0*sigma + 41*np.sqrt(3)*q2*sigma \
+                          + 34*np.sqrt(15)*r0*sigma + 41*np.sqrt(3)*r2*sigma + 34*np.sqrt(15)*s0*sigma + 41*np.sqrt(3)*s2*sigma)) \
+                          - 2*h2*(27*h1**3*(42*(2*np.sqrt(5)*r0 - 5*r2)*slip_length*mu \
+                          + 5*h2*(4*q0*mu + 7*np.sqrt(5)*q2*mu + 4*r0*mu + 7*np.sqrt(5)*r2*mu + 4*s0*mu + 7*np.sqrt(5)*s2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma + 6*np.sqrt(3)*s1*sigma)) \
+                          - 3*h1*h2**2*(2*slip_length*(550*np.sqrt(5)*r0*mu + 1505*r2*mu + 384*np.sqrt(15)*r1*sigma) \
+                          + 35*h2*(4*q0*mu + 7*np.sqrt(5)*q2*mu + 4*r0*mu + 7*np.sqrt(5)*r2*mu + 4*s0*mu + 7*np.sqrt(5)*s2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma + 6*np.sqrt(3)*s1*sigma)) \
+                          - 9*h1**2*h2*(-870*r1*slip_length*mu + 8*np.sqrt(3)*(11*r0 - 28*np.sqrt(5)*r2)*slip_length*sigma \
+                          + h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma)) \
+                          + h2**3*(7350*r1*slip_length*mu + 8*np.sqrt(3)*(205*r0 + 28*np.sqrt(5)*r2)*slip_length*sigma \
+                          + 7*h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma))) \
+                          - h0**2*(1323*h1**3*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 5*s0*mu + 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma + 3*np.sqrt(3)*s1*sigma) \
+                          + 63*h1**2*(420*r1*slip_length*mu + np.sqrt(3)*(27*h2*(q2 + r2 + s2) + 28*(5*r0 + 2*np.sqrt(5)*r2)*slip_length)*sigma) \
+                          + 9*h1*h2*(28*slip_length*(-20*np.sqrt(5)*r0*mu + 95*r2*mu + 6*np.sqrt(15)*r1*sigma) \
+                          + 5*h2*(67*q0*mu + 70*np.sqrt(5)*q2*mu + 67*r0*mu + 70*np.sqrt(5)*r2*mu + 67*s0*mu + 70*np.sqrt(5)*s2*mu + 69*np.sqrt(3)*q1*sigma + 69*np.sqrt(3)*r1*sigma + 69*np.sqrt(3)*s1*sigma)) \
+                          - h2**2*(12*slip_length*(1950*r1*mu - 295*np.sqrt(3)*r0*sigma + 476*np.sqrt(15)*r2*sigma) \
+                          + h2*(4440*np.sqrt(5)*q1*mu + 4440*np.sqrt(5)*r1*mu + 4440*np.sqrt(5)*s1*mu + 832*np.sqrt(15)*q0*sigma + 2555*np.sqrt(3)*q2*sigma \
+                          + 832*np.sqrt(15)*r0*sigma + 2555*np.sqrt(3)*r2*sigma + 832*np.sqrt(15)*s0*sigma + 2555*np.sqrt(3)*s2*sigma))) \
+                          + h0*h2*(189*h1**3*(14*np.sqrt(5)*q0*mu + 55*q2*mu + 14*np.sqrt(5)*r0*mu + 55*r2*mu + 14*np.sqrt(5)*s0*mu + 55*s2*mu + 12*np.sqrt(15)*q1*sigma + 12*np.sqrt(15)*r1*sigma + 12*np.sqrt(15)*s1*sigma) \
+                          - 3*h1*h2*(960*slip_length*(4*r0*mu + 7*np.sqrt(5)*r2*mu + 6*np.sqrt(3)*r1*sigma) + h2*(430*np.sqrt(5)*q0*mu + 455*q2*mu + 430*np.sqrt(5)*r0*mu \
+                          + 455*r2*mu + 430*np.sqrt(5)*s0*mu + 455*s2*mu + 204*np.sqrt(15)*q1*sigma + 204*np.sqrt(15)*r1*sigma + 204*np.sqrt(15)*s1*sigma)) \
+                          + h2**2*(16*slip_length*(525*np.sqrt(5)*r1*mu - 149*np.sqrt(15)*r0*sigma + 350*np.sqrt(3)*r2*sigma) \
+                          + h2*(525*q1*mu + 525*r1*mu + 525*s1*mu + 580*np.sqrt(3)*q0*sigma - 308*np.sqrt(15)*q2*sigma + 580*np.sqrt(3)*r0*sigma - 308*np.sqrt(15)*r2*sigma + 580*np.sqrt(3)*s0*sigma - 308*np.sqrt(15)*s2*sigma)) \
+                          - 9*h1**2*(-560*slip_length*(3*np.sqrt(5)*r1*mu + np.sqrt(15)*r0*sigma + 2*np.sqrt(3)*r2*sigma) \
+                          + 3*h2*(345*q1*mu + 345*r1*mu + 345*s1*mu + 52*np.sqrt(3)*q0*sigma + 28*np.sqrt(15)*q2*sigma + 52*np.sqrt(3)*r0*sigma + 28*np.sqrt(15)*r2*sigma + 52*np.sqrt(3)*s0*sigma + 28*np.sqrt(15)*s2*sigma))) \
+                          + h0**3*(441*h1**2*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma) \
+                          + 21*h1*(280*slip_length*(5*r0*mu + 2*np.sqrt(5)*r2*mu + 3*np.sqrt(3)*r1*sigma) \
+                          + h2*(100*np.sqrt(5)*q0*mu + 65*q2*mu + 100*np.sqrt(5)*r0*mu + 65*r2*mu + 100*np.sqrt(5)*s0*mu + 65*s2*mu + 42*np.sqrt(15)*q1*sigma + 42*np.sqrt(15)*r1*sigma + 42*np.sqrt(15)*s1*sigma)) \
+                          + h2*(-280*slip_length*(30*np.sqrt(5)*r1*mu + 10*np.sqrt(15)*r0*sigma - 7*np.sqrt(3)*r2*sigma) \
+                          + h2*(1650*q1*mu + 1650*r1*mu + 1650*s1*mu - 395*np.sqrt(3)*q0*sigma + 868*np.sqrt(15)*q2*sigma - 395*np.sqrt(3)*r0*sigma + 868*np.sqrt(15)*r2*sigma - 395*np.sqrt(3)*s0*sigma + 868*np.sqrt(15)*s2*sigma)))) \
+                          /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
+                    S[8]  = (-245*h0**5*(15*q2*mu + 15*r2*mu + 15*s2*mu + 2*np.sqrt(15)*q1*sigma + 2*np.sqrt(15)*r1*sigma + 2*np.sqrt(15)*s1*sigma) \
+                          + 35*h0**4*(-28*slip_length*(15*r2*mu + 2*np.sqrt(15)*r1*sigma) \
+                          + h2*(105*q0*mu - 114*np.sqrt(5)*q2*mu + 105*r0*mu - 114*np.sqrt(5)*r2*mu + 105*s0*mu \
+                          - 114*np.sqrt(5)*s2*mu - 68*np.sqrt(3)*q1*sigma - 68*np.sqrt(3)*r1*sigma - 68*np.sqrt(3)*s1*sigma) \
+                          + 14*h1*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + 3*np.sqrt(5)*s1*mu + np.sqrt(15)*q0*sigma + 2*np.sqrt(3)*q2*sigma + np.sqrt(15)*r0*sigma + 2*np.sqrt(3)*r2*sigma + np.sqrt(15)*s0*sigma + 2*np.sqrt(3)*s2*sigma)) \
+                          - 2*(189*h1**4*(5*h2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2) - 28*np.sqrt(5)*r0*slip_length + 70*r2*slip_length)*mu \
+                          + 70*h2**4*(2*slip_length*(-12*np.sqrt(5)*r0*mu + 42*r2*mu + 7*np.sqrt(15)*r1*sigma) + 7*h2*(3*q0*mu + 3*r0*mu + 3*s0*mu + np.sqrt(3)*q1*sigma + np.sqrt(3)*r1*sigma + np.sqrt(3)*s1*sigma)) \
+                          - 3*h1**2*h2**2*(-6*slip_length*(434*np.sqrt(5)*r0*mu - 245*r2*mu + 58*np.sqrt(15)*r1*sigma) + 35*h2*(32*q0*mu - 7*np.sqrt(5)*q2*mu \
+                          + 32*r0*mu - 7*np.sqrt(5)*r2*mu + 32*s0*mu - 7*np.sqrt(5)*s2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma + 6*np.sqrt(3)*s1*sigma)) \
+                          + 9*h1**3*h2*(-42*slip_length*(15*r1*mu - 4*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma) \
+                          + h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma)) \
+                          - h1*h2**3*(9030*r1*slip_length*mu + 4*np.sqrt(3)*(550*r0 + 301*np.sqrt(5)*r2)*slip_length*sigma \
+                          + 7*h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma))) \
+                          - h0**2*(882*h1**3*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + 3*np.sqrt(5)*s1*mu + np.sqrt(15)*q0*sigma + 2*np.sqrt(3)*q2*sigma \
+                          + np.sqrt(15)*r0*sigma + 2*np.sqrt(3)*r2*sigma + np.sqrt(15)*s0*sigma + 2*np.sqrt(3)*s2*sigma) \
+                          + 63*h1**2*(h2*(185*q0 - 52*np.sqrt(5)*q2 + 185*r0 - 52*np.sqrt(5)*r2 + 185*s0 - 52*np.sqrt(5)*s2)*mu \
+                          + 56*slip_length*(5*np.sqrt(5)*r0*mu - 5*r2*mu + np.sqrt(15)*r1*sigma)) \
+                          - 5*h2**2*(12*slip_length*(462*np.sqrt(5)*r0*mu - 441*r2*mu + 52*np.sqrt(15)*r1*sigma) \
+                          + h2*(693*q0*mu + 420*np.sqrt(5)*q2*mu + 693*r0*mu + 420*np.sqrt(5)*r2*mu + 693*s0*mu + 420*np.sqrt(5)*s2*mu + 592*np.sqrt(3)*q1*sigma + 592*np.sqrt(3)*r1*sigma + 592*np.sqrt(3)*s1*sigma)) \
+                          + 6*h1*h2*(14*slip_length*(285*r1*mu - 40*np.sqrt(3)*r0*sigma + 38*np.sqrt(15)*r2*sigma) \
+                          + h2*(525*np.sqrt(5)*q1*mu + 525*np.sqrt(5)*r1*mu + 525*np.sqrt(5)*s1*mu + 67*np.sqrt(15)*q0*sigma + 350*np.sqrt(3)*q2*sigma \
+                          + 67*np.sqrt(15)*r0*sigma + 350*np.sqrt(3)*r2*sigma + 67*np.sqrt(15)*s0*sigma + 350*np.sqrt(3)*s2*sigma))) \
+                          + h0**3*(-294*h1**2*(5*np.sqrt(5)*q0*mu - 35*q2*mu + 5*np.sqrt(5)*r0*mu - 35*r2*mu + 5*np.sqrt(5)*s0*mu - 35*s2*mu - 3*np.sqrt(15)*q1*sigma - 3*np.sqrt(15)*r1*sigma - 3*np.sqrt(15)*s1*sigma) \
+                          + 5*h2*(56*slip_length*(105*r0*mu - 42*np.sqrt(5)*r2*mu - 20*np.sqrt(3)*r1*sigma) \
+                          + h2*(798*np.sqrt(5)*q0*mu - 693*q2*mu + 798*np.sqrt(5)*r0*mu - 693*r2*mu + 798*np.sqrt(5)*s0*mu - 693*s2*mu + 44*np.sqrt(15)*q1*sigma + 44*np.sqrt(15)*r1*sigma + 44*np.sqrt(15)*s1*sigma)) \
+                          + 7*h1*(560*slip_length*(3*np.sqrt(5)*r1*mu + np.sqrt(15)*r0*sigma + 2*np.sqrt(3)*r2*sigma) \
+                          + h2*(195*q1*mu + 195*r1*mu + 195*s1*mu + 200*np.sqrt(3)*q0*sigma + 26*np.sqrt(15)*q2*sigma + 200*np.sqrt(3)*r0*sigma + 26*np.sqrt(15)*r2*sigma + 200*np.sqrt(3)*s0*sigma + 26*np.sqrt(15)*s2*sigma))) \
+                          + h0*(1323*h1**4*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
+                          + 63*h1**3*h2*(165*q1*mu + 165*r1*mu + 165*s1*mu + 28*np.sqrt(3)*q0*sigma + 22*np.sqrt(15)*q2*sigma + 28*np.sqrt(3)*r0*sigma + 22*np.sqrt(15)*r2*sigma + 28*np.sqrt(3)*s0*sigma + 22*np.sqrt(15)*s2*sigma) \
+                          - 70*h2**3*(-8*slip_length*(72*r0*mu - 21*np.sqrt(5)*r2*mu + 10*np.sqrt(3)*r1*sigma) + h2*(30*np.sqrt(5)*q0*mu - 42*q2*mu + 30*np.sqrt(5)*r0*mu \
+                          - 42*r2*mu + 30*np.sqrt(5)*s0*mu - 42*s2*mu - np.sqrt(15)*q1*sigma - np.sqrt(15)*r1*sigma - np.sqrt(15)*s1*sigma)) \
+                          - 9*h1**2*h2*(560*slip_length*(8*r0*mu - 7*np.sqrt(5)*r2*mu - 2*np.sqrt(3)*r1*sigma) \
+                          + h2*(14*np.sqrt(5)*q0*mu + 595*q2*mu + 14*np.sqrt(5)*r0*mu + 595*r2*mu + 14*np.sqrt(5)*s0*mu + 595*s2*mu + 138*np.sqrt(15)*q1*sigma + 138*np.sqrt(15)*r1*sigma + 138*np.sqrt(15)*s1*sigma)) \
+                          - h1*h2**2*(192*slip_length*(105*np.sqrt(5)*r1*mu + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma) \
+                          + h2*(1365*q1*mu + 1365*r1*mu + 1365*s1*mu + 860*np.sqrt(3)*q0*sigma + 182*np.sqrt(15)*q2*sigma + 860*np.sqrt(3)*r0*sigma + 182*np.sqrt(15)*r2*sigma + 860*np.sqrt(3)*s0*sigma + 182*np.sqrt(15)*s2*sigma)))) \
+                          /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
+                    S[9]  = (-5*(1225*h0**5*(3*q0*mu + 3*r0*mu + 3*s0*mu + np.sqrt(3)*q1*sigma + np.sqrt(3)*r1*sigma + np.sqrt(3)*s1*sigma) \
+                          + 35*h0**4*(420*s0*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + h2*(144*np.sqrt(5)*q0*mu - 105*q2*mu + 144*np.sqrt(5)*r0*mu - 105*r2*mu + 144*np.sqrt(5)*s0*mu - 105*s2*mu + 34*np.sqrt(15)*q1*sigma + 34*np.sqrt(15)*r1*sigma + 34*np.sqrt(15)*s1*sigma) \
+                          - 7*h1*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma)) \
+                          - 5*h0**3*(147*h1**2*(13*q0*mu - 2*np.sqrt(5)*q2*mu + 13*r0*mu - 2*np.sqrt(5)*r2*mu + 13*s0*mu - 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma + 3*np.sqrt(3)*s1*sigma) \
+                          + h2*(-168*(24*np.sqrt(5)*s0 - 35*s2)*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + h2*(-1833*q0*mu + 798*np.sqrt(5)*q2*mu - 1833*r0*mu + 798*np.sqrt(5)*r2*mu - 1833*s0*mu + 798*np.sqrt(5)*s2*mu + 110*np.sqrt(3)*q1*sigma + 110*np.sqrt(3)*r1*sigma + 110*np.sqrt(3)*s1*sigma)) \
+                          + 7*h1*(840*s1*slip_length*(3*mu + np.sqrt(3)*sigma) + h2*(60*np.sqrt(5)*q1*mu + 60*np.sqrt(5)*r1*mu + 60*np.sqrt(5)*s1*mu + 20*np.sqrt(15)*q0*sigma \
+                          + 13*np.sqrt(3)*q2*sigma + 20*np.sqrt(15)*r0*sigma + 13*np.sqrt(3)*r2*sigma + 20*np.sqrt(15)*s0*sigma + 13*np.sqrt(3)*s2*sigma))) \
+                          + h0*(2646*h1**4*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2)*mu - 63*h1**3*h2*(42*np.sqrt(5)*q1*mu + 42*np.sqrt(5)*r1*mu \
+                          + 42*np.sqrt(5)*s1*mu + 14*np.sqrt(15)*q0*sigma + 55*np.sqrt(3)*q2*sigma + 14*np.sqrt(15)*r0*sigma + 55*np.sqrt(3)*r2*sigma + 14*np.sqrt(15)*s0*sigma + 55*np.sqrt(3)*s2*sigma) \
+                          - 5*h2**3*(-48*(97*np.sqrt(5)*s0 - 168*s2)*slip_length*(3*mu + np.sqrt(3)*sigma) + h2*(1188*q0*mu - 420*np.sqrt(5)*q2*mu + 1188*r0*mu \
+                          - 420*np.sqrt(5)*r2*mu + 1188*s0*mu - 420*np.sqrt(5)*s2*mu + 35*np.sqrt(3)*q1*sigma + 35*np.sqrt(3)*r1*sigma + 35*np.sqrt(3)*s1*sigma)) \
+                          + 9*h1**2*h2*(-112*(31*np.sqrt(5)*s0 - 40*s2)*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + h2*(440*q0*mu + 14*np.sqrt(5)*q2*mu + 440*r0*mu + 14*np.sqrt(5)*r2*mu + 440*s0*mu + 14*np.sqrt(5)*s2*mu + 345*np.sqrt(3)*q1*sigma + 345*np.sqrt(3)*r1*sigma + 345*np.sqrt(3)*s1*sigma)) \
+                          + 5*h1*h2**2*(2304*s1*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + h2*(258*np.sqrt(5)*q1*mu + 258*np.sqrt(5)*r1*mu + 258*np.sqrt(5)*s1*mu + 86*np.sqrt(15)*q0*sigma + 91*np.sqrt(3)*q2*sigma \
+                          + 86*np.sqrt(15)*r0*sigma + 91*np.sqrt(3)*r2*sigma + 86*np.sqrt(15)*s0*sigma + 91*np.sqrt(3)*s2*sigma))) \
+                          - 2*(378*h1**4*(h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
+                          - 14*(2*s0 - np.sqrt(5)*s2)*slip_length*(3*mu + np.sqrt(3)*sigma)) \
+                          - 3*h1**2*h2**2*(-12*(500*s0 - 217*np.sqrt(5)*s2)*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + h2*(376*np.sqrt(5)*q0*mu - 1120*q2*mu + 376*np.sqrt(5)*r0*mu - 1120*r2*mu + 376*np.sqrt(5)*s0*mu - 1120*s2*mu - 105*np.sqrt(15)*q1*sigma - 105*np.sqrt(15)*r1*sigma - 105*np.sqrt(15)*s1*sigma)) \
+                          + 5*h2**4*(-24*(69*s0 - 14*np.sqrt(5)*s2)*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + 7*h2*(12*np.sqrt(5)*q0*mu - 42*q2*mu + 12*np.sqrt(5)*r0*mu - 42*r2*mu + 12*np.sqrt(5)*s0*mu - 42*s2*mu - 7*np.sqrt(15)*q1*sigma - 7*np.sqrt(15)*r1*sigma - 7*np.sqrt(15)*s1*sigma)) \
+                          - 9*h1**3*h2*(252*np.sqrt(5)*s1*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + 5*h2*(12*q1*mu + 12*r1*mu + 12*s1*mu + 4*np.sqrt(3)*q0*sigma + 7*np.sqrt(15)*q2*sigma + 4*np.sqrt(3)*r0*sigma + 7*np.sqrt(15)*r2*sigma + 4*np.sqrt(3)*s0*sigma + 7*np.sqrt(15)*s2*sigma)) \
+                          + 5*h1*h2**3*(660*np.sqrt(5)*s1*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + 7*h2*(12*q1*mu + 12*r1*mu + 12*s1*mu + 4*np.sqrt(3)*q0*sigma + 7*np.sqrt(15)*q2*sigma + 4*np.sqrt(3)*r0*sigma + 7*np.sqrt(15)*r2*sigma + 4*np.sqrt(3)*s0*sigma + 7*np.sqrt(15)*s2*sigma))) \
+                          + h0**2*(441*h1**3*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma \
+                          + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma) - 63*h1**2*(37*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
+                          + 140*(s0 - 2*np.sqrt(5)*s2)*slip_length*(3*mu + np.sqrt(3)*sigma)) - 5*h2**2*(-36*(367*s0 - 154*np.sqrt(5)*s2)*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + h2*(222*np.sqrt(5)*q0*mu + 693*q2*mu + 222*np.sqrt(5)*r0*mu + 693*r2*mu + 222*np.sqrt(5)*s0*mu + 693*s2*mu + 296*np.sqrt(15)*q1*sigma + 296*np.sqrt(15)*r1*sigma + 296*np.sqrt(15)*s1*sigma)) \
+                          + 15*h1*h2*(-336*np.sqrt(5)*s1*slip_length*(3*mu + np.sqrt(3)*sigma) \
+                          + h2*(201*q1*mu + 201*r1*mu + 201*s1*mu + 67*np.sqrt(3)*q0*sigma + 70*np.sqrt(15)*q2*sigma + 67*np.sqrt(3)*r0*sigma + 70*np.sqrt(15)*r2*sigma + 67*np.sqrt(3)*s0*sigma + 70*np.sqrt(15)*s2*sigma))))) \
+                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
+                    S[10] = (-5*(245*h0**5*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma) \
+                          - 35*h0**4*(21*h1*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 5*s0*mu + 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma + 3*np.sqrt(3)*s1*sigma) \
+                          - h2*(102*np.sqrt(5)*q1*mu + 102*np.sqrt(5)*r1*mu + 102*np.sqrt(5)*s1*mu + 34*np.sqrt(15)*q0*sigma + 41*np.sqrt(3)*q2*sigma + 34*np.sqrt(15)*r0*sigma \
+                          + 41*np.sqrt(3)*r2*sigma + 34*np.sqrt(15)*s0*sigma + 41*np.sqrt(3)*s2*sigma) \
+                          - 84*slip_length*(15*s1*mu + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma)) \
+                          + h0*h2*(-189*h1**3*(14*np.sqrt(5)*q0*mu + 55*q2*mu + 14*np.sqrt(5)*r0*mu + 55*r2*mu + 14*np.sqrt(5)*s0*mu + 55*s2*mu + 12*np.sqrt(15)*q1*sigma + 12*np.sqrt(15)*r1*sigma + 12*np.sqrt(15)*s1*sigma) \
+                          + 3*h1*h2*(2880*slip_length*(4*s0*mu + 7*np.sqrt(5)*s2*mu + 6*np.sqrt(3)*s1*sigma) \
+                          + h2*(430*np.sqrt(5)*q0*mu + 455*q2*mu + 430*np.sqrt(5)*r0*mu + 455*r2*mu + 430*np.sqrt(5)*s0*mu + 455*s2*mu + 204*np.sqrt(15)*q1*sigma + 204*np.sqrt(15)*r1*sigma + 204*np.sqrt(15)*s1*sigma)) \
+                          - h2**2*(48*slip_length*(525*np.sqrt(5)*s1*mu - 149*np.sqrt(15)*s0*sigma + 350*np.sqrt(3)*s2*sigma) \
+                          + h2*(525*q1*mu + 525*r1*mu + 525*s1*mu + 580*np.sqrt(3)*q0*sigma - 308*np.sqrt(15)*q2*sigma + 580*np.sqrt(3)*r0*sigma - 308*np.sqrt(15)*r2*sigma + 580*np.sqrt(3)*s0*sigma - 308*np.sqrt(15)*s2*sigma)) \
+                          + 27*h1**2*(-560*slip_length*(3*np.sqrt(5)*s1*mu + np.sqrt(15)*s0*sigma + 2*np.sqrt(3)*s2*sigma) \
+                          + h2*(345*q1*mu + 345*r1*mu + 345*s1*mu + 52*np.sqrt(3)*q0*sigma + 28*np.sqrt(15)*q2*sigma + 52*np.sqrt(3)*r0*sigma + 28*np.sqrt(15)*r2*sigma + 52*np.sqrt(3)*s0*sigma + 28*np.sqrt(15)*s2*sigma))) \
+                          + 2*h2*(27*h1**3*(126*(2*np.sqrt(5)*s0 - 5*s2)*slip_length*mu \
+                          + 5*h2*(4*q0*mu + 7*np.sqrt(5)*q2*mu + 4*r0*mu + 7*np.sqrt(5)*r2*mu + 4*s0*mu + 7*np.sqrt(5)*s2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma + 6*np.sqrt(3)*s1*sigma)) \
+                          - 3*h1*h2**2*(35*h2*(4*q0*mu + 7*np.sqrt(5)*q2*mu + 4*r0*mu + 7*np.sqrt(5)*r2*mu + 4*s0*mu + 7*np.sqrt(5)*s2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma + 6*np.sqrt(3)*s1*sigma) \
+                          + 6*slip_length*(550*np.sqrt(5)*s0*mu + 1505*s2*mu + 384*np.sqrt(15)*s1*sigma)) \
+                          - 9*h1**2*h2*(h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma) \
+                          - 6*slip_length*(435*s1*mu - 44*np.sqrt(3)*s0*sigma + 112*np.sqrt(15)*s2*sigma)) \
+                          + h2**3*(7*h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma) \
+                          + 6*slip_length*(3675*s1*mu + 820*np.sqrt(3)*s0*sigma + 112*np.sqrt(15)*s2*sigma))) \
+                          + h0**2*(1323*h1**3*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 5*s0*mu + 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma + 3*np.sqrt(3)*s1*sigma) \
+                          + 189*h1**2*(420*s1*slip_length*mu + np.sqrt(3)*(9*h2*(q2 + r2 + s2) + 28*(5*s0 + 2*np.sqrt(5)*s2)*slip_length)*sigma) \
+                          + 9*h1*h2*(5*h2*(67*q0*mu + 70*np.sqrt(5)*q2*mu + 67*r0*mu + 70*np.sqrt(5)*r2*mu + 67*s0*mu + 70*np.sqrt(5)*s2*mu + 69*np.sqrt(3)*q1*sigma + 69*np.sqrt(3)*r1*sigma + 69*np.sqrt(3)*s1*sigma) \
+                          - 84*slip_length*(20*np.sqrt(5)*s0*mu - 95*s2*mu - 6*np.sqrt(15)*s1*sigma)) \
+                          - h2**2*(h2*(4440*np.sqrt(5)*q1*mu + 4440*np.sqrt(5)*r1*mu + 4440*np.sqrt(5)*s1*mu + 832*np.sqrt(15)*q0*sigma + 2555*np.sqrt(3)*q2*sigma \
+                          + 832*np.sqrt(15)*r0*sigma + 2555*np.sqrt(3)*r2*sigma + 832*np.sqrt(15)*s0*sigma + 2555*np.sqrt(3)*s2*sigma) \
+                          + 36*slip_length*(1950*s1*mu - 295*np.sqrt(3)*s0*sigma + 476*np.sqrt(15)*s2*sigma))) \
+                          - h0**3*(441*h1**2*(15*q1*mu + 15*r1*mu + 15*s1*mu + 5*np.sqrt(3)*q0*sigma + 2*np.sqrt(15)*q2*sigma \
+                          + 5*np.sqrt(3)*r0*sigma + 2*np.sqrt(15)*r2*sigma + 5*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma) \
+                          + 21*h1*(840*slip_length*(5*s0*mu + 2*np.sqrt(5)*s2*mu + 3*np.sqrt(3)*s1*sigma) \
+                          + h2*(100*np.sqrt(5)*q0*mu + 65*q2*mu + 100*np.sqrt(5)*r0*mu + 65*r2*mu + 100*np.sqrt(5)*s0*mu + 65*s2*mu + 42*np.sqrt(15)*q1*sigma + 42*np.sqrt(15)*r1*sigma + 42*np.sqrt(15)*s1*sigma)) \
+                          + h2*(-840*slip_length*(30*np.sqrt(5)*s1*mu + 10*np.sqrt(15)*s0*sigma - 7*np.sqrt(3)*s2*sigma) \
+                          + h2*(1650*q1*mu + 1650*r1*mu + 1650*s1*mu - 395*np.sqrt(3)*q0*sigma + 868*np.sqrt(15)*q2*sigma - 395*np.sqrt(3)*r0*sigma + 868*np.sqrt(15)*r2*sigma - 395*np.sqrt(3)*s0*sigma + 868*np.sqrt(15)*s2*sigma))))) \
+                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
+                    S[11] = (-5*(245*h0**5*(15*q2*mu + 15*r2*mu + 15*s2*mu + 2*np.sqrt(15)*q1*sigma + 2*np.sqrt(15)*r1*sigma + 2*np.sqrt(15)*s1*sigma) \
+                          - 35*h0**4*(h2*(105*q0*mu - 114*np.sqrt(5)*q2*mu + 105*r0*mu - 114*np.sqrt(5)*r2*mu + 105*s0*mu - 114*np.sqrt(5)*s2*mu - 68*np.sqrt(3)*q1*sigma - 68*np.sqrt(3)*r1*sigma - 68*np.sqrt(3)*s1*sigma) \
+                          - 84*slip_length*(15*s2*mu + 2*np.sqrt(15)*s1*sigma) + 14*h1*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + 3*np.sqrt(5)*s1*mu + np.sqrt(15)*q0*sigma \
+                          + 2*np.sqrt(3)*q2*sigma + np.sqrt(15)*r0*sigma + 2*np.sqrt(3)*r2*sigma + np.sqrt(15)*s0*sigma + 2*np.sqrt(3)*s2*sigma)) \
+                          + h0**3*(294*h1**2*(5*np.sqrt(5)*q0*mu - 35*q2*mu + 5*np.sqrt(5)*r0*mu - 35*r2*mu + 5*np.sqrt(5)*s0*mu - 35*s2*mu - 3*np.sqrt(15)*q1*sigma - 3*np.sqrt(15)*r1*sigma - 3*np.sqrt(15)*s1*sigma) \
+                          - 5*h2*(168*slip_length*(105*s0*mu - 42*np.sqrt(5)*s2*mu - 20*np.sqrt(3)*s1*sigma) \
+                          + h2*(798*np.sqrt(5)*q0*mu - 693*q2*mu + 798*np.sqrt(5)*r0*mu - 693*r2*mu + 798*np.sqrt(5)*s0*mu - 693*s2*mu + 44*np.sqrt(15)*q1*sigma + 44*np.sqrt(15)*r1*sigma + 44*np.sqrt(15)*s1*sigma)) \
+                          - 7*h1*(1680*slip_length*(3*np.sqrt(5)*s1*mu + np.sqrt(15)*s0*sigma + 2*np.sqrt(3)*s2*sigma) \
+                          + h2*(195*q1*mu + 195*r1*mu + 195*s1*mu + 200*np.sqrt(3)*q0*sigma + 26*np.sqrt(15)*q2*sigma + 200*np.sqrt(3)*r0*sigma + 26*np.sqrt(15)*r2*sigma + 200*np.sqrt(3)*s0*sigma + 26*np.sqrt(15)*s2*sigma))) \
+                          + h0**2*(882*h1**3*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + 3*np.sqrt(5)*s1*mu + np.sqrt(15)*q0*sigma + 2*np.sqrt(3)*q2*sigma \
+                          + np.sqrt(15)*r0*sigma + 2*np.sqrt(3)*r2*sigma + np.sqrt(15)*s0*sigma + 2*np.sqrt(3)*s2*sigma) \
+                          + 63*h1**2*(h2*(185*q0 - 52*np.sqrt(5)*q2 + 185*r0 - 52*np.sqrt(5)*r2 + 185*s0 - 52*np.sqrt(5)*s2)*mu + 168*slip_length*(5*np.sqrt(5)*s0*mu - 5*s2*mu + np.sqrt(15)*s1*sigma)) \
+                          - 5*h2**2*(h2*(693*q0*mu + 420*np.sqrt(5)*q2*mu + 693*r0*mu + 420*np.sqrt(5)*r2*mu + 693*s0*mu + 420*np.sqrt(5)*s2*mu + 592*np.sqrt(3)*q1*sigma + 592*np.sqrt(3)*r1*sigma + 592*np.sqrt(3)*s1*sigma) \
+                          + 36*slip_length*(462*np.sqrt(5)*s0*mu - 441*s2*mu + 52*np.sqrt(15)*s1*sigma)) \
+                          + 6*h1*h2*(h2*(525*np.sqrt(5)*q1*mu + 525*np.sqrt(5)*r1*mu + 525*np.sqrt(5)*s1*mu + 67*np.sqrt(15)*q0*sigma + 350*np.sqrt(3)*q2*sigma \
+                          + 67*np.sqrt(15)*r0*sigma + 350*np.sqrt(3)*r2*sigma + 67*np.sqrt(15)*s0*sigma + 350*np.sqrt(3)*s2*sigma) \
+                          + 42*slip_length*(285*s1*mu - 40*np.sqrt(3)*s0*sigma + 38*np.sqrt(15)*s2*sigma))) \
+                          + h0*(-1323*h1**4*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
+                          - 63*h1**3*h2*(165*q1*mu + 165*r1*mu + 165*s1*mu + 28*np.sqrt(3)*q0*sigma + 22*np.sqrt(15)*q2*sigma + 28*np.sqrt(3)*r0*sigma + 22*np.sqrt(15)*r2*sigma + 28*np.sqrt(3)*s0*sigma + 22*np.sqrt(15)*s2*sigma) \
+                          + 70*h2**3*(-24*slip_length*(72*s0*mu - 21*np.sqrt(5)*s2*mu + 10*np.sqrt(3)*s1*sigma) + h2*(30*np.sqrt(5)*q0*mu - 42*q2*mu \
+                          + 30*np.sqrt(5)*r0*mu - 42*r2*mu + 30*np.sqrt(5)*s0*mu - 42*s2*mu - np.sqrt(15)*q1*sigma - np.sqrt(15)*r1*sigma - np.sqrt(15)*s1*sigma)) \
+                          + 9*h1**2*h2*(1680*slip_length*(8*s0*mu - 7*np.sqrt(5)*s2*mu - 2*np.sqrt(3)*s1*sigma) \
+                          + h2*(14*np.sqrt(5)*q0*mu + 595*q2*mu + 14*np.sqrt(5)*r0*mu + 595*r2*mu + 14*np.sqrt(5)*s0*mu + 595*s2*mu + 138*np.sqrt(15)*q1*sigma + 138*np.sqrt(15)*r1*sigma + 138*np.sqrt(15)*s1*sigma)) \
+                          + h1*h2**2*(576*slip_length*(105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma) \
+                          + h2*(1365*q1*mu + 1365*r1*mu + 1365*s1*mu + 860*np.sqrt(3)*q0*sigma + 182*np.sqrt(15)*q2*sigma + 860*np.sqrt(3)*r0*sigma + 182*np.sqrt(15)*r2*sigma + 860*np.sqrt(3)*s0*sigma + 182*np.sqrt(15)*s2*sigma))) \
+                          + 2*(189*h1**4*(5*h2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2) + 42*(-2*np.sqrt(5)*s0 + 5*s2)*slip_length)*mu \
+                          + 70*h2**4*(7*h2*(3*q0*mu + 3*r0*mu + 3*s0*mu + np.sqrt(3)*q1*sigma + np.sqrt(3)*r1*sigma + np.sqrt(3)*s1*sigma) \
+                          + 6*slip_length*(-12*np.sqrt(5)*s0*mu + 42*s2*mu + 7*np.sqrt(15)*s1*sigma)) \
+                          - 3*h1**2*h2**2*(35*h2*(32*q0*mu - 7*np.sqrt(5)*q2*mu + 32*r0*mu - 7*np.sqrt(5)*r2*mu + 32*s0*mu - 7*np.sqrt(5)*s2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma + 6*np.sqrt(3)*s1*sigma) \
+                          - 18*slip_length*(434*np.sqrt(5)*s0*mu - 245*s2*mu + 58*np.sqrt(15)*s1*sigma)) \
+                          + 9*h1**3*h2*(h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma) \
+                          - 126*slip_length*(15*s1*mu - 4*np.sqrt(3)*s0*sigma + 2*np.sqrt(15)*s2*sigma)) \
+                          - h1*h2**3*(7*h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
+                          + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma) \
+                          + 6*slip_length*(4515*s1*mu + 1100*np.sqrt(3)*s0*sigma + 602*np.sqrt(15)*s2*sigma))))) \
+                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
+                    
                 else:
                     print("This distribution is not implemented yet for mom_order=1 and SG_order=2")
 
@@ -6964,10 +7197,11 @@ class SGSWME1D(PDE):
                 q0 = values[1]
                 r0 = values[2]
                 s0 = values[3]
+
                 S[0] = 0
                 S[1] = -(((q0 + r0 + s0)*mu)/(h0*slip_length))
-                S[2] = (-3*(h0*(q0 + r0 + s0) + 4*(r0 + s0)*slip_length)*mu)/(h0**2*slip_length)
-                S[3] = (-5*(h0*(q0 + r0 + s0) + 4*(r0 + s0)*slip_length)*mu)/(h0**2*slip_length)
+                S[2] = (-3*(h0*(q0 + r0 + s0) + 4*r0*slip_length)*mu)/(h0**2*slip_length)
+                S[3] = (-5*(h0*(q0 + r0 + s0) + 12*s0*slip_length)*mu)/(h0**2*slip_length)
             
             elif SG_order == 1:
                 h0 = values[0]
@@ -6984,41 +7218,37 @@ class SGSWME1D(PDE):
                     S[1] = 0
                     S[2] = (-(h0*(q0 + r0 + s0)*mu) + h1*(q1 + r1 + s1)*mu + h1*(q0 + r0 + s0)*sigma - h0*(q1 + r1 + s1)*sigma)/((h0 - h1)*(h0 + h1)*slip_length)
                     S[3] = (h1*(q0 + r0 + s0)*mu - h0*(q1 + r1 + s1)*mu - h0*(q0 + r0 + s0)*sigma + h1*(q1 + r1 + s1)*sigma)/((h0 - h1)*(h0 + h1)*slip_length)
-                    S[4] = (-3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*(h0**2*(r0 + s0) \
-                         + h1**2*(r0 + s0) - 2*h0*h1*(r1 + s1))*slip_length)*mu - 3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) \
-                         + 4*(-2*h0*h1*(r0 + s0) + h0**2*(r1 + s1) + h1**2*(r1 + s1))*slip_length)*sigma)/((h0**2 - h1**2)**2*slip_length)
-                    S[5] = (-3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*(r0 + s0) \
-                         + h0**2*(r1 + s1) + h1**2*(r1 + s1))*slip_length)*mu - 3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) \
-                         - h1*(q1 + r1 + s1)) + 4*(h0**2*(r0 + s0) + h1**2*(r0 + s0) - 2*h0*h1*(r1 + s1))*slip_length)*sigma)/((h0**2 - h1**2)**2*slip_length)
-                    S[6] = (-5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*(h0**2*(r0 + s0) \
-                         + h1**2*(r0 + s0) - 2*h0*h1*(r1 + s1))*slip_length)*mu - 5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) \
-                         + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*(r0 + s0) + h0**2*(r1 + s1) + h1**2*(r1 + s1))*slip_length)*sigma)/((h0**2 - h1**2)**2*slip_length)
-                    S[7] = (-5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*(r0 + s0) \
-                         + h0**2*(r1 + s1) + h1**2*(r1 + s1))*slip_length)*mu - 5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) \
-                         - h1*(q1 + r1 + s1)) + 4*(h0**2*(r0 + s0) + h1**2*(r0 + s0) - 2*h0*h1*(r1 + s1))*slip_length)*sigma)/((h0**2 - h1**2)**2*slip_length)         
+                    S[4] = (-3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*mu \
+                         - 3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[5] = (-3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*mu \
+                         - 3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[6] = (-5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*mu \
+                         - 5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[7] = (-5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*mu \
+                         - 5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)  
                 
-                elif self.distr == "uniform":
+                elif self.distr == "uniform":        
                     S[0] = 0
                     S[1] = 0
-                    S[2] = (3*(-(h0*(q0 + r0 + s0)) + h1*(q1 + r1 + s1))*mu +  np.sqrt(3)*(h1*(q0 + r0 + s0) - h0*(q1 + r1 + s1))*sigma)/(3*(h0 - h1)*(h0 + h1)*slip_length)
+                    S[2] = (3*(-(h0*(q0 + r0 + s0)) + h1*(q1 + r1 + s1))*mu + np.sqrt(3)*(h1*(q0 + r0 + s0) - h0*(q1 + r1 + s1))*sigma)/(3*(h0 - h1)*(h0 + h1)*slip_length)
                     S[3] = (3*(h1*(q0 + r0 + s0) - h0*(q1 + r1 + s1))*mu + np.sqrt(3)*(-(h0*(q0 + r0 + s0)) + h1*(q1 + r1 + s1))*sigma)/(3*(h0 - h1)*(h0 + h1)*slip_length)
-                    S[4] = (h0**3*(-3*(q0 + r0 + s0)*mu - np.sqrt(3)*(q1 + r1 + s1)*sigma) + h0*h1*(3*(h1*(q0 + r0 + s0) + 8*(r1 + s1)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q1 + r1 + s1) + 8*(r0 + s0)*slip_length)*sigma) + h0**2*(3*(h1*(q1 + r1 + s1) - 4*(r0 + s0)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q0 + r0 + s0) - 4*(r1 + s1)*slip_length)*sigma) + h1**2*(-3*(h1*(q1 + r1 + s1) + 4*(r0 + s0)*slip_length)*mu \
-                         - np.sqrt(3)*(h1*(q0 + r0 + s0) + 4*(r1 + s1)*slip_length)*sigma))/((h0**2 - h1**2)**2*slip_length)
-                    S[5] = (h0**3*(-3*(q1 + r1 + s1)*mu - np.sqrt(3)*(q0 + r0 + s0)*sigma) + h0**2*(3*(h1*(q0 + r0 + s0) - 4*(r1 + s1)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q1 + r1 + s1) - 4*(r0 + s0)*slip_length)*sigma) + h1**2*(-3*(h1*(q0 + r0 + s0) + 4*(r1 + s1)*slip_length)*mu \
-                         - np.sqrt(3)*(h1*(q1 + r1 + s1) + 4*(r0 + s0)*slip_length)*sigma) + h0*h1*(3*(h1*(q1 + r1 + s1) + 8*(r0 + s0)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q0 + r0 + s0) + 8*(r1 + s1)*slip_length)*sigma))/((h0**2 - h1**2)**2*slip_length)
-                    S[6] = (5*(h0**3*(-3*(q0 + r0 + s0)*mu - np.sqrt(3)*(q1 + r1 + s1)*sigma) + h0*h1*(3*(h1*(q0 + r0 + s0) + 8*(r1 + s1)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q1 + r1 + s1) + 8*(r0 + s0)*slip_length)*sigma) + h0**2*(3*(h1*(q1 + r1 + s1) - 4*(r0 + s0)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q0 + r0 + s0) - 4*(r1 + s1)*slip_length)*sigma) + h1**2*(-3*(h1*(q1 + r1 + s1) + 4*(r0 + s0)*slip_length)*mu \
-                         - np.sqrt(3)*(h1*(q0 + r0 + s0) + 4*(r1 + s1)*slip_length)*sigma)))/(3.*(h0**2 - h1**2)**2*slip_length)
-                    S[7] = (5*(h0**3*(-3*(q1 + r1 + s1)*mu - np.sqrt(3)*(q0 + r0 + s0)*sigma) + h0**2*(3*(h1*(q0 + r0 + s0) - 4*(r1 + s1)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q1 + r1 + s1) - 4*(r0 + s0)*slip_length)*sigma) + h1**2*(-3*(h1*(q0 + r0 + s0) + 4*(r1 + s1)*slip_length)*mu \
-                         - np.sqrt(3)*(h1*(q1 + r1 + s1) + 4*(r0 + s0)*slip_length)*sigma) + h0*h1*(3*(h1*(q1 + r1 + s1) + 8*(r0 + s0)*slip_length)*mu \
-                         + np.sqrt(3)*(h1*(q0 + r0 + s0) + 8*(r1 + s1)*slip_length)*sigma)))/(3.*(h0**2 - h1**2)**2*slip_length)
-                
+                    S[4] = (-3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*mu \
+                         + np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1))) + 8*h0*h1*r0*slip_length - 4*(h0**2 + h1**2)*r1*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[5] = (-3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*mu \
+                         + np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1))) - 4*(h0**2 + h1**2)*r0*slip_length + 8*h0*h1*r1*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[6] = (-15*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*mu \
+                         + 5*np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1))) - 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*sigma) \
+                         /(3*(h0**2 - h1**2)**2*slip_length)
+                    S[7] = (-15*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*mu \
+                         + 5*np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1))) - 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*sigma) \
+                         /(3*(h0**2 - h1**2)**2*slip_length)
+
                 else:
                     print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
             
