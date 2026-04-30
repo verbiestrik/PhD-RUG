@@ -7,26 +7,25 @@
 ### True: one-dimensional, False: two-dimensional. Implemented: 1D
 1D = True
 
-### PDE type. Implemented: SWME1D, HSWME1D, VegetationSWME1D, SGSWME1D, HSGSWME1D
-pde_type = SGSWME1D
+### PDE type. Implemented: SWME1D, HSWME1D, SWLME1D, VegetationSWME1D, SGSWLME1D, HSGSWLME1D
+pde_type = SGSWLME1D
 
 # Specify friction parameters
 slipLength = 0.1
 viscosity = 0.1
 
-# Specify friction parameters for SGSWME1D and Monte Carlo SWME1D (viscosity above gets overruled). Implemented distr: uniform, normal
+# Specify friction parameters for SGSWLME1D and Monte Carlo SWLME1D (viscosity above gets overruled). Implemented distr: uniform, normal
 distr = uniform
 mu = 0.1
 sigma = 0.05
 
-# Is the source term linear? Does not get read for SGSWME1D or HSGSWME1D
+# Is the source term linear? Does not get read for SGSWLME1D or HSGSWLME1D
 linear_source = False
 
 # Specify initial conditions. Implemented: constantHeight_noVelocity, constantHeight_constantVelocity, linearHeight_noVelocity, damBreak_noVelocity,
 #                                          damBreak_constantVelocity, lowDamBreak_linearVelocity, highDamBreak_linearVelocity, symmetric_damBreak,
 #                                          linearDamBreak_noVelocity, smoothWave_noVelocity, smoothWave_constantVelocity, smoothWave_linearVelocity, smooth_plus_damBreak
-initialCondition = smoothWave_linearVelocity
-
+initialCondition = lowDamBreak_linearVelocity
 # For adaptive simulation, not possible for SGSWME1D or HSGSWME1D
 breakdown_criterion = damBreak_constantVelocity
 
@@ -58,7 +57,7 @@ y2boundary = 1
 
 [numerical_method_information]
 # End time
-t_end = 2
+t_end = 0.2
 
 # spatially_adaptive, classical, micro_macro. SGSWME1D and HSGSWME1D always classical
 method = classical
@@ -78,13 +77,13 @@ start_order = 5
 
 ### CLASSICAL ###
 # Order of the model
-order = 1
+order = 2
 # In case monteCarlo = True, number of Monte Carlo samples
-n_MC = 40
+n_MC = 5
 
 ### STOCHASTIC GALERKIN (always classical) ###
 # Moment order of the model
-momOrder = 0
+momOrder = 2
 # Stochastic Galerkin order of the model
 SGOrder = 2
 
@@ -99,4 +98,4 @@ pvm = PRICE
 timeIntegrator = ImplicitEuler
 
 # Boundary condition. Implemented: INFLOW_OUTFLOW, PERIODIC
-boundaryCondition = PERIODIC
+boundaryCondition = INFLOW_OUTFLOW
