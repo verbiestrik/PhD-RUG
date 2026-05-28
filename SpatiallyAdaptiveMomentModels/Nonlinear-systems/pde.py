@@ -2876,7 +2876,7 @@ class SWME1D(PDE):
         elif initial_condition == 'damBreak_noVelocity':
             x0 = 0
             if position < x0:
-                initial_values[0] = 2
+                initial_values[0] = 5
                 initial_values[1] = 0*initial_values[0]
                 if order > 0:
                     initial_values[2] = 0 

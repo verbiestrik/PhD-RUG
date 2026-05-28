@@ -7,14 +7,14 @@
 ### True: one-dimensional, False: two-dimensional
 1D = True
 
-pde_type = VegetationSWME1D
+pde_type = SWME1D
 
     # Specify friction model. Implemented: Newton
 frictionModel = Newton
         # Newton #
         # Specify friction parameters
 slipLength = 0.1
-viscosity = 0.1
+viscosity = 1.0
 
     # Specify drag force parameters for the vegetation 
 diameter = 0.008
@@ -67,7 +67,7 @@ y2boundary = 2
 
 [numerical_method_information]
 # End time
-t_end =  1.0
+t_end =  0.4
 
 # This should be a number smaller than 1, I would just keep it at 0.5
 CFL = 0.5 
@@ -76,7 +76,7 @@ CFL = 0.5
 # This should always be 'classical'
 method = classical
 # This is the order of the polynomial expansion, can go up to 6
-order = 1
+order = 5
 
 # Finite volume method type. Implemented: PVM
 # Only PVM method is implemented
@@ -88,7 +88,7 @@ fvm_type = PVM
 pvm = PRICE
 # number of quadrature points
 # Just keep it at 3, it's not important to know what this is used for
-nr_of_quadrature_points = 3
+nr_of_quadrature_points = 1
 
 # Time integration for source term. Implemented: ExplicitEuler, ImplicitEuler, Exact
 # Keeping it at 'ImplicitEuler' ensures stability

@@ -420,8 +420,8 @@ if(strcmp(plotting,'rho_and_f3'))
     hRho2 = plot(x2,rho2,'-.','Color',cOSHER,'LineWidth',2);
     ylabel('$\rho$','Interpreter','latex','FontSize',18)
     ylim([1.1 5.8])
-    % text(-0.02,4.785,'$\rho$','Interpreter','latex','FontSize',16, ...
-    %     'FontWeight','bold','Color','k','VerticalAlignment','top');
+    text(-2.5,5.615,'$\rho$','Interpreter','latex','FontSize',16, ...
+        'FontWeight','bold','Color','k','VerticalAlignment','top');
 
     % Right axis: f3
     yyaxis right
@@ -433,7 +433,7 @@ if(strcmp(plotting,'rho_and_f3'))
         ylim([-0.3 0.2]);
     elseif strcmp(relaxation_time,'0p05')
         ylim([-0.05 0.025]);
-        text(-0.02,0.0025,'$f_3$','Interpreter','latex','FontSize',16, ...
+        text(-2.5,-0.001,'$f_3$','Interpreter','latex','FontSize',16, ...
         'FontWeight','bold','Color','k','VerticalAlignment','top');
     end
 
@@ -453,10 +453,10 @@ if(strcmp(plotting,'rho_and_f3'))
     legend([hRho1 hRho2],{'PRICE','Osher-Solomon'}, ...
         'Location','southwest','Interpreter','latex','FontSize',14);
 
-    % drawnow;                          % flush pending rendering
-    % fig = gcf;
-    % % Vector PDF (good for Illustrator / high quality)
-    % exportgraphics(fig, 'interface_comparison_rho_and_f3_t3p0.pdf', 'ContentType', 'vector');
+    drawnow;                          % flush pending rendering
+    fig = gcf;
+    % Vector PDF (good for Illustrator / high quality)
+    exportgraphics(fig, 'interface_comparison_rho_and_f3_t3p0.pdf', 'ContentType', 'vector');
     
 end
 
