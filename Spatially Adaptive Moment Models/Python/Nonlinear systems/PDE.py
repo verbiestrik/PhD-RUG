@@ -6134,10 +6134,7 @@ class SGSWLME1D(PDE):
                     print("This distribution is not implemented yet for mom_order=2 and SG_order=1")
             
             elif SG_order == 2:
-                if self.distr == "normal":
-                    print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
-                
-                elif self.distr == "uniform":
+                if self.hyperbolic == False:
                     h0 = values[0]
                     h1 = values[1]
                     h2 = values[2]
@@ -6150,7 +6147,25 @@ class SGSWLME1D(PDE):
                     s0 = values[9]
                     s1 = values[10]
                     s2 = values[11]
+                
+                else:
+                    h0 = values[0]
+                    h1 = 0
+                    h2 = 0
+                    q0 = values[3]
+                    q1 = values[4]
+                    q2 = 0
+                    r0 = values[6]
+                    r1 = values[7]
+                    r2 = 0
+                    s0 = values[9]
+                    s1 = values[10]
+                    s2 = 0
 
+                if self.distr == "normal":
+                    print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
+                
+                elif self.distr == "uniform":
                     A[0][0]   = 0
                     A[0][1]   = 0
                     A[0][2]   = 0
@@ -6921,6 +6936,212 @@ class SGSWLME1D(PDE):
                     print("This distribution is not implemented yet for mom_order=1 and SG_order=1")
             
             elif SG_order == 2:
+                h0 = values[0]
+                h1 = values[1]
+                h2 = values[2]
+                q0 = values[3]
+                q1 = values[4]
+                q2 = values[5]
+                r0 = values[6]
+                r1 = values[7]
+                r2 = values[8]
+                
+                if self.distr == "normal":
+                    print("This distribution is not implemented yet for mom_order=1 and SG_order=2")
+
+                elif self.distr == "uniform":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = 0
+                    S[3] = (42*h1**2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2)*mu \
+                         + h2**2*(-60*q0*mu + 42*np.sqrt(5)*q2*mu - 60*r0*mu + 42*np.sqrt(5)*r2*mu + 35*np.sqrt(3)*q1*sigma + 35*np.sqrt(3)*r1*sigma) \
+                         - h0*h2*(72*np.sqrt(5)*q0*mu - 105*q2*mu + 72*np.sqrt(5)*r0*mu - 105*r2*mu + 10*np.sqrt(15)*q1*sigma + 10*np.sqrt(15)*r1*sigma) \
+                         - 35*h0**2*(3*q0*mu + 3*r0*mu + np.sqrt(3)*(q1 + r1)*sigma) \
+                         - h1*h2*(12*np.sqrt(5)*q1*mu + 12*np.sqrt(5)*r1*mu + np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2)*sigma) \
+                         + 7*h0*h1*(15*q1*mu + 15*r1*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2)*sigma)) \
+                         /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
+                    S[4] = (21*h0*h1*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma) \
+                         - 3*h1*h2*(4*np.sqrt(5)*q0*mu + 35*q2*mu + 4*np.sqrt(5)*r0*mu + 35*r2*mu + 6*np.sqrt(15)*q1*sigma + 6*np.sqrt(15)*r1*sigma) \
+                         - h0*h2*(30*np.sqrt(5)*q1*mu + 30*np.sqrt(5)*r1*mu + np.sqrt(3)*(10*np.sqrt(5)*q0 - 7*q2 + 10*np.sqrt(5)*r0 - 7*r2)*sigma) \
+                         - 7*h0**2*(15*q1*mu + 15*r1*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2)*sigma) \
+                         + h2**2*(105*q1*mu + 105*r1*mu + 2*np.sqrt(3)*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2)*sigma)) \
+                         /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
+                    S[5] = (-21*h1**2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2)*mu \
+                         + h0*h2*(105*q0*mu - 42*np.sqrt(5)*q2*mu + 105*r0*mu - 42*np.sqrt(5)*r2*mu - 20*np.sqrt(3)*q1*sigma - 20*np.sqrt(3)*r1*sigma) \
+                         + 14*np.sqrt(5)*h2**2*(3*q0*mu + 3*r0*mu + np.sqrt(3)*(q1 + r1)*sigma) \
+                         - 7*h0**2*(15*q2*mu + 15*r2*mu + 2*np.sqrt(15)*(q1 + r1)*sigma) \
+                         + 14*h0*h1*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + np.sqrt(3)*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2)*sigma) \
+                         - h1*h2*(105*q1*mu + 105*r1*mu + 2*np.sqrt(3)*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2)*sigma)) \
+                         /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
+                    S[6] = -((1225*h0**5*(3*q0*mu + 3*r0*mu + np.sqrt(3)*(q1 + r1)*sigma) \
+                         + 35*h0**4*(140*slip_length*(3*r0*mu + np.sqrt(3)*r1*sigma) \
+                         + h2*(144*np.sqrt(5)*q0*mu - 105*q2*mu + 144*np.sqrt(5)*r0*mu - 105*r2*mu + 34*np.sqrt(15)*q1*sigma + 34*np.sqrt(15)*r1*sigma) \
+                         - 7*h1*(15*q1*mu + 15*r1*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2)*sigma)) \
+                         - 5*h0**3*(147*h1**2*(13*q0*mu - 2*np.sqrt(5)*q2*mu + 13*r0*mu - 2*np.sqrt(5)*r2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma) \
+                         + h2*(h2*(-1833*q0*mu + 798*np.sqrt(5)*q2*mu - 1833*r0*mu + 798*np.sqrt(5)*r2*mu + 110*np.sqrt(3)*q1*sigma + 110*np.sqrt(3)*r1*sigma) \
+                         - 56*slip_length*(72*np.sqrt(5)*r0*mu - 105*r2*mu + 10*np.sqrt(15)*r1*sigma)) \
+                         + 7*h1*(h2*(60*np.sqrt(5)*q1*mu + 60*np.sqrt(5)*r1*mu + np.sqrt(3)*(20*np.sqrt(5)*q0 + 13*q2 + 20*np.sqrt(5)*r0 + 13*r2)*sigma) \
+                         + 56*slip_length*(15*r1*mu + np.sqrt(3)*(5*r0 + 2*np.sqrt(5)*r2)*sigma))) \
+                         + h0*(2646*h1**4*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2)*mu \
+                         - 63*h1**3*h2*(42*np.sqrt(5)*q1*mu + 42*np.sqrt(5)*r1*mu + np.sqrt(3)*(14*np.sqrt(5)*q0 + 55*q2 + 14*np.sqrt(5)*r0 + 55*r2)*sigma) \
+                         + 9*h1**2*h2*(h2*(440*q0*mu + 14*np.sqrt(5)*q2*mu + 440*r0*mu + 14*np.sqrt(5)*r2*mu + 345*np.sqrt(3)*q1*sigma + 345*np.sqrt(3)*r1*sigma) \
+                         - 112*slip_length*(31*np.sqrt(5)*r0*mu - 40*r2*mu + 5*np.sqrt(15)*r1*sigma)) \
+                         - 5*h2**3*(h2*(1188*q0*mu - 420*np.sqrt(5)*q2*mu + 1188*r0*mu - 420*np.sqrt(5)*r2*mu + 35*np.sqrt(3)*q1*sigma + 35*np.sqrt(3)*r1*sigma) \
+                         + 16*slip_length*(-291*np.sqrt(5)*r0*mu + 504*r2*mu + 35*np.sqrt(15)*r1*sigma)) \
+                         + 5*h1*h2**2*(h2*(258*np.sqrt(5)*q1*mu + 258*np.sqrt(5)*r1*mu + np.sqrt(3)*(86*np.sqrt(5)*q0 + 91*q2 + 86*np.sqrt(5)*r0 + 91*r2)*sigma) \
+                         + 192*slip_length*(12*r1*mu + np.sqrt(3)*(4*r0 + 7*np.sqrt(5)*r2)*sigma))) \
+                         - 2*(378*h1**4*(h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2) + 14*(-2*r0 + np.sqrt(5)*r2)*slip_length)*mu \
+                         + 5*h1*h2**3*(84*h2*q1*mu + 84*h2*r1*mu + 660*np.sqrt(5)*r1*slip_length*mu \
+                         + 7*np.sqrt(3)*h2*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2)*sigma \
+                         + 2*np.sqrt(3)*(110*np.sqrt(5)*r0 + 301*r2)*slip_length*sigma) \
+                         - 3*h1**2*h2**2*(6*slip_length*(-1000*r0*mu + 434*np.sqrt(5)*r2*mu + 145*np.sqrt(3)*r1*sigma) \
+                         + h2*(376*np.sqrt(5)*q0*mu - 1120*q2*mu + 376*np.sqrt(5)*r0*mu - 1120*r2*mu - 105*np.sqrt(15)*q1*sigma - 105*np.sqrt(15)*r1*sigma)) \
+                         + 5*h2**4*(-2*slip_length*(828*r0*mu - 168*np.sqrt(5)*r2*mu + 245*np.sqrt(3)*r1*sigma) \
+                         + 7*h2*(12*np.sqrt(5)*q0*mu - 42*q2*mu + 12*np.sqrt(5)*r0*mu - 42*r2*mu - 7*np.sqrt(15)*q1*sigma - 7*np.sqrt(15)*r1*sigma)) \
+                         - 9*h1**3*h2*(42*slip_length*(6*np.sqrt(5)*r1*mu + np.sqrt(3)*(2*np.sqrt(5)*r0 - 5*r2)*sigma) \
+                         + 5*h2*(12*q1*mu + 12*r1*mu + np.sqrt(3)*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2)*sigma))) \
+                         + h0**2*(441*h1**3*(15*q1*mu + 15*r1*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2)*sigma) \
+                         - 63*h1**2*(37*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2)*mu \
+                         + 140*slip_length*(r0*mu - 2*np.sqrt(5)*r2*mu - np.sqrt(3)*r1*sigma)) \
+                         - 5*h2**2*(12*slip_length*(-1101*r0*mu + 462*np.sqrt(5)*r2*mu + 130*np.sqrt(3)*r1*sigma) \
+                         + h2*(222*np.sqrt(5)*q0*mu + 693*q2*mu + 222*np.sqrt(5)*r0*mu + 693*r2*mu + 296*np.sqrt(15)*q1*sigma + 296*np.sqrt(15)*r1*sigma)) \
+                         + 15*h1*h2*(-28*slip_length*(12*np.sqrt(5)*r1*mu + np.sqrt(3)*(4*np.sqrt(5)*r0 - 19*r2)*sigma) \
+                         + h2*(201*q1*mu + 201*r1*mu + np.sqrt(3)*(67*q0 + 70*np.sqrt(5)*q2 + 67*r0 + 70*np.sqrt(5)*r2)*sigma)))) \
+                         /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length))
+                    S[7] = (-245*h0**5*(15*q1*mu + 15*r1*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2)*sigma) \
+                         + 35*h0**4*(21*h1*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma) \
+                         - h2*(102*np.sqrt(5)*q1*mu + 102*np.sqrt(5)*r1*mu + np.sqrt(3)*(34*np.sqrt(5)*q0 + 41*q2 + 34*np.sqrt(5)*r0 + 41*r2)*sigma) \
+                         - 28*slip_length*(15*r1*mu + np.sqrt(3)*(5*r0 + 2*np.sqrt(5)*r2)*sigma)) \
+                         - 2*h2*(-9*h1**2*h2*(105*np.sqrt(5)*h2*q1*mu + 105*np.sqrt(5)*h2*r1*mu - 870*r1*slip_length*mu \
+                         + 2*np.sqrt(3)*h2*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2)*sigma \
+                         + 8*np.sqrt(3)*(11*r0 - 28*np.sqrt(5)*r2)*slip_length*sigma) \
+                         + 27*h1**3*(42*(2*np.sqrt(5)*r0 - 5*r2)*slip_length*mu \
+                         + 5*h2*(4*q0*mu + 7*np.sqrt(5)*q2*mu + 4*r0*mu + 7*np.sqrt(5)*r2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma)) \
+                         - 3*h1*h2**2*(35*h2*(4*q0*mu + 7*np.sqrt(5)*q2*mu + 4*r0*mu + 7*np.sqrt(5)*r2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma) \
+                         + 2*slip_length*(550*np.sqrt(5)*r0*mu + 1505*r2*mu + 384*np.sqrt(15)*r1*sigma)) \
+                         + h2**3*(7350*r1*slip_length*mu + 8*np.sqrt(3)*(205*r0 + 28*np.sqrt(5)*r2)*slip_length*sigma \
+                         + 7*h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 2*np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2)*sigma))) \
+                         + h0*h2*(189*h1**3*(14*np.sqrt(5)*q0*mu + 55*q2*mu + 14*np.sqrt(5)*r0*mu + 55*r2*mu + 12*np.sqrt(15)*q1*sigma + 12*np.sqrt(15)*r1*sigma) \
+                         - 3*h1*h2*(960*slip_length*(4*r0*mu + 7*np.sqrt(5)*r2*mu + 6*np.sqrt(3)*r1*sigma) \
+                         + h2*(430*np.sqrt(5)*q0*mu + 455*q2*mu + 430*np.sqrt(5)*r0*mu + 455*r2*mu + 204*np.sqrt(15)*q1*sigma + 204*np.sqrt(15)*r1*sigma)) \
+                         + h2**2*(16*slip_length*(525*np.sqrt(5)*r1*mu + np.sqrt(3)*(-149*np.sqrt(5)*r0 + 350*r2)*sigma) \
+                         + h2*(525*q1*mu + 525*r1*mu + 4*np.sqrt(3)*(145*q0 - 77*np.sqrt(5)*q2 + 145*r0 - 77*np.sqrt(5)*r2)*sigma)) \
+                         - 9*h1**2*(-560*slip_length*(3*np.sqrt(5)*r1*mu + np.sqrt(3)*(np.sqrt(5)*r0 + 2*r2)*sigma) \
+                         + 3*h2*(345*q1*mu + 345*r1*mu + 4*np.sqrt(3)*(13*q0 + 7*np.sqrt(5)*q2 + 13*r0 + 7*np.sqrt(5)*r2)*sigma))) \
+                         - h0**2*(1323*h1**3*(5*q0*mu + 2*np.sqrt(5)*q2*mu + 5*r0*mu + 2*np.sqrt(5)*r2*mu + 3*np.sqrt(3)*q1*sigma + 3*np.sqrt(3)*r1*sigma) \
+                         + 63*h1**2*(420*r1*slip_length*mu + np.sqrt(3)*(27*h2*(q2 + r2) + 28*(5*r0 + 2*np.sqrt(5)*r2)*slip_length)*sigma) \
+                         + 9*h1*h2*(5*h2*(67*q0*mu + 70*np.sqrt(5)*q2*mu + 67*r0*mu + 70*np.sqrt(5)*r2*mu + 69*np.sqrt(3)*q1*sigma + 69*np.sqrt(3)*r1*sigma) \
+                         + 28*slip_length*(-20*np.sqrt(5)*r0*mu + 95*r2*mu + 6*np.sqrt(15)*r1*sigma)) \
+                         - h2**2*(h2*(4440*np.sqrt(5)*q1*mu + 4440*np.sqrt(5)*r1*mu + np.sqrt(3)*(832*np.sqrt(5)*q0 + 2555*q2 + 832*np.sqrt(5)*r0 + 2555*r2)*sigma) \
+                         + 12*slip_length*(1950*r1*mu + np.sqrt(3)*(-295*r0 + 476*np.sqrt(5)*r2)*sigma))) \
+                         + h0**3*(441*h1**2*(15*q1*mu + 15*r1*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2)*sigma) \
+                         + 21*h1*(280*slip_length*(5*r0*mu + 2*np.sqrt(5)*r2*mu + 3*np.sqrt(3)*r1*sigma) \
+                         + h2*(100*np.sqrt(5)*q0*mu + 65*q2*mu + 100*np.sqrt(5)*r0*mu + 65*r2*mu + 42*np.sqrt(15)*q1*sigma + 42*np.sqrt(15)*r1*sigma)) \
+                         + h2*(-280*slip_length*(30*np.sqrt(5)*r1*mu + np.sqrt(3)*(10*np.sqrt(5)*r0 - 7*r2)*sigma) \
+                         + h2*(1650*q1*mu + 1650*r1*mu + np.sqrt(3)*(-395*q0 + 868*np.sqrt(5)*q2 - 395*r0 + 868*np.sqrt(5)*r2)*sigma)))) \
+                         /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
+                    S[8] = (-245*h0**5*(15*q2*mu + 15*r2*mu + 2*np.sqrt(15)*(q1 + r1)*sigma) \
+                         + 35*h0**4*(h2*(105*q0*mu - 114*np.sqrt(5)*q2*mu + 105*r0*mu - 114*np.sqrt(5)*r2*mu - 68*np.sqrt(3)*q1*sigma - 68*np.sqrt(3)*r1*sigma) \
+                         - 28*slip_length*(15*r2*mu + 2*np.sqrt(15)*r1*sigma) \
+                         + 14*h1*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + np.sqrt(3)*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2)*sigma)) \
+                         - h0**2*(882*h1**3*(3*np.sqrt(5)*q1*mu + 3*np.sqrt(5)*r1*mu + np.sqrt(3)*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2)*sigma) \
+                         + 63*h1**2*(h2*(185*q0 - 52*np.sqrt(5)*q2 + 185*r0 - 52*np.sqrt(5)*r2)*mu + 56*slip_length*(5*np.sqrt(5)*r0*mu - 5*r2*mu + np.sqrt(15)*r1*sigma)) \
+                         - 5*h2**2*(h2*(693*q0*mu + 420*np.sqrt(5)*q2*mu + 693*r0*mu + 420*np.sqrt(5)*r2*mu + 592*np.sqrt(3)*q1*sigma + 592*np.sqrt(3)*r1*sigma) \
+                         + 12*slip_length*(462*np.sqrt(5)*r0*mu - 441*r2*mu + 52*np.sqrt(15)*r1*sigma)) \
+                         + 6*h1*h2*(14*slip_length*(285*r1*mu - 40*np.sqrt(3)*r0*sigma + 38*np.sqrt(15)*r2*sigma) \
+                         + h2*(525*np.sqrt(5)*q1*mu + 525*np.sqrt(5)*r1*mu + np.sqrt(3)*(67*np.sqrt(5)*q0 + 350*q2 + 67*np.sqrt(5)*r0 + 350*r2)*sigma))) \
+                         - 2*(189*h1**4*(5*h2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2) - 28*np.sqrt(5)*r0*slip_length + 70*r2*slip_length)*mu \
+                         - 3*h1**2*h2**2*(35*h2*(32*q0*mu - 7*np.sqrt(5)*q2*mu + 32*r0*mu - 7*np.sqrt(5)*r2*mu + 6*np.sqrt(3)*q1*sigma + 6*np.sqrt(3)*r1*sigma) \
+                         - 6*slip_length*(434*np.sqrt(5)*r0*mu - 245*r2*mu + 58*np.sqrt(15)*r1*sigma)) \
+                         + 70*h2**4*(2*slip_length*(-12*np.sqrt(5)*r0*mu + 42*r2*mu + 7*np.sqrt(15)*r1*sigma) \
+                         + 7*h2*(3*q0*mu + 3*r0*mu + np.sqrt(3)*(q1 + r1)*sigma)) \
+                         - h1*h2**3*(9030*r1*slip_length*mu + 4*np.sqrt(3)*(550*r0 + 301*np.sqrt(5)*r2)*slip_length*sigma \
+                         + 7*h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 2*np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2)*sigma)) \
+                         + 9*h1**3*h2*(h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 2*np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2)*sigma) \
+                         - 42*slip_length*(15*r1*mu + 2*np.sqrt(3)*(-2*r0 + np.sqrt(5)*r2)*sigma))) \
+                         + h0**3*(-294*h1**2*(5*np.sqrt(5)*q0*mu - 35*q2*mu + 5*np.sqrt(5)*r0*mu - 35*r2*mu - 3*np.sqrt(15)*q1*sigma - 3*np.sqrt(15)*r1*sigma) \
+                         + 5*h2*(56*slip_length*(105*r0*mu - 42*np.sqrt(5)*r2*mu - 20*np.sqrt(3)*r1*sigma) \
+                         + h2*(798*np.sqrt(5)*q0*mu - 693*q2*mu + 798*np.sqrt(5)*r0*mu - 693*r2*mu + 44*np.sqrt(15)*q1*sigma + 44*np.sqrt(15)*r1*sigma)) \
+                         + 7*h1*(560*slip_length*(3*np.sqrt(5)*r1*mu + np.sqrt(3)*(np.sqrt(5)*r0 + 2*r2)*sigma) \
+                         + h2*(195*q1*mu + 195*r1*mu + 2*np.sqrt(3)*(100*q0 + 13*np.sqrt(5)*q2 + 100*r0 + 13*np.sqrt(5)*r2)*sigma))) \
+                         + h0*(1323*h1**4*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2)*mu \
+                         + 63*h1**3*h2*(165*q1*mu + 165*r1*mu + 2*np.sqrt(3)*(14*q0 + 11*np.sqrt(5)*q2 + 14*r0 + 11*np.sqrt(5)*r2)*sigma) \
+                         - 70*h2**3*(-8*slip_length*(72*r0*mu - 21*np.sqrt(5)*r2*mu + 10*np.sqrt(3)*r1*sigma) \
+                         + h2*(30*np.sqrt(5)*q0*mu - 42*q2*mu + 30*np.sqrt(5)*r0*mu - 42*r2*mu - np.sqrt(15)*q1*sigma - np.sqrt(15)*r1*sigma)) \
+                         - 9*h1**2*h2*(560*slip_length*(8*r0*mu - 7*np.sqrt(5)*r2*mu - 2*np.sqrt(3)*r1*sigma) \
+                         + h2*(14*np.sqrt(5)*q0*mu + 595*q2*mu + 14*np.sqrt(5)*r0*mu + 595*r2*mu + 138*np.sqrt(15)*q1*sigma + 138*np.sqrt(15)*r1*sigma)) \
+                         - h1*h2**2*(192*slip_length*(105*np.sqrt(5)*r1*mu + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma) \
+                         + h2*(1365*q1*mu + 1365*r1*mu + 2*np.sqrt(3)*(430*q0 + 91*np.sqrt(5)*q2 + 430*r0 + 91*np.sqrt(5)*r2)*sigma)))) \
+                         /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
+                    
+                else:
+                    print("This distribution is not implemented yet for mom_order=1 and SG_order=2")
+
+            else:
+                print("This stochastic Galerkin order is not implemented yet for mom_order=1")
+        
+        elif mom_order == 2:
+            if SG_order == 0:
+                h0 = values[0]
+                q0 = values[1]
+                r0 = values[2]
+                s0 = values[3]
+
+                S[0] = 0
+                S[1] = -(((q0 + r0 + s0)*mu)/(h0*slip_length))
+                S[2] = (-3*(h0*(q0 + r0 + s0) + 4*r0*slip_length)*mu)/(h0**2*slip_length)
+                S[3] = (-5*(h0*(q0 + r0 + s0) + 12*s0*slip_length)*mu)/(h0**2*slip_length)
+            
+            elif SG_order == 1:
+                h0 = values[0]
+                h1 = values[1]
+                q0 = values[2]
+                q1 = values[3]
+                r0 = values[4]
+                r1 = values[5]
+                s0 = values[6]
+                s1 = values[7]
+
+                if self.distr == "normal":
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = (-(h0*(q0 + r0 + s0)*mu) + h1*(q1 + r1 + s1)*mu + h1*(q0 + r0 + s0)*sigma - h0*(q1 + r1 + s1)*sigma)/((h0 - h1)*(h0 + h1)*slip_length)
+                    S[3] = (h1*(q0 + r0 + s0)*mu - h0*(q1 + r1 + s1)*mu - h0*(q0 + r0 + s0)*sigma + h1*(q1 + r1 + s1)*sigma)/((h0 - h1)*(h0 + h1)*slip_length)
+                    S[4] = (-3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*mu \
+                         - 3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[5] = (-3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*mu \
+                         - 3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[6] = (-5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*mu \
+                         - 5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[7] = (-5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*mu \
+                         - 5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)  
+                
+                elif self.distr == "uniform":        
+                    S[0] = 0
+                    S[1] = 0
+                    S[2] = (3*(-(h0*(q0 + r0 + s0)) + h1*(q1 + r1 + s1))*mu + np.sqrt(3)*(h1*(q0 + r0 + s0) - h0*(q1 + r1 + s1))*sigma)/(3*(h0 - h1)*(h0 + h1)*slip_length)
+                    S[3] = (3*(h1*(q0 + r0 + s0) - h0*(q1 + r1 + s1))*mu + np.sqrt(3)*(-(h0*(q0 + r0 + s0)) + h1*(q1 + r1 + s1))*sigma)/(3*(h0 - h1)*(h0 + h1)*slip_length)
+                    S[4] = (-3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*mu \
+                         + np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1))) + 8*h0*h1*r0*slip_length - 4*(h0**2 + h1**2)*r1*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[5] = (-3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*mu \
+                         + np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1))) - 4*(h0**2 + h1**2)*r0*slip_length + 8*h0*h1*r1*slip_length)*sigma) \
+                         /((h0**2 - h1**2)**2*slip_length)
+                    S[6] = (-15*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*mu \
+                         + 5*np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1))) - 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*sigma) \
+                         /(3*(h0**2 - h1**2)**2*slip_length)
+                    S[7] = (-15*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*mu \
+                         + 5*np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1))) - 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*sigma) \
+                         /(3*(h0**2 - h1**2)**2*slip_length)
+
+                else:
+                    print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
+            
+            elif SG_order == 2:
                 if self.hyperbolic == False:
                     h0 = values[0]
                     h1 = values[1]
@@ -6931,10 +7152,13 @@ class SGSWLME1D(PDE):
                     r0 = values[6]
                     r1 = values[7]
                     r2 = values[8]
+                    s0 = values[9]
+                    s1 = values[10]
+                    s2 = values[11]
                 
                 else:
                     h0 = values[0]
-                    h1 = values[1]
+                    h1 = 0
                     h2 = 0
                     q0 = values[3]
                     q1 = values[4]
@@ -6942,10 +7166,13 @@ class SGSWLME1D(PDE):
                     r0 = values[6]
                     r1 = values[7]
                     r2 = 0
+                    s0 = values[9]
+                    s1 = values[10]
+                    s2 = 0
 
                 if self.distr == "normal":
-                    print("This distribution is not implemented yet for mom_order=1 and SG_order=2")
-
+                    print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
+                
                 elif self.distr == "uniform":
                     S[0]  = 0
                     S[1]  = 0
@@ -7183,289 +7410,6 @@ class SGSWLME1D(PDE):
                           - h1*h2**3*(7*h2*(105*np.sqrt(5)*q1*mu + 105*np.sqrt(5)*r1*mu + 105*np.sqrt(5)*s1*mu + 8*np.sqrt(15)*q0*sigma + 70*np.sqrt(3)*q2*sigma \
                           + 8*np.sqrt(15)*r0*sigma + 70*np.sqrt(3)*r2*sigma + 8*np.sqrt(15)*s0*sigma + 70*np.sqrt(3)*s2*sigma) \
                           + 6*slip_length*(4515*s1*mu + 1100*np.sqrt(3)*s0*sigma + 602*np.sqrt(15)*s2*sigma))))) \
-                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
-                    
-                else:
-                    print("This distribution is not implemented yet for mom_order=1 and SG_order=2")
-
-            else:
-                print("This stochastic Galerkin order is not implemented yet for mom_order=1")
-        
-        elif mom_order == 2:
-            if SG_order == 0:
-                h0 = values[0]
-                q0 = values[1]
-                r0 = values[2]
-                s0 = values[3]
-
-                S[0] = 0
-                S[1] = -(((q0 + r0 + s0)*mu)/(h0*slip_length))
-                S[2] = (-3*(h0*(q0 + r0 + s0) + 4*r0*slip_length)*mu)/(h0**2*slip_length)
-                S[3] = (-5*(h0*(q0 + r0 + s0) + 12*s0*slip_length)*mu)/(h0**2*slip_length)
-            
-            elif SG_order == 1:
-                h0 = values[0]
-                h1 = values[1]
-                q0 = values[2]
-                q1 = values[3]
-                r0 = values[4]
-                r1 = values[5]
-                s0 = values[6]
-                s1 = values[7]
-
-                if self.distr == "normal":
-                    S[0] = 0
-                    S[1] = 0
-                    S[2] = (-(h0*(q0 + r0 + s0)*mu) + h1*(q1 + r1 + s1)*mu + h1*(q0 + r0 + s0)*sigma - h0*(q1 + r1 + s1)*sigma)/((h0 - h1)*(h0 + h1)*slip_length)
-                    S[3] = (h1*(q0 + r0 + s0)*mu - h0*(q1 + r1 + s1)*mu - h0*(q0 + r0 + s0)*sigma + h1*(q1 + r1 + s1)*sigma)/((h0 - h1)*(h0 + h1)*slip_length)
-                    S[4] = (-3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*mu \
-                         - 3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*sigma) \
-                         /((h0**2 - h1**2)**2*slip_length)
-                    S[5] = (-3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*mu \
-                         - 3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*sigma) \
-                         /((h0**2 - h1**2)**2*slip_length)
-                    S[6] = (-5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*mu \
-                         - 5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*sigma) \
-                         /((h0**2 - h1**2)**2*slip_length)
-                    S[7] = (-5*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*mu \
-                         - 5*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*sigma) \
-                         /((h0**2 - h1**2)**2*slip_length)  
-                
-                elif self.distr == "uniform":        
-                    S[0] = 0
-                    S[1] = 0
-                    S[2] = (3*(-(h0*(q0 + r0 + s0)) + h1*(q1 + r1 + s1))*mu + np.sqrt(3)*(h1*(q0 + r0 + s0) - h0*(q1 + r1 + s1))*sigma)/(3*(h0 - h1)*(h0 + h1)*slip_length)
-                    S[3] = (3*(h1*(q0 + r0 + s0) - h0*(q1 + r1 + s1))*mu + np.sqrt(3)*(-(h0*(q0 + r0 + s0)) + h1*(q1 + r1 + s1))*sigma)/(3*(h0 - h1)*(h0 + h1)*slip_length)
-                    S[4] = (-3*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 4*((h0**2 + h1**2)*r0 - 2*h0*h1*r1)*slip_length)*mu \
-                         + np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1))) + 8*h0*h1*r0*slip_length - 4*(h0**2 + h1**2)*r1*slip_length)*sigma) \
-                         /((h0**2 - h1**2)**2*slip_length)
-                    S[5] = (-3*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 4*(-2*h0*h1*r0 + (h0**2 + h1**2)*r1)*slip_length)*mu \
-                         + np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1))) - 4*(h0**2 + h1**2)*r0*slip_length + 8*h0*h1*r1*slip_length)*sigma) \
-                         /((h0**2 - h1**2)**2*slip_length)
-                    S[6] = (-15*((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1)) + 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*mu \
-                         + 5*np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1))) - 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*sigma) \
-                         /(3*(h0**2 - h1**2)**2*slip_length)
-                    S[7] = (-15*((h0 - h1)*(h0 + h1)*(-(h1*(q0 + r0 + s0)) + h0*(q1 + r1 + s1)) + 12*(-2*h0*h1*s0 + (h0**2 + h1**2)*s1)*slip_length)*mu \
-                         + 5*np.sqrt(3)*(-((h0 - h1)*(h0 + h1)*(h0*(q0 + r0 + s0) - h1*(q1 + r1 + s1))) - 12*((h0**2 + h1**2)*s0 - 2*h0*h1*s1)*slip_length)*sigma) \
-                         /(3*(h0**2 - h1**2)**2*slip_length)
-
-                else:
-                    print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
-            
-            elif SG_order == 2:
-                h0 = values[0]
-                h1 = values[1]
-                h2 = values[2]
-                q0 = values[3]
-                q1 = values[4]
-                q2 = values[5]
-                r0 = values[6]
-                r1 = values[7]
-                r2 = values[8]
-                s0 = values[9]
-                s1 = values[10]
-                s2 = values[11]
-
-                if self.distr == "normal":
-                    print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
-                
-                elif self.distr == "uniform":
-                    S[0]  = 0
-                    S[1]  = 0
-                    S[2]  = 0
-                    S[3]  = (6*(-2*np.sqrt(5)*h1*h2*(q1 + r1 + s1) + 7*h1**2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2) \
-                          + h2**2*(-10*q0 + 7*np.sqrt(5)*q2 - 10*r0 + 7*np.sqrt(5)*r2 - 10*s0 + 7*np.sqrt(5)*s2))*mu \
-                          + np.sqrt(3)*h2*(35*h2*(q1 + r1 + s1) - h1*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2))*sigma \
-                          + 35*h0**2*(-3*(q0 + r0 + s0)*mu - np.sqrt(3)*(q1 + r1 + s1)*sigma) + h0*(105*h1*(q1 + r1 + s1)*mu + 3*h2*(-24*np.sqrt(5)*q0 \
-                          + 35*q2 - 24*np.sqrt(5)*r0 + 35*r2 - 24*np.sqrt(5)*s0 + 35*s2)*mu - 10*np.sqrt(15)*h2*(q1 + r1 + s1)*sigma \
-                          + 7*np.sqrt(3)*h1*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma))\
-                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
-                    S[4]  = (3*h0*(-10*np.sqrt(5)*h2*(q1 + r1 + s1) + 7*h1*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2))*mu \
-                          + np.sqrt(3)*h0*(63*h1*(q1 + r1 + s1) + h2*(-10*np.sqrt(5)*q0 + 7*q2 - 10*np.sqrt(5)*r0 + 7*r2 - 10*np.sqrt(5)*s0 + 7*s2))*sigma \
-                          + 7*h0**2*(-15*(q1 + r1 + s1)*mu - np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma) \
-                          + h2*(105*h2*(q1 + r1 + s1)*mu + 2*np.sqrt(3)*h2*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2)*sigma \
-                          - 3*h1*((4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*mu + 6*np.sqrt(15)*(q1 + r1 + s1)*sigma))) \
-                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
-                    S[5]  = (-21*h1**2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
-                          - 21*(5*h0 + 2*np.sqrt(5)*h2)*(-(h2*(q0 + r0 + s0)) + h0*(q2 + r2 + s2))*mu \
-                          - 2*np.sqrt(3)*(7*np.sqrt(5)*h0**2 + 10*h0*h2 - 7*np.sqrt(5)*h2**2)*(q1 + r1 + s1)*sigma \
-                          + h1*(-105*h2*(q1 + r1 + s1)*mu - 2*np.sqrt(3)*h2*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2)*sigma \
-                          + 14*h0*(3*np.sqrt(5)*(q1 + r1 + s1)*mu + np.sqrt(3)*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2)*sigma))) \
-                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))*slip_length)
-                    S[6]  = (1225*h0**5*(-3*(q0 + r0 + s0)*mu - np.sqrt(3)*(q1 + r1 + s1)*sigma) - 35*h0**4*(-105*(h1*(q1 + r1 + s1) - 4*(r0 + s0)*slip_length)*mu \
-                          + 7*np.sqrt(3)*(-(h1*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)) + 20*(r1 + s0)*slip_length)*sigma \
-                          + h2*(3*(48*np.sqrt(5)*q0 - 35*q2 + 48*np.sqrt(5)*r0 - 35*r2 + 48*np.sqrt(5)*s0 - 35*s2)*mu + 34*np.sqrt(15)*(q1 + r1 + s1)*sigma)) \
-                          + 5*h0**3*(3*h2*(h2*(-611*q0 + 266*np.sqrt(5)*q2 - 611*r0 + 266*np.sqrt(5)*r2 - 611*s0 + 266*np.sqrt(5)*s2) \
-                          - 56*(24*np.sqrt(5)*r0 - 35*r2 + 24*np.sqrt(5)*s0 - 35*s2)*slip_length)*mu \
-                          + 2*np.sqrt(3)*h2*(55*h2*(q1 + r1 + s1) - 28*(10*np.sqrt(5)*r1 + 24*np.sqrt(5)*s0 - 35*s2)*slip_length)*sigma \
-                          + 147*h1**2*((13*q0 - 2*np.sqrt(5)*q2 + 13*r0 - 2*np.sqrt(5)*r2 + 13*s0 - 2*np.sqrt(5)*s2)*mu + 3*np.sqrt(3)*(q1 + r1 + s1)*sigma) \
-                          + 7*h1*(60*(np.sqrt(5)*h2*(q1 + r1 + s1) + 14*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(h2*(20*np.sqrt(5)*q0 + 13*q2 + 20*np.sqrt(5)*r0 + 13*r2 + 20*np.sqrt(5)*s0 + 13*s2) + 56*(5*r0 + 2*np.sqrt(5)*r2 + 5*s1)*slip_length)*sigma)) \
-                          - h0**2*(-5*h2**3*(3*(74*np.sqrt(5)*q0 + 231*q2 + 74*np.sqrt(5)*r0 + 231*r2 + 74*np.sqrt(5)*s0 + 231*s2)*mu \
-                          + 296*np.sqrt(15)*(q1 + r1 + s1)*sigma) + 441*h1**3*(15*(q1 + r1 + s1)*mu \
-                          + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma) \
-                          + 15*h1*h2*(3*(67*h2*(q1 + r1 + s1) - 112*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(h2*(67*q0 + 70*np.sqrt(5)*q2 + 67*r0 + 70*np.sqrt(5)*r2 + 67*s0 + 70*np.sqrt(5)*s2) - 28*(4*np.sqrt(5)*r0 - 19*r2 + 4*np.sqrt(5)*s1)*slip_length)*sigma) \
-                          + 60*h2**2*slip_length*(1101*r0*mu - 462*np.sqrt(5)*r2*mu - 130*np.sqrt(3)*r1*sigma + (367*s0 - 154*np.sqrt(5)*s2)*(3*mu + np.sqrt(3)*sigma)) \
-                          - 21*h1**2*(111*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
-                          + 140*slip_length*(3*(r0 - 2*np.sqrt(5)*r2 + s0 - 2*np.sqrt(5)*s2)*mu + np.sqrt(3)*(-3*r1 + s0 - 2*np.sqrt(5)*s2)*sigma))) \
-                          - h0*(2646*h1**4*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2)*mu - 63*h1**3*h2*(42*np.sqrt(5)*(q1 + r1 + s1)*mu \
-                          + np.sqrt(3)*(14*np.sqrt(5)*q0 + 55*q2 + 14*np.sqrt(5)*r0 + 55*r2 + 14*np.sqrt(5)*s0 + 55*s2)*sigma) \
-                          + 5*h1*h2**2*(6*(43*np.sqrt(5)*h2*(q1 + r1 + s1) + 384*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(h2*(86*np.sqrt(5)*q0 + 91*q2 + 86*np.sqrt(5)*r0 + 91*r2 + 86*np.sqrt(5)*s0 + 91*s2) + 192*(4*r0 + 7*np.sqrt(5)*r2 + 4*s1)*slip_length)*sigma) \
-                          + 5*h2**3*(-12*(h2*(99*q0 - 35*np.sqrt(5)*q2 + 99*r0 - 35*np.sqrt(5)*r2 + 99*s0 - 35*np.sqrt(5)*s2) + 4*(-97*np.sqrt(5)*r0 + 168*r2 - 97*np.sqrt(5)*s0 + 168*s2)*slip_length)*mu \
-                          + np.sqrt(3)*(-35*h2*(q1 + r1 + s1) - 16*(35*np.sqrt(5)*r1 - 97*np.sqrt(5)*s0 + 168*s2)*slip_length)*sigma) \
-                          + 3*h1**2*h2*(6*h2*(220*q0 + 7*np.sqrt(5)*q2 + 220*r0 + 7*np.sqrt(5)*r2 + 220*s0 + 7*np.sqrt(5)*s2)*mu + 1035*np.sqrt(3)*h2*(q1 + r1 + s1)*sigma \
-                          - 112*slip_length*(93*np.sqrt(5)*r0*mu - 120*r2*mu + 15*np.sqrt(15)*r1*sigma + (31*np.sqrt(5)*s0 - 40*s2)*(3*mu + np.sqrt(3)*sigma)))) \
-                          + 2*(9*h1**3*h2*(-12*(5*h2*(q1 + r1 + s1) + 21*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(-5*h2*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) - 42*(2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s1)*slip_length)*sigma) \
-                          + 5*h1*h2**3*(12*(7*h2*(q1 + r1 + s1) + 55*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(7*h2*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) + 2*(110*np.sqrt(5)*r0 + 301*r2 + 110*np.sqrt(5)*s1)*slip_length)*sigma) \
-                          + 3*h1**2*h2**2*(8*h2*(-47*np.sqrt(5)*q0 + 140*q2 - 47*np.sqrt(5)*r0 + 140*r2 - 47*np.sqrt(5)*s0 + 140*s2)*mu \
-                          + 6000*r0*slip_length*mu - 2604*np.sqrt(5)*r2*slip_length*mu + 105*np.sqrt(15)*h2*(q1 + r1 + s1)*sigma - 870*np.sqrt(3)*r1*slip_length*sigma \
-                          + 4*(500*s0 - 217*np.sqrt(5)*s2)*slip_length*(3*mu + np.sqrt(3)*sigma)) + 5*h2**4*(7*h2*(6*(2*np.sqrt(5)*q0 - 7*q2 + 2*np.sqrt(5)*r0 - 7*r2 + 2*np.sqrt(5)*s0 - 7*s2)*mu \
-                          - 7*np.sqrt(15)*(q1 + r1 + s1)*sigma) + 2*slip_length*(-828*r0*mu + 168*np.sqrt(5)*r2*mu - 245*np.sqrt(3)*r1*sigma - 4*(69*s0 - 14*np.sqrt(5)*s2)*(3*mu + np.sqrt(3)*sigma))) \
-                          + 126*h1**4*(3*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu - 14*slip_length*(6*r0*mu - 3*np.sqrt(5)*r2*mu + (2*s0 - np.sqrt(5)*s2)*(3*mu + np.sqrt(3)*sigma))))) \
-                          /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
-                    S[7]  = (245*h0**5*(-15*(q1 + r1 + s1)*mu - np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma) \
-                          + 35*h0**4*(3*(-34*np.sqrt(5)*h2*(q1 + r1 + s1) + 7*h1*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2) - 140*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(63*h1*(q1 + r1 + s1) - h2*(34*np.sqrt(5)*q0 + 41*q2 + 34*np.sqrt(5)*r0 + 41*r2 + 34*np.sqrt(5)*s0 + 41*s2) - 28*(5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*slip_length)*sigma) \
-                          + h0**3*(150*h2*(11*h2*(q1 + r1 + s1) - 56*np.sqrt(5)*(r1 + s1)*slip_length)*mu + np.sqrt(3)*h2*(h2*(-395*q0 + 868*np.sqrt(5)*q2 - 395*r0 + 868*np.sqrt(5)*r2 - 395*s0 + 868*np.sqrt(5)*s2) \
-                          - 280*(10*np.sqrt(5)*r0 - 7*r2 + 10*np.sqrt(5)*s0 - 7*s2)*slip_length)*sigma + 441*h1**2*(15*(q1 + r1 + s1)*mu \
-                          + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma) \
-                          + 21*h1*(5*(h2*(20*np.sqrt(5)*q0 + 13*q2 + 20*np.sqrt(5)*r0 + 13*r2 + 20*np.sqrt(5)*s0 + 13*s2) + 56*(5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*slip_length)*mu \
-                          + 42*np.sqrt(3)*(np.sqrt(5)*h2*(q1 + r1 + s1) + 20*(r1 + s1)*slip_length)*sigma)) - 2*h2*(1134*h1**3*(2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*slip_length*mu \
-                          + 7*h2**4*(105*np.sqrt(5)*(q1 + r1 + s1)*mu + 2*np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma) \
-                          - 3*h1*h2**2*(315*np.sqrt(5)*h1*(q1 + r1 + s1)*mu + 10*(110*np.sqrt(5)*r0 + 301*r2 + 110*np.sqrt(5)*s0 + 301*s2)*slip_length*mu \
-                          + 6*np.sqrt(3)*h1*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma + 768*np.sqrt(15)*(r1 + s1)*slip_length*sigma) \
-                          + 9*h1**2*h2*(15*(h1*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) + 58*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(45*h1*(q1 + r1 + s1) + 4*(-11*r0 + 28*np.sqrt(5)*r2 - 11*s0 + 28*np.sqrt(5)*s2)*slip_length)*sigma) \
-                          + h2**3*(-105*(h1*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) - 70*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(-315*h1*(q1 + r1 + s1) + 4*(205*r0 + 28*np.sqrt(5)*r2 + 205*s0 + 28*np.sqrt(5)*s2)*slip_length)*sigma)) \
-                          + h0*h2*(189*h1**3*((14*np.sqrt(5)*q0 + 55*q2 + 14*np.sqrt(5)*r0 + 55*r2 + 14*np.sqrt(5)*s0 + 55*s2)*mu + 12*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 9*h1**2*(-15*(69*h2*(q1 + r1 + s1) - 112*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + 4*np.sqrt(3)*(-3*h2*(13*q0 + 7*np.sqrt(5)*q2 + 13*r0 + 7*np.sqrt(5)*r2 + 13*s0 + 7*np.sqrt(5)*s2) + 140*(np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2)*slip_length)*sigma) \
-                          + h2**2*(525*(h2*(q1 + r1 + s1) + 16*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + 4*np.sqrt(3)*(h2*(145*q0 - 77*np.sqrt(5)*q2 + 145*r0 - 77*np.sqrt(5)*r2 + 145*s0 - 77*np.sqrt(5)*s2) + 4*(-149*np.sqrt(5)*r0 + 350*r2 - 149*np.sqrt(5)*s0 + 350*s2)*slip_length)*sigma) \
-                          + 3*h1*h2*(960*slip_length*(-((4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2)*mu) - 6*np.sqrt(3)*(r1 + s1)*sigma) \
-                          - h2*(5*(86*np.sqrt(5)*q0 + 91*q2 + 86*np.sqrt(5)*r0 + 91*r2 + 86*np.sqrt(5)*s0 + 91*s2)*mu + 204*np.sqrt(15)*(q1 + r1 + s1)*sigma))) \
-                          - h0**2*(1323*h1**3*((5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*mu + 3*np.sqrt(3)*(q1 + r1 + s1)*sigma) + 63*h1**2*(420*(r1 + s1)*slip_length*mu \
-                          + np.sqrt(3)*(27*h2*(q2 + r2 + s2) + 28*(5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*slip_length)*sigma) + 9*h1*h2*(28*slip_length*(5*(-4*np.sqrt(5)*r0 + 19*r2 - 4*np.sqrt(5)*s0 + 19*s2)*mu \
-                          + 6*np.sqrt(15)*(r1 + s1)*sigma) + 5*h2*((67*q0 + 70*np.sqrt(5)*q2 + 67*r0 + 70*np.sqrt(5)*r2 + 67*s0 + 70*np.sqrt(5)*s2)*mu + 69*np.sqrt(3)*(q1 + r1 + s1)*sigma)) \
-                          + h2**2*(-(h2*(4440*np.sqrt(5)*(q1 + r1 + s1)*mu + np.sqrt(3)*(832*np.sqrt(5)*q0 + 2555*q2 + 832*np.sqrt(5)*r0 + 2555*r2 + 832*np.sqrt(5)*s0 + 2555*s2)*sigma)) \
-                          + 12*slip_length*(-1950*(r1 + s1)*mu + np.sqrt(3)*(295*r0 - 476*np.sqrt(5)*r2 + 295*s0 - 476*np.sqrt(5)*s2)*sigma)))) \
-                          /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
-                    S[8]  = (245*h0**5*(-15*(q2 + r2 + s2)*mu - 2*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 35*h0**4*(3*(14*np.sqrt(5)*h1*(q1 + r1 + s1) + h2*(35*q0 - 38*np.sqrt(5)*q2 + 35*r0 - 38*np.sqrt(5)*r2 + 35*s0 - 38*np.sqrt(5)*s2) - 140*(r2 + s2)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(-34*h2*(q1 + r1 + s1) + 7*h1*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2) - 28*np.sqrt(5)*(r1 + s1)*slip_length)*sigma) \
-                          + h0**3*(-294*h1**2*(5*(np.sqrt(5)*q0 - 7*q2 + np.sqrt(5)*r0 - 7*r2 + np.sqrt(5)*s0 - 7*s2)*mu - 3*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 5*h2*(21*(h2*(38*np.sqrt(5)*q0 - 33*q2 + 38*np.sqrt(5)*r0 - 33*r2 + 38*np.sqrt(5)*s0 - 33*s2) + 56*(5*r0 - 2*np.sqrt(5)*r2 + 5*s0 - 2*np.sqrt(5)*s2)*slip_length)*mu \
-                          + 4*np.sqrt(3)*(11*np.sqrt(5)*h2*(q1 + r1 + s1) - 280*(r1 + s1)*slip_length)*sigma) + 7*h1*(15*(13*h2*(q1 + r1 + s1) + 112*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(h2*(100*q0 + 13*np.sqrt(5)*q2 + 100*r0 + 13*np.sqrt(5)*r2 + 100*s0 + 13*np.sqrt(5)*s2) + 280*(np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2)*slip_length)*sigma)) \
-                          - h0**2*(882*h1**3*(3*np.sqrt(5)*(q1 + r1 + s1)*mu + np.sqrt(3)*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2)*sigma) + 6*h1*h2*(525*np.sqrt(5)*h2*(q1 + r1 + s1)*mu \
-                          + 3990*(r1 + s1)*slip_length*mu + np.sqrt(3)*h2*(67*np.sqrt(5)*q0 + 350*q2 + 67*np.sqrt(5)*r0 + 350*r2 + 67*np.sqrt(5)*s0 + 350*s2)*sigma \
-                          + 28*np.sqrt(3)*(-20*r0 + 19*np.sqrt(5)*r2 - 20*s0 + 19*np.sqrt(5)*s2)*slip_length*sigma) \
-                          + 5*h2**2*(-21*(h2*(33*q0 + 20*np.sqrt(5)*q2 + 33*r0 + 20*np.sqrt(5)*r2 + 33*s0 + 20*np.sqrt(5)*s2) + 12*(22*np.sqrt(5)*r0 - 21*r2 + 22*np.sqrt(5)*s0 - 21*s2)*slip_length)*mu \
-                          + 16*np.sqrt(3)*(-37*h2*(q1 + r1 + s1) - 39*np.sqrt(5)*(r1 + s1)*slip_length)*sigma) + 63*h1**2*(h2*(185*q0 - 52*np.sqrt(5)*q2 + 185*r0 - 52*np.sqrt(5)*r2 + 185*s0 - 52*np.sqrt(5)*s2)*mu \
-                          + 56*slip_length*(5*np.sqrt(5)*r0*mu - 5*(r2 - np.sqrt(5)*s0 + s2)*mu + np.sqrt(15)*(r1 + s1)*sigma))) + h0*(1323*h1**4*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
-                          + 63*h1**3*h2*(165*(q1 + r1 + s1)*mu + 2*np.sqrt(3)*(14*q0 + 11*np.sqrt(5)*q2 + 14*r0 + 11*np.sqrt(5)*r2 + 14*s0 + 11*np.sqrt(5)*s2)*sigma) \
-                          + 70*h2**3*(6*h2*(-5*np.sqrt(5)*q0 + 7*q2 - 5*np.sqrt(5)*r0 + 7*r2 - 5*np.sqrt(5)*s0 + 7*s2)*mu + 24*(24*r0 - 7*np.sqrt(5)*r2 + 24*s0 - 7*np.sqrt(5)*s2)*slip_length*mu \
-                          + np.sqrt(15)*h2*(q1 + r1 + s1)*sigma + 80*np.sqrt(3)*(r1 + s1)*slip_length*sigma) + h1*h2**2*(-105*(13*h2*(q1 + r1 + s1) + 192*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(-(h2*(430*q0 + 91*np.sqrt(5)*q2 + 430*r0 + 91*np.sqrt(5)*r2 + 430*s0 + 91*np.sqrt(5)*s2)) - 192*(4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*slip_length)*sigma) \
-                          + 9*h1**2*h2*(560*slip_length*((-8*r0 + 7*np.sqrt(5)*r2 - 8*s0 + 7*np.sqrt(5)*s2)*mu + 2*np.sqrt(3)*(r1 + s1)*sigma) - h2*(7*(2*np.sqrt(5)*q0 + 85*q2 + 2*np.sqrt(5)*r0 + 85*r2 + 2*np.sqrt(5)*s0 + 85*s2)*mu \
-                          + 138*np.sqrt(15)*(q1 + r1 + s1)*sigma))) - 2*(189*h1**4*(5*h2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2) + 14*(-2*np.sqrt(5)*r0 + 5*r2 - 2*np.sqrt(5)*s0 + 5*s2)*slip_length)*mu \
-                          + 9*h1**3*h2*(105*np.sqrt(5)*h2*(q1 + r1 + s1)*mu - 630*(r1 + s1)*slip_length*mu + 2*np.sqrt(3)*h2*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma \
-                          + 84*np.sqrt(3)*(2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2)*slip_length*sigma) + 70*h2**4*(3*(7*h2*(q0 + r0 + s0) + 4*(-2*np.sqrt(5)*r0 + 7*r2 - 2*np.sqrt(5)*s0 + 7*s2)*slip_length)*mu \
-                          + 7*np.sqrt(3)*(h2*(q1 + r1 + s1) + 2*np.sqrt(5)*(r1 + s1)*slip_length)*sigma) + 3*h1**2*h2**2*(6*slip_length*(7*(62*np.sqrt(5)*r0 - 35*r2 + 62*np.sqrt(5)*s0 - 35*s2)*mu + 58*np.sqrt(15)*(r1 + s1)*sigma) \
-                          + 35*h2*((-32*q0 + 7*np.sqrt(5)*q2 - 32*r0 + 7*np.sqrt(5)*r2 - 32*s0 + 7*np.sqrt(5)*s2)*mu - 6*np.sqrt(3)*(q1 + r1 + s1)*sigma)) + h1*h2**3*(-9030*(r1 + s1)*slip_length*mu \
-                          - 4*np.sqrt(3)*(550*r0 + 301*np.sqrt(5)*r2 + 550*s0 + 301*np.sqrt(5)*s2)*slip_length*sigma - 7*h2*(105*np.sqrt(5)*(q1 + r1 + s1)*mu \
-                          + 2*np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma)))) \
-                          /((35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
-                    S[9]  = (-5*(1225*h0**5*(3*(q0 + r0 + s0)*mu + np.sqrt(3)*(q1 + r1 + s1)*sigma) + 35*h0**4*(-105*(h1*(q1 + r1 + s1) - 4*(r0 + s0)*slip_length)*mu \
-                          + 7*np.sqrt(3)*(-(h1*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)) + 20*(r1 + s0)*slip_length)*sigma \
-                          + h2*(3*(48*np.sqrt(5)*q0 - 35*q2 + 48*np.sqrt(5)*r0 - 35*r2 + 48*np.sqrt(5)*s0 - 35*s2)*mu + 34*np.sqrt(15)*(q1 + r1 + s1)*sigma)) \
-                          - 5*h0**3*(3*h2*(h2*(-611*q0 + 266*np.sqrt(5)*q2 - 611*r0 + 266*np.sqrt(5)*r2 - 611*s0 + 266*np.sqrt(5)*s2) - 56*(24*np.sqrt(5)*r0 - 35*r2 + 24*np.sqrt(5)*s0 - 35*s2)*slip_length)*mu \
-                          + 2*np.sqrt(3)*h2*(55*h2*(q1 + r1 + s1) - 28*(10*np.sqrt(5)*r1 + 24*np.sqrt(5)*s0 - 35*s2)*slip_length)*sigma \
-                          + 147*h1**2*((13*q0 - 2*np.sqrt(5)*q2 + 13*r0 - 2*np.sqrt(5)*r2 + 13*s0 - 2*np.sqrt(5)*s2)*mu + 3*np.sqrt(3)*(q1 + r1 + s1)*sigma) \
-                          + 7*h1*(60*(np.sqrt(5)*h2*(q1 + r1 + s1) + 14*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(h2*(20*np.sqrt(5)*q0 + 13*q2 + 20*np.sqrt(5)*r0 + 13*r2 + 20*np.sqrt(5)*s0 + 13*s2) + 56*(5*r0 + 2*np.sqrt(5)*r2 + 5*s1)*slip_length)*sigma)) \
-                          + h0**2*(-5*h2**3*(3*(74*np.sqrt(5)*q0 + 231*q2 + 74*np.sqrt(5)*r0 + 231*r2 + 74*np.sqrt(5)*s0 + 231*s2)*mu + 296*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 441*h1**3*(15*(q1 + r1 + s1)*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma) \
-                          + 15*h1*h2*(3*(67*h2*(q1 + r1 + s1) - 112*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(h2*(67*q0 + 70*np.sqrt(5)*q2 + 67*r0 + 70*np.sqrt(5)*r2 + 67*s0 + 70*np.sqrt(5)*s2) - 28*(4*np.sqrt(5)*r0 - 19*r2 + 4*np.sqrt(5)*s1)*slip_length)*sigma) \
-                          + 60*h2**2*slip_length*(1101*r0*mu - 462*np.sqrt(5)*r2*mu - 130*np.sqrt(3)*r1*sigma + (367*s0 - 154*np.sqrt(5)*s2)*(3*mu + np.sqrt(3)*sigma)) \
-                          - 21*h1**2*(111*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu + 140*slip_length*(3*(r0 - 2*np.sqrt(5)*r2 + s0 - 2*np.sqrt(5)*s2)*mu \
-                          + np.sqrt(3)*(-3*r1 + s0 - 2*np.sqrt(5)*s2)*sigma))) + h0*(2646*h1**4*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2)*mu - 63*h1**3*h2*(42*np.sqrt(5)*(q1 + r1 + s1)*mu \
-                          + np.sqrt(3)*(14*np.sqrt(5)*q0 + 55*q2 + 14*np.sqrt(5)*r0 + 55*r2 + 14*np.sqrt(5)*s0 + 55*s2)*sigma) + 5*h1*h2**2*(6*(43*np.sqrt(5)*h2*(q1 + r1 + s1) + 384*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(h2*(86*np.sqrt(5)*q0 + 91*q2 + 86*np.sqrt(5)*r0 + 91*r2 + 86*np.sqrt(5)*s0 + 91*s2) + 192*(4*r0 + 7*np.sqrt(5)*r2 + 4*s1)*slip_length)*sigma) \
-                          + 5*h2**3*(-12*(h2*(99*q0 - 35*np.sqrt(5)*q2 + 99*r0 - 35*np.sqrt(5)*r2 + 99*s0 - 35*np.sqrt(5)*s2) + 4*(-97*np.sqrt(5)*r0 + 168*r2 - 97*np.sqrt(5)*s0 + 168*s2)*slip_length)*mu \
-                          + np.sqrt(3)*(-35*h2*(q1 + r1 + s1) - 16*(35*np.sqrt(5)*r1 - 97*np.sqrt(5)*s0 + 168*s2)*slip_length)*sigma) \
-                          + 3*h1**2*h2*(6*h2*(220*q0 + 7*np.sqrt(5)*q2 + 220*r0 + 7*np.sqrt(5)*r2 + 220*s0 + 7*np.sqrt(5)*s2)*mu + 1035*np.sqrt(3)*h2*(q1 + r1 + s1)*sigma \
-                          - 112*slip_length*(93*np.sqrt(5)*r0*mu - 120*r2*mu + 15*np.sqrt(15)*r1*sigma + (31*np.sqrt(5)*s0 - 40*s2)*(3*mu + np.sqrt(3)*sigma)))) \
-                          + 2*(9*h1**3*h2*(12*(5*h2*(q1 + r1 + s1) + 21*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(5*h2*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) + 42*(2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s1)*slip_length)*sigma) \
-                          + 5*h1*h2**3*(-12*(7*h2*(q1 + r1 + s1) + 55*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(-7*h2*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) - 2*(110*np.sqrt(5)*r0 + 301*r2 + 110*np.sqrt(5)*s1)*slip_length)*sigma) \
-                          + 3*h1**2*h2**2*(8*h2*(47*np.sqrt(5)*q0 - 140*q2 + 47*np.sqrt(5)*r0 - 140*r2 + 47*np.sqrt(5)*s0 - 140*s2)*mu - 6000*r0*slip_length*mu + 2604*np.sqrt(5)*r2*slip_length*mu \
-                          - 105*np.sqrt(15)*h2*(q1 + r1 + s1)*sigma + 870*np.sqrt(3)*r1*slip_length*sigma - 4*(500*s0 - 217*np.sqrt(5)*s2)*slip_length*(3*mu + np.sqrt(3)*sigma)) \
-                          + 5*h2**4*(7*h2*(6*(-2*np.sqrt(5)*q0 + 7*q2 - 2*np.sqrt(5)*r0 + 7*r2 - 2*np.sqrt(5)*s0 + 7*s2)*mu + 7*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 2*slip_length*(828*r0*mu - 168*np.sqrt(5)*r2*mu + 245*np.sqrt(3)*r1*sigma + 4*(69*s0 - 14*np.sqrt(5)*s2)*(3*mu + np.sqrt(3)*sigma))) \
-                          - 126*h1**4*(3*h2*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu - 14*slip_length*(6*r0*mu - 3*np.sqrt(5)*r2*mu + (2*s0 - np.sqrt(5)*s2)*(3*mu + np.sqrt(3)*sigma)))))) \
-                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
-                    S[10] = (-5*(245*h0**5*(15*(q1 + r1 + s1)*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma) \
-                          + 35*h0**4*(-3*(-34*np.sqrt(5)*h2*(q1 + r1 + s1) + 7*h1*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2) - 140*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*(-63*h1*(q1 + r1 + s1) + h2*(34*np.sqrt(5)*q0 + 41*q2 + 34*np.sqrt(5)*r0 + 41*r2 + 34*np.sqrt(5)*s0 + 41*s2) + 28*(5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*slip_length)*sigma) \
-                          - h0**3*(150*h2*(11*h2*(q1 + r1 + s1) - 56*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + np.sqrt(3)*h2*(h2*(-395*q0 + 868*np.sqrt(5)*q2 - 395*r0 + 868*np.sqrt(5)*r2 - 395*s0 + 868*np.sqrt(5)*s2) - 280*(10*np.sqrt(5)*r0 - 7*r2 + 10*np.sqrt(5)*s0 - 7*s2)*slip_length)*sigma \
-                          + 441*h1**2*(15*(q1 + r1 + s1)*mu + np.sqrt(3)*(5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*sigma) \
-                          + 21*h1*(5*(h2*(20*np.sqrt(5)*q0 + 13*q2 + 20*np.sqrt(5)*r0 + 13*r2 + 20*np.sqrt(5)*s0 + 13*s2) + 56*(5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*slip_length)*mu \
-                          + 42*np.sqrt(3)*(np.sqrt(5)*h2*(q1 + r1 + s1) + 20*(r1 + s1)*slip_length)*sigma)) + 2*h2*(1134*h1**3*(2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*slip_length*mu \
-                          + 7*h2**4*(105*np.sqrt(5)*(q1 + r1 + s1)*mu + 2*np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma) \
-                          - 3*h1*h2**2*(315*np.sqrt(5)*h1*(q1 + r1 + s1)*mu + 10*(110*np.sqrt(5)*r0 + 301*r2 + 110*np.sqrt(5)*s0 + 301*s2)*slip_length*mu \
-                          + 6*np.sqrt(3)*h1*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma + 768*np.sqrt(15)*(r1 + s1)*slip_length*sigma) \
-                          + 9*h1**2*h2*(15*(h1*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) + 58*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(45*h1*(q1 + r1 + s1) + 4*(-11*r0 + 28*np.sqrt(5)*r2 - 11*s0 + 28*np.sqrt(5)*s2)*slip_length)*sigma) \
-                          + h2**3*(-105*(h1*(4*q0 + 7*np.sqrt(5)*q2 + 4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2) - 70*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(-315*h1*(q1 + r1 + s1) + 4*(205*r0 + 28*np.sqrt(5)*r2 + 205*s0 + 28*np.sqrt(5)*s2)*slip_length)*sigma)) \
-                          + h0*h2*(-189*h1**3*((14*np.sqrt(5)*q0 + 55*q2 + 14*np.sqrt(5)*r0 + 55*r2 + 14*np.sqrt(5)*s0 + 55*s2)*mu + 12*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 9*h1**2*(15*(69*h2*(q1 + r1 + s1) - 112*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + 4*np.sqrt(3)*(3*h2*(13*q0 + 7*np.sqrt(5)*q2 + 13*r0 + 7*np.sqrt(5)*r2 + 13*s0 + 7*np.sqrt(5)*s2) - 140*(np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2)*slip_length)*sigma) \
-                          + h2**2*(-525*(h2*(q1 + r1 + s1) + 16*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          - 4*np.sqrt(3)*(h2*(145*q0 - 77*np.sqrt(5)*q2 + 145*r0 - 77*np.sqrt(5)*r2 + 145*s0 - 77*np.sqrt(5)*s2) + 4*(-149*np.sqrt(5)*r0 + 350*r2 - 149*np.sqrt(5)*s0 + 350*s2)*slip_length)*sigma) \
-                          + 3*h1*h2*(960*slip_length*((4*r0 + 7*np.sqrt(5)*r2 + 4*s0 + 7*np.sqrt(5)*s2)*mu + 6*np.sqrt(3)*(r1 + s1)*sigma) \
-                          + h2*(5*(86*np.sqrt(5)*q0 + 91*q2 + 86*np.sqrt(5)*r0 + 91*r2 + 86*np.sqrt(5)*s0 + 91*s2)*mu + 204*np.sqrt(15)*(q1 + r1 + s1)*sigma))) \
-                          + h0**2*(1323*h1**3*((5*q0 + 2*np.sqrt(5)*q2 + 5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*mu + 3*np.sqrt(3)*(q1 + r1 + s1)*sigma) + 63*h1**2*(420*(r1 + s1)*slip_length*mu \
-                          + np.sqrt(3)*(27*h2*(q2 + r2 + s2) + 28*(5*r0 + 2*np.sqrt(5)*r2 + 5*s0 + 2*np.sqrt(5)*s2)*slip_length)*sigma) + 9*h1*h2*(28*slip_length*(5*(-4*np.sqrt(5)*r0 + 19*r2 - 4*np.sqrt(5)*s0 + 19*s2)*mu \
-                          + 6*np.sqrt(15)*(r1 + s1)*sigma) + 5*h2*((67*q0 + 70*np.sqrt(5)*q2 + 67*r0 + 70*np.sqrt(5)*r2 + 67*s0 + 70*np.sqrt(5)*s2)*mu + 69*np.sqrt(3)*(q1 + r1 + s1)*sigma)) \
-                          + h2**2*(-(h2*(4440*np.sqrt(5)*(q1 + r1 + s1)*mu + np.sqrt(3)*(832*np.sqrt(5)*q0 + 2555*q2 + 832*np.sqrt(5)*r0 + 2555*r2 + 832*np.sqrt(5)*s0 + 2555*s2)*sigma)) \
-                          + 12*slip_length*(-1950*(r1 + s1)*mu + np.sqrt(3)*(295*r0 - 476*np.sqrt(5)*r2 + 295*s0 - 476*np.sqrt(5)*s2)*sigma))))) \
-                          /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
-                    S[11] = (5*(245*h0**5*(-15*(q2 + r2 + s2)*mu - 2*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 35*h0**4*(3*(14*np.sqrt(5)*h1*(q1 + r1 + s1) + h2*(35*q0 - 38*np.sqrt(5)*q2 + 35*r0 - 38*np.sqrt(5)*r2 + 35*s0 - 38*np.sqrt(5)*s2) - 140*(r2 + s2)*slip_length)*mu\
-                          + 2*np.sqrt(3)*(-34*h2*(q1 + r1 + s1) + 7*h1*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2) - 28*np.sqrt(5)*(r1 + s1)*slip_length)*sigma) \
-                          + h0**3*(-294*h1**2*(5*(np.sqrt(5)*q0 - 7*q2 + np.sqrt(5)*r0 - 7*r2 + np.sqrt(5)*s0 - 7*s2)*mu - 3*np.sqrt(15)*(q1 + r1 + s1)*sigma) \
-                          + 5*h2*(21*(h2*(38*np.sqrt(5)*q0 - 33*q2 + 38*np.sqrt(5)*r0 - 33*r2 + 38*np.sqrt(5)*s0 - 33*s2) + 56*(5*r0 - 2*np.sqrt(5)*r2 + 5*s0 - 2*np.sqrt(5)*s2)*slip_length)*mu \
-                          + 4*np.sqrt(3)*(11*np.sqrt(5)*h2*(q1 + r1 + s1) - 280*(r1 + s1)*slip_length)*sigma) + 7*h1*(15*(13*h2*(q1 + r1 + s1) + 112*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(h2*(100*q0 + 13*np.sqrt(5)*q2 + 100*r0 + 13*np.sqrt(5)*r2 + 100*s0 + 13*np.sqrt(5)*s2) + 280*(np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2)*slip_length)*sigma)) \
-                          - h0**2*(882*h1**3*(3*np.sqrt(5)*(q1 + r1 + s1)*mu + np.sqrt(3)*(np.sqrt(5)*q0 + 2*q2 + np.sqrt(5)*r0 + 2*r2 + np.sqrt(5)*s0 + 2*s2)*sigma) \
-                          + 6*h1*h2*(525*np.sqrt(5)*h2*(q1 + r1 + s1)*mu + 3990*(r1 + s1)*slip_length*mu + np.sqrt(3)*h2*(67*np.sqrt(5)*q0 + 350*q2 + 67*np.sqrt(5)*r0 + 350*r2 + 67*np.sqrt(5)*s0 + 350*s2)*sigma \
-                          + 28*np.sqrt(3)*(-20*r0 + 19*np.sqrt(5)*r2 - 20*s0 + 19*np.sqrt(5)*s2)*slip_length*sigma) \
-                          + 5*h2**2*(-21*(h2*(33*q0 + 20*np.sqrt(5)*q2 + 33*r0 + 20*np.sqrt(5)*r2 + 33*s0 + 20*np.sqrt(5)*s2) + 12*(22*np.sqrt(5)*r0 - 21*r2 + 22*np.sqrt(5)*s0 - 21*s2)*slip_length)*mu \
-                          + 16*np.sqrt(3)*(-37*h2*(q1 + r1 + s1) - 39*np.sqrt(5)*(r1 + s1)*slip_length)*sigma) + 63*h1**2*(h2*(185*q0 - 52*np.sqrt(5)*q2 + 185*r0 - 52*np.sqrt(5)*r2 + 185*s0 - 52*np.sqrt(5)*s2)*mu \
-                          + 56*slip_length*(5*np.sqrt(5)*r0*mu - 5*(r2 - np.sqrt(5)*s0 + s2)*mu + np.sqrt(15)*(r1 + s1)*sigma))) + h0*(1323*h1**4*(2*np.sqrt(5)*q0 - 5*q2 + 2*np.sqrt(5)*r0 - 5*r2 + 2*np.sqrt(5)*s0 - 5*s2)*mu \
-                          + 63*h1**3*h2*(165*(q1 + r1 + s1)*mu + 2*np.sqrt(3)*(14*q0 + 11*np.sqrt(5)*q2 + 14*r0 + 11*np.sqrt(5)*r2 + 14*s0 + 11*np.sqrt(5)*s2)*sigma) \
-                          + 70*h2**3*(6*h2*(-5*np.sqrt(5)*q0 + 7*q2 - 5*np.sqrt(5)*r0 + 7*r2 - 5*np.sqrt(5)*s0 + 7*s2)*mu + 24*(24*r0 - 7*np.sqrt(5)*r2 + 24*s0 - 7*np.sqrt(5)*s2)*slip_length*mu \
-                          + np.sqrt(15)*h2*(q1 + r1 + s1)*sigma + 80*np.sqrt(3)*(r1 + s1)*slip_length*sigma) + h1*h2**2*(-105*(13*h2*(q1 + r1 + s1) + 192*np.sqrt(5)*(r1 + s1)*slip_length)*mu \
-                          + 2*np.sqrt(3)*(-(h2*(430*q0 + 91*np.sqrt(5)*q2 + 430*r0 + 91*np.sqrt(5)*r2 + 430*s0 + 91*np.sqrt(5)*s2)) - 192*(4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*slip_length)*sigma) \
-                          + 9*h1**2*h2*(560*slip_length*((-8*r0 + 7*np.sqrt(5)*r2 - 8*s0 + 7*np.sqrt(5)*s2)*mu + 2*np.sqrt(3)*(r1 + s1)*sigma) \
-                          - h2*(7*(2*np.sqrt(5)*q0 + 85*q2 + 2*np.sqrt(5)*r0 + 85*r2 + 2*np.sqrt(5)*s0 + 85*s2)*mu + 138*np.sqrt(15)*(q1 + r1 + s1)*sigma))) \
-                          - 2*(189*h1**4*(5*h2*(2*q0 - np.sqrt(5)*q2 + 2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2) + 14*(-2*np.sqrt(5)*r0 + 5*r2 - 2*np.sqrt(5)*s0 + 5*s2)*slip_length)*mu \
-                          + 9*h1**3*h2*(105*np.sqrt(5)*h2*(q1 + r1 + s1)*mu - 630*(r1 + s1)*slip_length*mu + 2*np.sqrt(3)*h2*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma \
-                          + 84*np.sqrt(3)*(2*r0 - np.sqrt(5)*r2 + 2*s0 - np.sqrt(5)*s2)*slip_length*sigma) + 70*h2**4*(3*(7*h2*(q0 + r0 + s0) + 4*(-2*np.sqrt(5)*r0 + 7*r2 - 2*np.sqrt(5)*s0 + 7*s2)*slip_length)*mu \
-                          + 7*np.sqrt(3)*(h2*(q1 + r1 + s1) + 2*np.sqrt(5)*(r1 + s1)*slip_length)*sigma) + 3*h1**2*h2**2*(6*slip_length*(7*(62*np.sqrt(5)*r0 - 35*r2 + 62*np.sqrt(5)*s0 - 35*s2)*mu \
-                          + 58*np.sqrt(15)*(r1 + s1)*sigma) + 35*h2*((-32*q0 + 7*np.sqrt(5)*q2 - 32*r0 + 7*np.sqrt(5)*r2 - 32*s0 + 7*np.sqrt(5)*s2)*mu - 6*np.sqrt(3)*(q1 + r1 + s1)*sigma)) \
-                          + h1*h2**3*(-9030*(r1 + s1)*slip_length*mu - 4*np.sqrt(3)*(550*r0 + 301*np.sqrt(5)*r2 + 550*s0 + 301*np.sqrt(5)*s2)*slip_length*sigma - 7*h2*(105*np.sqrt(5)*(q1 + r1 + s1)*mu \
-                          + 2*np.sqrt(3)*(4*np.sqrt(5)*q0 + 35*q2 + 4*np.sqrt(5)*r0 + 35*r2 + 4*np.sqrt(5)*s0 + 35*s2)*sigma))))) \
                           /(3*(35*h0**3 + 24*np.sqrt(5)*h0**2*h2 + 2*np.sqrt(5)*h2*(9*h1**2 - 7*h2**2) - 3*h0*(21*h1**2 + 5*h2**2))**2*slip_length)
                 
                 else:
@@ -9326,12 +9270,12 @@ class SGSWLME1D(PDE):
                     
                     if self.distr == "normal":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
                             func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
                     
                     elif self.distr == "uniform":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
                             func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func2_exp[i]**2
                                 
                     else:
@@ -9351,12 +9295,12 @@ class SGSWLME1D(PDE):
                     
                     if self.distr == "normal":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
                             func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1+values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
                     
                     elif self.distr == "uniform":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
                             func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func2_exp[i]**2
                     
                     else:
@@ -9401,16 +9345,16 @@ class SGSWLME1D(PDE):
                     
                     if self.distr == "normal":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
                             func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
-                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
                             func3_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func3_exp[i]**2                           
                     
                     elif self.distr == "uniform":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
                             func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func2_exp[i]**2
-                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
                             func3_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func3_exp[i]**2                            
                     else:
                         print("This distribution is not implemented yet for mom_order=1 and SG_order=1")
@@ -9433,16 +9377,16 @@ class SGSWLME1D(PDE):
                     
                     if self.distr == "normal":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
-                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1+values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
-                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,6]*1 + values[i,7]*w + values[i,8]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
-                            func3_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,6]*1 + values[i,7]*w + values[i,8]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1+values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func3_exp[i]**2
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
+                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
+                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,6]*1 + values[i,7]*w + values[i,8]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
+                            func3_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,6]*1 + values[i,7]*w + values[i,8]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func3_exp[i]**2
 
                     elif self.distr == "uniform":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
                             func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func2_exp[i]**2
-                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,6]*1 + values[i,7]*np.sqrt(3)*w + values[i,8]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
+                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,6]*1 + values[i,7]*np.sqrt(3)*w + values[i,8]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
                             func3_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,6]*1 + values[i,7]*np.sqrt(3)*w + values[i,8]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func3_exp[i]**2
                     
                     else:
@@ -9492,20 +9436,20 @@ class SGSWLME1D(PDE):
                     
                     if self.distr == "normal":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
                             func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,2]*1 + values[i,3]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
-                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
                             func3_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,4]*1 + values[i,5]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func3_exp[i]**2  
-                            func4_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,6]*1 + values[i,7]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
+                            func4_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,6]*1 + values[i,7]*w)/(values[i,0]*1 + values[i,1]*w), -np.infty, np.infty)[0]
                             func4_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,6]*1 + values[i,7]*w)/(values[i,0]*1 + values[i,1]*w))**2, -np.infty, np.infty)[0] - func4_exp[i]**2                                    
                     
                     elif self.distr == "uniform":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
                             func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,2]*1 + values[i,3]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func2_exp[i]**2
-                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
                             func3_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,4]*1 + values[i,5]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func3_exp[i]**2     
-                            func4_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,6]*1 + values[i,7]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
+                            func4_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,6]*1 + values[i,7]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w), -1, 1)[0]
                             func4_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,6]*1 + values[i,7]*np.sqrt(3)*w)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w))**2, -1, 1)[0] - func4_exp[i]**2                            
                     else:
                         print("This distribution is not implemented yet for mom_order=2 and SG_order=1")
@@ -9532,20 +9476,20 @@ class SGSWLME1D(PDE):
                     
                     if self.distr == "normal":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
-                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,3]*1 + values[i,4]*w + values[i,5]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1+values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
-                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,6]*1 + values[i,7]*w + values[i,8]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
-                            func3_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,6]*1 + values[i,7]*w + values[i,8]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1+values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func3_exp[i]**2
-                            func4_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*(values[i,9]*1 + values[i,10]*w + values[i,11]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
-                            func4_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,9]*1 + values[i,10]*w + values[i,11]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1+values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func4_exp[i]**2
+                            func2_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,3]*1 + values[i,4] *w + values[i,5] *(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
+                            func2_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,3]*1 + values[i,4] *w + values[i,5] *(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func2_exp[i]**2
+                            func3_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,6]*1 + values[i,7] *w + values[i,8] *(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
+                            func3_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,6]*1 + values[i,7] *w + values[i,8] *(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func3_exp[i]**2
+                            func4_exp[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*( values[i,9]*1 + values[i,10]*w + values[i,11]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)), -np.infty, np.infty)[0]
+                            func4_var[i] = 1/np.sqrt(2*np.pi)*scipy.integrate.quad(lambda w: np.exp(-w**2/2)*((values[i,9]*1 + values[i,10]*w + values[i,11]*(w**2 - 1)/np.sqrt(2))/(values[i,0]*1 + values[i,1]*w + values[i,2]*(w**2 - 1)/np.sqrt(2)))**2, -np.infty, np.infty)[0] - func4_exp[i]**2
 
                     elif self.distr == "uniform":
                         for i in range(len(func2_exp)):
-                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
-                            func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,3]*1 + values[i,4]*np.sqrt(3)*w + values[i,5]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func2_exp[i]**2
-                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,6]*1 + values[i,7]*np.sqrt(3)*w + values[i,8]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
-                            func3_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,6]*1 + values[i,7]*np.sqrt(3)*w + values[i,8]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func3_exp[i]**2
-                            func4_exp[i] = 0.5*scipy.integrate.quad(lambda w: (values[i,9]*1 + values[i,10]*np.sqrt(3)*w + values[i,11]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
+                            func2_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,3]*1 + values[i,4] *np.sqrt(3)*w + values[i,5] *np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
+                            func2_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,3]*1 + values[i,4] *np.sqrt(3)*w + values[i,5] *np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func2_exp[i]**2
+                            func3_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,6]*1 + values[i,7] *np.sqrt(3)*w + values[i,8] *np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
+                            func3_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,6]*1 + values[i,7] *np.sqrt(3)*w + values[i,8] *np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func3_exp[i]**2
+                            func4_exp[i] = 0.5*scipy.integrate.quad(lambda w: ( values[i,9]*1 + values[i,10]*np.sqrt(3)*w + values[i,11]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2), -1, 1)[0]
                             func4_var[i] = 0.5*scipy.integrate.quad(lambda w: ((values[i,9]*1 + values[i,10]*np.sqrt(3)*w + values[i,11]*np.sqrt(5)*(3*w**2 - 1)/2)/(values[i,0]*1 + values[i,1]*np.sqrt(3)*w + values[i,2]*np.sqrt(5)*(3*w**2 - 1)/2))**2, -1, 1)[0] - func4_exp[i]**2
                     
                     else:
@@ -9613,6 +9557,6 @@ class SGSWLME1D(PDE):
             _, _, um_exp, um_var, alpha1_exp, alpha1_var, alpha2_exp, alpha2_var = self.compute_exp_and_var(2, SG_order, values, True)
             for i in range(len(um_exp)):
                 velocity_profile_exp[i,:] = um_exp[i]*(np.ones(len(z_points))) + alpha1_exp[i]*(np.ones(len(z_points)) - 2*z_points) + alpha2_exp[i]*(np.ones(len(z_points)) - 6*z_points + 6*z_points**2)
-                velocity_profile_var[i,:] = um_var[i]*(np.ones(len(z_points))) + alpha1_var[i]*(np.ones(len(z_points)) - 2*z_points)**2 + alpha2_exp[i]*(np.ones(len(z_points)) - 6*z_points + 6*z_points**2)**2
+                velocity_profile_var[i,:] = um_var[i]*(np.ones(len(z_points))) + alpha1_var[i]*(np.ones(len(z_points)) - 2*z_points)**2 + alpha2_var[i]*(np.ones(len(z_points)) - 6*z_points + 6*z_points**2)**2
    
         return velocity_profile_exp, velocity_profile_var
