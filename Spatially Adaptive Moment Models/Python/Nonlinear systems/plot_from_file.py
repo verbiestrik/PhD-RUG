@@ -8,6 +8,7 @@ no_lines = 3    # Must be between 1-4
 crop_l   = 0.2  # Fraction to crop left side of domain by
 crop_r   = 0.8  # Fraction to crop right side of domain by
 show_only_one = 0 # Set 0 if you want to display all axes
+show_diff     = False
 display_title = False
 
 IC_A = 'lowDamBreak_linearVelocity'
@@ -56,7 +57,7 @@ order_A = 2
 order_B = 2
 order_C = 2
 order_D = 2
-n_MC_A = 20
+n_MC_A = 50
 n_MC_B = 100
 n_MC_C = 150
 n_MC_D = 200
@@ -85,7 +86,7 @@ SG_order_D = 2
 title = 'Low Dam Break with Linear Velocity, SWLME N=1 MC'
 t_end = 0.2
 
-label_A = 'MC S=50'
+label_A = 'MC S=200'
 label_B = 'SG K=0'
 label_C = 'SG K=1'
 label_D = 'SG K=2'
@@ -115,6 +116,7 @@ lw_B = 1.5
 lw_C = 1.5
 lw_D = 1.5
 
+
 if no_lines > 0:
     if pde_type_A == 'SWME1D':
         _pde_A = PDE.SWME1D(IC_A, viscosity_A, slip_length_A, hyperbolic=False, linearised=False, linear_source=linear_source_implicit_A)
@@ -132,7 +134,6 @@ if no_lines > 0:
         print("pde_type can only be SGSWLME1D if stochastic_Galerkin is True and spatially_adaptive, micro_macro and monte_carlo are False")
     else:
         print('This pde_type is not implemented yet')
-
 
 if no_lines > 1:
     if pde_type_B == 'SWME1D':
@@ -187,6 +188,7 @@ if no_lines > 3:
         print("pde_type can only be SGSWLME1D if stochastic_Galerkin is True and spatially_adaptive, micro_macro and monte_carlo are False")
     else:
         print('This pde_type is not implemented yet')
+
 
 if no_lines > 0:
     if method_A == 'spatially_adaptive':
@@ -280,6 +282,7 @@ if no_lines > 3:
         data_array = np.load("Data/data_{0}_order={1}_nu={2}_lambda={3}_IC={4}_T={5}.npy".format(pde_type_D, order_D, viscosity_D, slip_length_D, IC_D, t_end))
         ax_arr = Visualisation.visualisation_add(ax_arr, _pde_D, method_D, False, False, len(data_array[:,0]), data_array[0,0], data_array[-1,0], data_array, label_D, fill_D, ls_D, lw_D, order=order_D, color_1=color_1_D, color_2=color_2_D, color_3=color_3_D, display_title=display_title, crop_l=crop_l, crop_r=crop_r)
 
+
 if show_only_one == 1:
     ax_arr[1].remove()
     if mom_order_A > 0 or order_A > 0:
@@ -309,4 +312,183 @@ elif show_only_one == 4:
     ax_arr[2].remove()
     ax_arr[3].set_position([0.12,0.12,0.87,0.87])
 
+
+if show_diff == True:
+    h_1_exp = np.array(ax_arr[0].lines[0].get_ydata())
+    h_1_var = np.array(ax_arr[0].lines[1].get_ydata()) - h_1_exp
+    h_2_exp = np.array(ax_arr[0].lines[3].get_ydata())
+    h_2_var = np.array(ax_arr[0].lines[4].get_ydata()) - h_2_exp
+    h_x = ax_arr[0].lines[0].get_xdata()
+    h_2_exp_diff = (h_2_exp - h_1_exp)/h_1_exp
+    h_2_var_diff = (h_2_var - h_1_var)/h_1_exp
+
+    um_1_exp = np.array(ax_arr[1].lines[0].get_ydata())
+    um_1_var = np.array(ax_arr[1].lines[1].get_ydata()) - um_1_exp
+    um_2_exp = np.array(ax_arr[1].lines[3].get_ydata())
+    um_2_var = np.array(ax_arr[1].lines[4].get_ydata()) - um_2_exp
+    um_x = ax_arr[1].lines[0].get_xdata()
+    um_2_exp_diff = (um_2_exp - um_1_exp)/um_1_exp
+    um_2_var_diff = (um_2_var - um_1_var)/um_1_var
+
+    if order_A > 0 or mom_order_A > 0:
+        alpha1_1_exp = np.array(ax_arr[2].lines[0].get_ydata())
+        alpha1_1_var = np.array(ax_arr[2].lines[1].get_ydata()) - alpha1_1_exp
+        alpha1_2_exp = np.array(ax_arr[2].lines[3].get_ydata())
+        alpha1_2_var = np.array(ax_arr[2].lines[4].get_ydata()) - alpha1_2_exp
+        alpha1_x = ax_arr[2].lines[0].get_xdata()
+        alpha1_2_exp_diff = (alpha1_2_exp - alpha1_1_exp)/alpha1_1_exp
+        alpha1_2_var_diff = (alpha1_2_var - alpha1_1_var)/alpha1_1_var
+    
+    if order_A > 1 or mom_order_A > 1:
+        alpha2_1_exp = np.array(ax_arr[3].lines[0].get_ydata())
+        alpha2_1_var = np.array(ax_arr[3].lines[1].get_ydata()) - alpha2_1_exp
+        alpha2_2_exp = np.array(ax_arr[3].lines[3].get_ydata())
+        alpha2_2_var = np.array(ax_arr[3].lines[4].get_ydata()) - alpha2_2_exp
+        alpha2_x = ax_arr[3].lines[0].get_xdata()
+        alpha2_2_exp_diff = (alpha2_2_exp - alpha2_1_exp)/alpha2_1_exp
+        alpha2_2_var_diff = (alpha2_2_var - alpha2_1_var)/alpha2_1_var
+
+    if no_lines > 2:
+        h_3_exp = np.array(ax_arr[0].lines[6].get_ydata())
+        h_3_var = np.array(ax_arr[0].lines[7].get_ydata()) - h_3_exp
+        h_3_exp_diff = (h_3_exp - h_1_exp)/h_1_exp
+        h_3_var_diff = (h_3_var - h_1_var)/h_1_exp
+
+        um_3_exp = np.array(ax_arr[1].lines[6].get_ydata())
+        um_3_var = np.array(ax_arr[1].lines[7].get_ydata()) - um_3_exp
+        um_3_exp_diff = (um_3_exp - um_1_exp)/um_1_exp
+        um_3_var_diff = (um_3_var - um_1_var)/um_1_var
+
+        if order_A > 0 or mom_order_A > 0:
+            alpha1_3_exp = np.array(ax_arr[2].lines[6].get_ydata())
+            alpha1_3_var = np.array(ax_arr[2].lines[7].get_ydata()) - alpha1_3_exp
+            alpha1_3_exp_diff = (alpha1_3_exp - alpha1_1_exp)/alpha1_1_exp
+            alpha1_3_var_diff = (alpha1_3_var - alpha1_1_var)/alpha1_1_var
+        
+        if order_A > 1 or mom_order_A > 1:
+            alpha2_3_exp = np.array(ax_arr[3].lines[6].get_ydata())
+            alpha2_3_var = np.array(ax_arr[3].lines[7].get_ydata()) - alpha2_3_exp
+            alpha2_3_exp_diff = (alpha2_3_exp - alpha2_1_exp)/alpha2_1_exp
+            alpha2_3_var_diff = (alpha2_3_var - alpha2_1_var)/alpha2_1_var
+    
+    if no_lines > 3:
+        h_4_exp = np.array(ax_arr[0].lines[9].get_ydata())
+        h_4_var = np.array(ax_arr[0].lines[10].get_ydata()) - h_4_exp
+        h_4_exp_diff = (h_4_exp - h_1_exp)/h_1_exp
+        h_4_var_diff = (h_4_var - h_1_var)/h_1_exp
+
+        um_4_exp = np.array(ax_arr[1].lines[9].get_ydata())
+        um_4_var = np.array(ax_arr[1].lines[10].get_ydata()) - um_4_exp
+        um_4_exp_diff = (um_4_exp - um_1_exp)/um_1_exp
+        um_4_var_diff = (um_4_var - um_1_var)/um_1_var
+
+        if order_A > 0 or mom_order_A > 0:
+            alpha1_4_exp = np.array(ax_arr[2].lines[9].get_ydata())
+            alpha1_4_var = np.array(ax_arr[2].lines[10].get_ydata()) - alpha1_4_exp
+            alpha1_4_exp_diff = (alpha1_4_exp - alpha1_1_exp)/alpha1_1_exp
+            alpha1_4_var_diff = (alpha1_4_var - alpha1_1_var)/alpha1_1_var
+        
+        if order_A > 1 or mom_order_A > 1:
+            alpha2_4_exp = np.array(ax_arr[3].lines[9].get_ydata())
+            alpha2_4_var = np.array(ax_arr[3].lines[10].get_ydata()) - alpha2_4_exp
+            alpha2_4_exp_diff = (alpha2_4_exp - alpha2_1_exp)/alpha2_1_exp
+            alpha2_4_var_diff = (alpha2_4_var - alpha2_1_var)/alpha2_1_var
+
 plt.show()
+
+
+if show_diff == True:
+    order = min(order_A, mom_order_A)
+    if order == 0:
+        fig, (ax1, ax2) = plt.subplots(1,2)
+
+    elif order == 1:
+        fig, (ax1, ax2, ax3) = plt.subplots(1,3)
+
+    elif order == 2:
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2,2)
+
+    ax1.plot(h_x, h_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
+    if SG_order_B > 0:
+        ax1.plot(h_x, h_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+    if no_lines > 2:
+        ax1.plot(h_x, h_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
+        ax1.plot(h_x, h_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+    if no_lines > 3:
+        ax1.plot(h_x, h_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
+        ax1.plot(h_x, h_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+    ax1.set_xlabel('x')
+    ax1.legend()
+    ax1.grid()
+
+    ax2.plot(um_x, um_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
+    if SG_order_B > 0:
+        ax2.plot(um_x, um_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+    if no_lines > 2:
+        ax2.plot(um_x, um_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
+        ax2.plot(um_x, um_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+    if no_lines > 3:
+        ax2.plot(um_x, um_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
+        ax2.plot(um_x, um_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+    ax2.set_xlabel('x')
+    ax2.legend()
+    ax2.grid()
+    
+    if order > 0:
+        ax3.plot(alpha1_x, alpha1_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
+        if SG_order_B > 0:
+            ax3.plot(alpha1_x, alpha1_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+        if no_lines > 2:
+            ax3.plot(alpha1_x, alpha1_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
+            ax3.plot(alpha1_x, alpha1_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+        if no_lines > 3:
+            ax3.plot(alpha1_x, alpha1_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
+            ax3.plot(alpha1_x, alpha1_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+        ax3.set_xlabel('x')
+        ax3.legend()
+        ax3.grid()
+    
+    if order > 1:
+        ax4.plot(alpha2_x, alpha2_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
+        if SG_order_B > 0:
+            ax4.plot(alpha2_x, alpha2_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+        if no_lines > 2:
+            ax4.plot(alpha2_x, alpha2_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
+            ax4.plot(alpha2_x, alpha2_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+        if no_lines > 3:
+            ax4.plot(alpha2_x, alpha2_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
+            ax4.plot(alpha2_x, alpha2_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+        ax4.set_xlabel('x')
+        ax4.legend()
+        ax4.grid()
+    
+    if show_only_one == 1:
+        ax2.remove()
+        if mom_order_A > 0 or order_A > 0:
+            ax3.remove()
+        if mom_order_A > 1 or order_A > 1:
+            ax4.remove()
+        ax1.set_position([0.18,0.12,0.81,0.87])
+
+    elif show_only_one == 2:
+        ax1.remove()
+        if mom_order_A > 0 or order_A > 0:
+            ax3.remove()
+        if mom_order_A > 1 or order_A > 1:
+            ax4.remove()
+        ax2.set_position([0.15,0.12,0.84,0.87])
+
+    elif show_only_one == 3:
+        ax1.remove()
+        ax2.remove()
+        if mom_order_A > 1 or order_A > 1:
+            ax4.remove()
+        ax3.set_position([0.15,0.12,0.84,0.87])
+
+    elif show_only_one == 4:
+        ax1.remove()
+        ax2.remove()
+        ax3.remove()
+        ax4.set_position([0.12,0.12,0.87,0.87])
+
+    plt.show()
