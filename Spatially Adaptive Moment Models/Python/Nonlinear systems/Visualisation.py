@@ -64,17 +64,20 @@ def visualisation(pde_type: PDE.PDE,
         ax2.set_title('$h$ for {}'.format(title))
         ax2.plot(data_array[:,0], data_array[:,1], label='{}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
         ax2.set_xlabel('x')
+        ax2.grid()
         ax2.legend()
         
         ax3.set_title('$u_m$ for {}'.format(title))
         ax3.plot(data_array[:,0], data_array[:,2], label='{}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
         ax3.set_xlabel('x')
+        ax3.grid()
         ax3.legend()
 
         if max_order > 0:
             ax4.set_title(r'$\alpha_1$ for {}'.format(title))
             ax4.plot(data_array[:,0], data_array[:,3], label='{}'.format(label), color=color_1, linestyle=ls, linewidth=lw)
             ax4.set_xlabel('x')
+            ax4.grid()
             ax4.legend()
         
         if max_order > 1:
@@ -398,8 +401,8 @@ def visualisation_add(ax_arr,
             elif order == 2:
                 alpha1_exp = np.average([data_array[n,:,3] for n in range(n_MC)], axis=0)
                 alpha1_var = np.var([data_array[n,:,3] for n in range(n_MC)], axis=0)
-                alpha2_exp = np.average([data_array[n,:,3] for n in range(n_MC)], axis=0)
-                alpha2_var = np.var([data_array[n,:,3] for n in range(n_MC)], axis=0)
+                alpha2_exp = np.average([data_array[n,:,4] for n in range(n_MC)], axis=0)
+                alpha2_var = np.var([data_array[n,:,4] for n in range(n_MC)], axis=0)
                 
                 ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
                 ax_arr[3].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
