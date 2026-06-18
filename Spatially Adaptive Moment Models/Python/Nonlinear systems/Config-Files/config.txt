@@ -8,7 +8,7 @@
 1D = True
 
 ### PDE type. Implemented: SWME1D, HSWME1D, SWLME1D, VegetationSWME1D, SGSWLME1D, HSGSWLME1D
-pde_type = SGSWLME1D
+pde_type = SWLME1D
 
 # Specify friction parameters
 slipLength = 0.1
@@ -25,7 +25,7 @@ linear_source = False
 # Specify initial conditions. Implemented: constantHeight_noVelocity, constantHeight_constantVelocity, linearHeight_noVelocity, damBreak_noVelocity,
 #                                          damBreak_constantVelocity, lowDamBreak_linearVelocity, highDamBreak_linearVelocity, symmetric_damBreak,
 #                                          linearDamBreak_noVelocity, smoothWave_noVelocity, smoothWave_constantVelocity, smoothWave_linearVelocity, smooth_plus_damBreak
-initialCondition = lowDamBreak_linearVelocity
+initialCondition = smoothWave_linearVelocity
 # For adaptive simulation, not possible for SGSWLME1D or HSGSWLME1D
 breakdown_criterion = damBreak_constantVelocity
 
@@ -57,16 +57,16 @@ y2boundary = 1
 
 [numerical_method_information]
 # End time
-t_end = 0.2
+t_end = 2.0
 
 # spatially_adaptive, classical, micro_macro. SGSWLME1D and HSGSWLME1D always classical
 method = classical
 
 # True: stochastic Galerkin simulation, False: simulation without intrusive uncertainty quantification
-stochasticGalerkin = True
+stochasticGalerkin = False
 
 # True: Monte Carlo loop, False: no Monte Carlo loop
-monteCarlo = False
+monteCarlo = True
 
 
 ### SPATIALLYADAPTIVE ###
@@ -79,7 +79,7 @@ start_order = 5
 # Order of the model
 order = 2
 # In case monteCarlo = True, number of Monte Carlo samples
-n_MC = 5
+n_MC = 48
 
 ### STOCHASTIC GALERKIN (always classical) ###
 # Moment order of the model
@@ -98,4 +98,4 @@ pvm = PRICE
 timeIntegrator = ImplicitEuler
 
 # Boundary condition. Implemented: INFLOW_OUTFLOW, PERIODIC
-boundaryCondition = INFLOW_OUTFLOW
+boundaryCondition = PERIODIC

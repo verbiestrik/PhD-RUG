@@ -4,21 +4,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 plt.rcParams.update({'font.size': 15})
-no_lines = 3    # Must be between 1-4
-crop_l   = 0.2  # Fraction to crop left side of domain by
-crop_r   = 0.8  # Fraction to crop right side of domain by
+no_lines = 4    # Must be between 1-4
+crop_l   = 0.0  # Fraction to crop left side of domain by
+crop_r   = 1.0  # Fraction to crop right side of domain by
 show_only_one = 0 # Set 0 if you want to display all axes
 show_diff     = False
 display_title = False
 
-IC_A = 'lowDamBreak_linearVelocity'
-IC_B = 'lowDamBreak_linearVelocity'
-IC_C = 'lowDamBreak_linearVelocity'
-IC_D = 'lowDamBreak_linearVelocity'
+IC_A = 'smoothWave_linearVelocity'
+IC_B = 'smoothWave_linearVelocity'
+IC_C = 'smoothWave_linearVelocity'
+IC_D = 'smoothWave_linearVelocity'
 pde_type_A = 'SWLME1D'
-pde_type_B = 'SGSWLME1D'
-pde_type_C = 'SGSWLME1D'
-pde_type_D = 'SGSWLME1D'
+pde_type_B = 'SWLME1D'
+pde_type_C = 'SWLME1D'
+pde_type_D = 'SWLME1D'
 
 method_A = 'classical'
 method_B = 'classical'
@@ -46,21 +46,21 @@ linear_source_implicit_B = False
 linear_source_implicit_C = False
 linear_source_implicit_D = False
 monte_carlo_A = True
-monte_carlo_B = False
-monte_carlo_C = False
-monte_carlo_D = False
+monte_carlo_B = True
+monte_carlo_C = True
+monte_carlo_D = True
 distr_A = "uniform"
 distr_B = "uniform"
 distr_C = "uniform"
 distr_D = "uniform"
-order_A = 2
-order_B = 2
-order_C = 2
-order_D = 2
-n_MC_A = 50
-n_MC_B = 100
-n_MC_C = 150
-n_MC_D = 200
+order_A = 1
+order_B = 1
+order_C = 1
+order_D = 1
+n_MC_A = 200
+n_MC_B = 250
+n_MC_C = 300
+n_MC_D = 350
 mu_A = 0.1
 mu_B = 0.1
 mu_C = 0.1
@@ -71,9 +71,9 @@ sigma_C = 0.05
 sigma_D = 0.05
 
 stochastic_Galerkin_A = False
-stochastic_Galerkin_B = True
-stochastic_Galerkin_C = True
-stochastic_Galerkin_D = True
+stochastic_Galerkin_B = False
+stochastic_Galerkin_C = False
+stochastic_Galerkin_D = False
 mom_order_A = 2
 mom_order_B = 2
 mom_order_C = 2
@@ -84,12 +84,12 @@ SG_order_C = 1
 SG_order_D = 2
 
 title = 'Low Dam Break with Linear Velocity, SWLME N=1 MC'
-t_end = 0.2
+t_end = 2.0
 
-label_A = 'MC S=200'
-label_B = 'SG K=0'
-label_C = 'SG K=1'
-label_D = 'SG K=2'
+label_A = 'MC S=100'
+label_B = 'MC S=200'
+label_C = 'MC S=250'
+label_D = 'MC S=250'
 color_1_A = 'black'
 color_2_A = 'gray'
 color_3_A = 'gray'
@@ -410,26 +410,26 @@ if show_diff == True:
 
     ax1.plot(h_x, h_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
     if SG_order_B > 0:
-        ax1.plot(h_x, h_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+        ax1.plot(h_x, h_2_var_diff, label='{}, std dev'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
     if no_lines > 2:
         ax1.plot(h_x, h_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
-        ax1.plot(h_x, h_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+        ax1.plot(h_x, h_3_var_diff, label='{}, std dev'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
     if no_lines > 3:
         ax1.plot(h_x, h_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
-        ax1.plot(h_x, h_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+        ax1.plot(h_x, h_4_var_diff, label='{}, std dev'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
     ax1.set_xlabel('x')
     ax1.legend()
     ax1.grid()
 
     ax2.plot(um_x, um_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
     if SG_order_B > 0:
-        ax2.plot(um_x, um_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+        ax2.plot(um_x, um_2_var_diff, label='{}, std dev'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
     if no_lines > 2:
         ax2.plot(um_x, um_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
-        ax2.plot(um_x, um_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+        ax2.plot(um_x, um_3_var_diff, label='{}, std dev'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
     if no_lines > 3:
         ax2.plot(um_x, um_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
-        ax2.plot(um_x, um_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+        ax2.plot(um_x, um_4_var_diff, label='{}, std dev'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
     ax2.set_xlabel('x')
     ax2.legend()
     ax2.grid()
@@ -437,13 +437,13 @@ if show_diff == True:
     if order > 0:
         ax3.plot(alpha1_x, alpha1_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
         if SG_order_B > 0:
-            ax3.plot(alpha1_x, alpha1_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+            ax3.plot(alpha1_x, alpha1_2_var_diff, label='{}, std dev'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
         if no_lines > 2:
             ax3.plot(alpha1_x, alpha1_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
-            ax3.plot(alpha1_x, alpha1_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+            ax3.plot(alpha1_x, alpha1_3_var_diff, label='{}, std dev'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
         if no_lines > 3:
             ax3.plot(alpha1_x, alpha1_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
-            ax3.plot(alpha1_x, alpha1_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+            ax3.plot(alpha1_x, alpha1_4_var_diff, label='{}, std dev'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
         ax3.set_xlabel('x')
         ax3.legend()
         ax3.grid()
@@ -451,13 +451,13 @@ if show_diff == True:
     if order > 1:
         ax4.plot(alpha2_x, alpha2_2_exp_diff, label='{}, mean'.format(label_B), color=color_1_B, linestyle=ls_B, linewidth=lw_B)
         if SG_order_B > 0:
-            ax4.plot(alpha2_x, alpha2_2_var_diff, label='{}, std'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
+            ax4.plot(alpha2_x, alpha2_2_var_diff, label='{}, std dev'.format(label_B), color=color_2_B, linestyle=ls_B, linewidth=lw_B)
         if no_lines > 2:
             ax4.plot(alpha2_x, alpha2_3_exp_diff, label='{}, mean'.format(label_C), color=color_1_C, linestyle=ls_C, linewidth=lw_C)
-            ax4.plot(alpha2_x, alpha2_3_var_diff, label='{}, std'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
+            ax4.plot(alpha2_x, alpha2_3_var_diff, label='{}, std dev'.format(label_C), color=color_2_C, linestyle=ls_C, linewidth=lw_C)
         if no_lines > 3:
             ax4.plot(alpha2_x, alpha2_4_exp_diff, label='{}, mean'.format(label_D), color=color_1_D, linestyle=ls_D, linewidth=lw_D)
-            ax4.plot(alpha2_x, alpha2_4_var_diff, label='{}, std'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
+            ax4.plot(alpha2_x, alpha2_4_var_diff, label='{}, std dev'.format(label_D), color=color_2_D, linestyle=ls_D, linewidth=lw_D)
         ax4.set_xlabel('x')
         ax4.legend()
         ax4.grid()
