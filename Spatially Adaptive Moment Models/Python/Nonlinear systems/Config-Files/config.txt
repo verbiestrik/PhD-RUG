@@ -77,9 +77,9 @@ start_order = 5
 
 ### CLASSICAL ###
 # Order of the model
-order = 2
+order = 1
 # In case monteCarlo = True, number of Monte Carlo samples
-n_MC = 48
+n_MC = 49
 
 ### STOCHASTIC GALERKIN (always classical) ###
 # Moment order of the model

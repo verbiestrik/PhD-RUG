@@ -57,10 +57,10 @@ order_A = 2
 order_B = 2
 order_C = 2
 order_D = 2
-n_MC_A = 250
-n_MC_B = 300
-n_MC_C = 350
-n_MC_D = 400
+n_MC_A = 300
+n_MC_B = 350
+n_MC_C = 400
+n_MC_D = 450
 mu_A = 0.1
 mu_B = 0.1
 mu_C = 0.1
@@ -86,10 +86,10 @@ SG_order_D = 2
 title = 'Low Dam Break with Linear Velocity, SWLME N=1 MC'
 t_end = 2.0
 
-label_A = 'MC S=250'
-label_B = 'MC S=300'
-label_C = 'MC S=350'
-label_D = 'MC S=400'
+label_A = 'MC S=300'
+label_B = 'MC S=350'
+label_C = 'MC S=400'
+label_D = 'MC S=450'
 color_1_A = 'black'
 color_2_A = 'gray'
 color_3_A = 'gray'
