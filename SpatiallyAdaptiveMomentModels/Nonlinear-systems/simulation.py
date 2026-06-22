@@ -191,6 +191,17 @@ class ClassicalSimulation1D(Simulation):
         self.history_stride = 10                        # stride for storing
         self.history = []                               # array to store in
 
+        # Optional hyperbolicity diagnostics
+        # If enabled, the solver checks the local transport matrix in each 
+        # physical cell, computes its eigenvalues and stores both a detailed
+        # cellwise log as well as a compact per-time summary.
+        # Introduced to check hyperbolicity breakdown in the recharge model.
+        self.store_hyperbolicity = False
+        self.hyperbolicity_stride = 10
+        self.hyperbolicity_tol = 1e-10
+        self.hyperbolicity_history = []
+        self.hyperbolicity_summary = []
+
     def _store_snapshot(self,
                         values : np.ndarray,
                         step : int,
@@ -229,6 +240,143 @@ class ClassicalSimulation1D(Simulation):
             "data" : snapshot,
         })
 
+    def _store_hyperbolicity_snapshot(self,
+                                      values : np.ndarray,
+                                      step : int,
+                                      time : float) -> None:
+        """
+        Optionally store hyperbolicity diagnostics for the current solution.
+
+        For every physical cell, compute the local transport matrix
+            A(U) = compute_system_matrix(order, U),
+        evaluate its eigenvalues and store a cellwise diagnostic row. This is
+        expected to be a costly operation, so enable it only in test-cases and 
+        not when you want to solve large scale simulations. As a result, a 
+        compact per-time-step summary is also stored.
+
+        Parameters
+        ----------
+        values : numpy.ndarray
+            Current state array, including ghost cells.
+        step : int
+            Current time-step index.
+        time : float
+            Physical time associated with the stored state.
+
+        Returns
+        -------
+        None
+        """
+        # Check if the user wants a hyperbolicity check
+        if not self.store_hyperbolicity:
+            return
+        
+        # Perform hyperbolicity check only at the prescribed stride interval
+        if step % self.hyperbolicity_stride != 0:
+            return
+
+        # Initialize util variables to store diagnostics
+        n_bad = 0
+        max_abs_imag_global = -1.0
+        worst_cell_index = -1
+        worst_x = np.nan
+        worst_eigenvals = None
+
+        # Iterate over physical cells and compute eigenvalues of the local
+        # transport matrix. Store diagnostics.
+        for i in range(1, self.mesh.resolution + 1):
+            local_values = values[i, :].copy()
+            x_i = float(self.mesh.cell_center_positions[i - 1])
+
+            # Skip dry states before trying to build the transport matrix
+            if ((not np.all(np.isfinite(local_values))) or
+                local_values[0] <= self.hyperbolicity_tol):
+                eigvals = np.full(self.number_of_variables, np.nan)
+                real_parts = np.full(self.number_of_variables, np.nan)
+                imag_parts = np.full(self.number_of_variables, np.nan)
+                max_abs_imag = np.nan
+                min_real = np.nan
+                max_real = np.nan
+                is_hyperbolic = 0
+            else:
+                try:
+                    A = self.pde_type.compute_system_matrix(self.order, local_values)
+                    eigvals = np.linalg.eigvals(A)
+
+                    real_parts = np.real(eigvals)
+                    imag_parts = np.imag(eigvals)
+
+                    max_abs_imag = float(np.max(np.abs(imag_parts)))
+                    min_real = float(np.min(real_parts))
+                    max_real = float(np.max(real_parts))
+
+                    is_hyperbolic = int(
+                        np.isfinite(max_abs_imag) and
+                        max_abs_imag < self.hyperbolicity_tol
+                    )
+                except Exception as e:
+                    print("\n[hyperbolicity-check exception]")
+                    print(f"step        = {step}")
+                    print(f"time        = {time}")
+                    print(f"cell        = {i - 1}")     # cell index
+                    print(f"x           = {x_i}")       # cell center
+                    print(f"values      = {local_values}")
+                    print(f"error       = {type(e).__name__}: {e}\n")
+
+                    eigvals = np.full(self.number_of_variables, np.nan + 1j * np.nan)
+                    real_parts = np.full(self.number_of_variables, np.nan)
+                    imag_parts = np.full(self.number_of_variables, np.nan)
+                    max_abs_imag = np.nan
+                    min_real = np.nan
+                    max_real = np.nan
+                    is_hyperbolic = 0
+    
+            if not is_hyperbolic: 
+                n_bad += 1
+
+            if np.isnan(max_abs_imag) or max_abs_imag > max_abs_imag_global:
+                max_abs_imag_global = max_abs_imag
+                worst_cell_index = i - 1
+                worst_x = x_i
+                worst_eigenvals = eigvals
+
+            self.hyperbolicity_history.append({
+                "step" : step,
+                "time" : time,
+                "cell_index" : i - 1,
+                "x" : x_i,
+                "eigvals" : eigvals,
+                "max_abs_imag_eig" : max_abs_imag,
+                "min_real_eig" : min_real,
+                "max_real_eig" : max_real,
+                "is_hyperbolic" : is_hyperbolic,
+                "eigvals_real": ";".join([f"{val:.16e}" for val in real_parts]),
+                "eigvals_imag": ";".join([f"{val:.16e}" for val in imag_parts]),
+            })
+
+        if worst_eigenvals is None:
+            worst_eigvals_real = ""
+            worst_eigvals_imag = ""
+        else: 
+            worst_eigvals_real = ";".join(
+                [f"{val:.16e}" for val in np.real(worst_eigenvals)]
+            )
+            worst_eigvals_imag = ";".join(
+                [f"{val:.16e}" for val in np.imag(worst_eigenvals)]
+            )
+
+        self.hyperbolicity_summary.append({
+            "step": step,
+            "time": time,
+            "num_nonhyperbolic_cells": n_bad,
+            "fraction_nonhyperbolic_cells": n_bad / self.mesh.resolution,
+            "max_abs_imag_eig": max_abs_imag_global,
+            "worst_cell_index": worst_cell_index,
+            "worst_x": worst_x,
+            "worst_eigvals_real": worst_eigvals_real,
+            "worst_eigvals_imag": worst_eigvals_imag,
+        })
+
     def run_simulation(self,
                        t_end: float,
                        g = 1) -> np.ndarray:
@@ -247,7 +395,10 @@ class ClassicalSimulation1D(Simulation):
         # include both the starting state and the later evolved states.
         step = 0 
         self.history = []
+        self.hyperbolicity_history = []
+        self.hyperbolicity_summary = []
         self._store_snapshot(values, step=0, time=t)
+        self._store_hyperbolicity_snapshot(values, step=0, time=t)
 
         def system_matrix(cell_values):
             return self.pde_type.compute_system_matrix(self.order,cell_values)
@@ -295,6 +446,20 @@ class ClassicalSimulation1D(Simulation):
                     values[i,:],
                     source_term,
                     delta_t)
+                
+                # Check is state is still finite (and physically meaningful)
+                if not np.all(np.isfinite(values[i, :])):
+                    raise RuntimeError(
+                        f"Non-finite state produced after source integration  "
+                        f"at step={step}, time={t}, cell={i-1}, x={self.mesh.cell_center_positions[i-1]},  "
+                        f"values={values[i, :]}"
+                    )
+                if values[i, 0] <= 0.0:
+                    raise RuntimeError(
+                        f"Non-positive height produced after update  "
+                        f"at step={step}, time={t}, cell={i-1}, x={self.mesh.cell_center_positions[i-1]},  "
+                        f"h={values[i, 0]}, values={values[i, :]}"
+                    )
             print()
             print('time: '+str(t))
             print('step size: '+str(delta_t))
@@ -306,6 +471,7 @@ class ClassicalSimulation1D(Simulation):
 
             # Store history snapshot if enabled
             self._store_snapshot(values, step = step, time = t)
+            self._store_hyperbolicity_snapshot(values, step = step, time = t)
 
         simulation_data = self._post_processing(values)
         return simulation_data

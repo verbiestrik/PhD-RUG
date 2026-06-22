@@ -312,9 +312,31 @@ class SWME1D(PDE):
                               g = 1) -> np.ndarray:
 
         # The gravitational constant g is set to 1, because the simulations are based on dimensionless equations
-        A = np.zeros((self.compute_number_of_variables(order),self.compute_number_of_variables(order))) 
+        A = np.zeros(
+            (self.compute_number_of_variables(order),
+             self.compute_number_of_variables(order),
+            )
+        ) 
+
+        # Avoid division by zero and more informative error checking.
+        values = np.asarray(values, dtype = np.float64)
+
+        if values.ndim != 1:
+            raise ValueError(
+                f"Expected 1D state vector, got shape {values.shape}."
+            )
+        if not np.all(np.isfinite(values)):
+            raise ValueError(
+                f"Non-finite state encountered in compute_system_matrix: {values}"
+            )
         h = values[0]
-        um = values[1]/values[0]
+
+        if h <= 0.0:
+            raise ValueError(
+                f"Non-positive height h={h} in compute_system_matrix, values={values}"
+            )
+        um = values[1] / h
+
         if order == 0:
             A[0][1] = 1
             A[1][0] = g*h - um*um
@@ -2965,13 +2987,27 @@ class SWME1D(PDE):
     def convert_to_primitive(self,
                            order: int,
                            data_matrix_convective: np.ndarray) -> np.ndarray:
-
-        data_matrix_primitive = np.zeros(np.shape(data_matrix_convective))
         
-        data_matrix_primitive[:,0] = data_matrix_convective[:,0]
-        data_matrix_primitive[:,1] = np.divide(data_matrix_convective[:,1],data_matrix_convective[:,0])
-        for j in range(order): #TODO: this is unnecessary routine here
-            data_matrix_primitive[:,j+2] = np.divide(data_matrix_convective[:,j+2],data_matrix_convective[:,0])
+        data_matrix_convective = np.asarray(data_matrix_convective,
+                                            dtype = np.float64)
+        data_matrix_primitive = np.full(np.shape(data_matrix_convective),
+                                        np.nan, dtype = np.float64)
+        
+        h = data_matrix_convective[:, 0]
+        valid = np.isfinite(h) & (h > 0.0)
+
+        # Always copy height
+        data_matrix_primitive[:, 0] = h
+
+        # Only divide where height is valid
+        data_matrix_primitive[valid, 1] = (
+            data_matrix_convective[valid, 1] / h[valid]
+        )
+
+        for j in range(order):
+            data_matrix_primitive[valid, j + 2] = (
+                data_matrix_convective[valid, j + 2] / h[valid]
+            )
 
         return data_matrix_primitive 
     

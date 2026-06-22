@@ -11,11 +11,12 @@ class RechargeSWME1D(SWME1D):
     Minimal SWME model equipped with rainfall and infiltration physics.
 
     Current implementation:
-    - It inherits the SWME transport structure.
+    - Inherits the SWME transport structure.
+    - Evaluated mixing-friction through a configurable law object.
     - Builds a recharge mass production source term S_{R, I} in the back end.
     - Builds a composite friction vector P(U) in the back end.
     - Yields the total source S_{R, I} - P(U).
-    - It only supports N=1. 
+    - It supports N = 1 and N = 2. 
     """
 
     # Constructor
@@ -29,8 +30,7 @@ class RechargeSWME1D(SWME1D):
             linear_source : bool,
             rainfall_rate : float,
             infiltration_model : object,
-            f_R : float = 0.0,
-            f_I : float = 0.0,
+            mixing_friction_model : object,
     ):
         # Inherit from the parent class stuff which are the same
         super().__init__(
@@ -45,8 +45,7 @@ class RechargeSWME1D(SWME1D):
         self.rainfall_rate = rainfall_rate
         self.infiltration_model = infiltration_model
         self.source_context = SourceContext()
-        self.f_R = f_R
-        self.f_I = f_I
+        self.mixing_friction_model = mixing_friction_model
 
     # Manually set the context for the source terms
     # Probably going to be needed in the future
@@ -69,7 +68,7 @@ class RechargeSWME1D(SWME1D):
         return self.rainfall_rate
     
     # Compute the source term S_{R, I}
-    # Only order N = 1 is supported for now
+    # Order N = 0, 1, 2  are supported for now
     def compute_source_term(
             self, 
             order : int,
@@ -77,9 +76,9 @@ class RechargeSWME1D(SWME1D):
             delta_t : float) -> np.ndarray:
 
         # If higher order is parsed, raise an error
-        if order != 1:
+        if order not in (0, 1, 2):
             raise NotImplementedError(
-                f"RechargeSWME1D only supports order N=1, got order={order}"
+                f"RechargeSWME1D only supports order N=0, N=1 and N=2, got order={order}"
             )  
         
         # Get dt from the context
@@ -87,12 +86,12 @@ class RechargeSWME1D(SWME1D):
 
         # Compute the rainfall-infiltration mass production source term
         source, _ = compute_total_source(
+            order = order,
             values = values,
             rainfall= self.get_rainfall_rate,
             infiltration_model = self.infiltration_model,
             context = self.source_context,
-            f_R = self.f_R,
-            f_I = self.f_I,
+            mixing_friction_model = self.mixing_friction_model,
             viscosity = self.viscosity,
             slip_length = self.slip_length,
         )

@@ -14,20 +14,26 @@ import timeit
 # branch. 
 try: 
     import os
-    from recharge.recharge_pde import RechargeSWME1D
-    from recharge.laws import HortonInfiltration
+    from recharge.initial_conditions import RechargeSWME1D_CustomIC as RechargeSWME1D
+    from recharge.laws import (
+        HortonInfiltration, ConstantInfiltration, AdmissibleMixingFriction,
+    )
 
     # Define a global boolean flag that establishes if the recharge module 
     # was introduced at runtime.
     HAS_RECHARGE = True
 
-    # Make a post-processing directory if one doesn't exist. 
-    # Compartmentalize the recharge results in a separate folder but in the same
-    # Results/ directory.
-    os.makedirs('Data-processing/Results/Recharge', exist_ok=True)
+    # Helper function to define the primitive output columns for SWME-style models.
+    def _primitive_columns_for_swme(order : int) -> list[str]:
+        """
+        Primitive output columns produced by Simulation._post_processing(...)
+        for SWME-style 1D models:
+            [x, h, u_m, a1, ..., aN]
+        """
+        return ["x", "h", "u_m"] + [f"a{i}" for i in range(1, order + 1)]
 
 except ImportError:
-    # Silent fail, don't print an if statement
+    # Silent fail, don't print a statement
     HAS_RECHARGE = False
 
 def main():
@@ -37,6 +43,16 @@ def main():
     pde_information = config['pde_information']
     grid_information = config['grid_information']
     numerical_method_information = config['numerical_method_information']
+
+    if HAS_RECHARGE:
+        # Check if there exist a 'postprocessing' section on config.txt
+        postprocessing = config['postprocessing']
+    
+        # Make a post-processing storade directory if one doesn't exist. 
+        # Compartmentalize the recharge results in a separate folder but in 
+        # the same Results/ directory.
+        os.makedirs('Data-processing/Results/Recharge', exist_ok=True)
+        
 
     linear_source = pde_information.getboolean('linear_source')
     time_integrator = numerical_method_information['timeIntegrator']
@@ -87,24 +103,63 @@ def main():
                 "is not available in this branch/environment."
             )
         
-        # Build the infiltration object
-        infiltration_model = HortonInfiltration(
-            f0 = pde_information.getfloat('horton_f0'),
-            fc = pde_information.getfloat('horton_fc'),
-            k = pde_information.getfloat('horton_k'),
-        )
+        # Choose infiltration model from config
+        infiltration_type = pde_information.get('infiltration_type').lower()
+        
+        # Branches that define the settings of the infiltration model
+        if infiltration_type == "horton":
+            infiltration_model = HortonInfiltration(
+                pde_information.getfloat('horton_f0'),
+                pde_information.getfloat('horton_fc'),
+                pde_information.getfloat('horton_k')
+            )
+        elif infiltration_type == "constant":
+            infiltration_model = ConstantInfiltration(
+                I0 = pde_information.getfloat('constant_infiltration_rate'),
+                eps = pde_information.getfloat('constant_infiltration_eps',
+                                               fallback=1e-14),
+                limit_by_rainfall = pde_information.getboolean(
+                    "constant_limit_by_rainfall", fallback=False),
+                limit_by_available_water = pde_information.getboolean(
+                    "constant_limit_by_available_water", fallback=True)
+            )
+        else: 
+            raise ValueError(
+                f"Unknown infiltration_type = '{infiltration_type}'.  "
+                "Supported choices are : 'horton' and 'constant'."
+            )
+
+        # Choose mixing-friction model from config with a fallback option 
+        # always being the admissible model defined by the control-volume.
+        # Admissible closure is evaluated locally inside the source term layer
+        mixing_friction_type = pde_information.get(
+            "mixing_friction_model",
+            fallback="admissible"
+        ).lower()
+
+        # Build the mixing friction model
+        if mixing_friction_type == "admissible":
+            mixing_friction_model = AdmissibleMixingFriction(
+                alpha_R = pde_information.getfloat("alpha_R"),
+                alpha_I = pde_information.getfloat("alpha_I"),
+            )
+        else:
+            raise ValueError(
+                f"Unknown mixing_friction_model = '{mixing_friction_type}'.  "
+                "Supported choices are: 'admissible'."
+            )
+            
 
         # Build the pde object
         _pde = RechargeSWME1D(
             pde_information['initialCondition'],
             pde_information.getfloat('viscosity'),
             pde_information.getfloat('slipLength'),
-            pde_information.getboolean('hyperbolic', fallback=False),    
+            pde_information.getboolean('hyperbolic'),    
             pde_information.getboolean('linear_source', fallback=False),
             pde_information.getfloat('rainfall_rate'),
             infiltration_model,
-            pde_information.getfloat('f_R', fallback=1.0),
-            pde_information.getfloat('f_I', fallback=0.0),
+            mixing_friction_model,
             )
     else:
         print('PDE_type is not implemented yet')
@@ -248,61 +303,114 @@ def main():
             and pde_information['pde_type'] == 'RechargeSWME1D'
             and numerical_method_information['method'] == 'classical'
         ):
-            # Store the history in the simulation object
-            _simulation.store_history = True
+            # Store CSVs of general solution & hyperbolicity history
+            _simulation.store_history = postprocessing.getboolean('store_history')
+            _simulation.store_hyperbolicity = postprocessing.getboolean('store_hyperbolicity')
+
             # Store every 1 time step. Adjust to larger values to reduce storage.
-            _simulation.history_stride = 1
+            _simulation.history_stride = postprocessing.getint('history_stride')
+            _simulation.hyperbolicity_stride = postprocessing.getint('hyperbolicity_stride')
 
         data_array = _simulation.run_simulation(numerical_method_information.getfloat('t_end'))
 
         # Recharge specific post-processing
         if HAS_RECHARGE and pde_information['pde_type'] == 'RechargeSWME1D':
-            final_df = pd.DataFrame(data_array, columns=["x", "h", "u_m", "a1"])
-            final_df.to_csv(
-                "Data-processing/Results/Recharge/recharge_results.csv",
-                index=False,
+            if numerical_method_information['method'] != 'classical':
+                raise NotImplementedError(
+                    "Recharge post-processing is currently implemented only for  "
+                    "the classical 1D solver."
+                )
+            # Extract order and infiltration type for output labeling
+            order = getattr(_simulation, "order",
+                            numerical_method_information.getint('order'))
+            infiltration_type = pde_information.get(
+                'infiltration_type', fallback="horton").lower()
+            
+            # Define the expected primitive output columns for SWME models
+            primitive_columns = _primitive_columns_for_swme(order)
+
+            # Check if the data array has the expected shape
+            if data_array.shape[1] != len(primitive_columns):
+                raise ValueError(
+                    "Mismatch between primitive output shape and expected SWME  "
+                    f"columns. Got {data_array.shape}, expected  "
+                    f"{len(primitive_columns)} columns."
+                )
+
+            # Define output prefix for recharge results
+            model_tag = "hswme" if _pde.hyperbolic else "swme"
+            output_prefix = (
+                f"Data-processing/Results/Recharge/"
+                f"recharge_{model_tag}_N{order}_{infiltration_type}"
             )
 
+            # Final snapshot
+            final_df = pd.DataFrame(data_array, columns=primitive_columns)
+            final_df.to_csv(f"{output_prefix}_final.csv", index=False)
+
+            # Full time history
             if hasattr(_simulation, "history") and len(_simulation.history) > 0:
-                field_rows = []
+                history_frames = []
                 summary_rows = []
 
+                # Iterate through the stored history and build dataframes
                 for entry in _simulation.history:
                     step = entry["step"]
                     time = entry["time"]
                     snapshot = entry["data"]
 
-                    for row in snapshot:
-                        field_rows.append({
-                            "step": step,
-                            "time": time,
-                            "x": row[0],
-                            "h": row[1],
-                            "u_m": row[2],
-                            "a1": row[3],
-                        })
+                    # Build a dataframe for this snapshot and append to the history list
+                    snapshot_df = pd.DataFrame(snapshot, columns=primitive_columns)
+                    snapshot_df.insert(0, "time", time)
+                    snapshot_df.insert(0, "step", step)
+                    history_frames.append(snapshot_df)
 
-                    summary_rows.append({
+                    # Build a summary row for this snapshot
+                    summary = {
                         "step": step,
                         "time": time,
-                        "mean_h": snapshot[:, 1].mean(),
-                        "mean_u_m": snapshot[:, 2].mean(),
-                        "mean_a1": snapshot[:, 3].mean(),
-                        "min_h": snapshot[:, 1].min(),
-                        "max_h": snapshot[:, 1].max(),
-                    })
-                
-                pd.DataFrame(field_rows).to_csv(
-                    "Data-processing/Results/Recharge/recharge_field_history.csv",
-                    index=False,
+                        "mean_h": snapshot_df["h"].mean(),
+                        "mean_u_m": snapshot_df["u_m"].mean(),
+                        "min_h": snapshot_df["h"].min(),
+                        "max_h": snapshot_df["h"].max(),
+                    }
+
+                    # Add summary statistics for the a_i's
+                    for i in range(1, order + 1):
+                        ai = f"a{i}"
+                        summary[f"mean_{ai}"] = snapshot_df[ai].mean()
+                        summary[f"min_{ai}"] = snapshot_df[ai].min()
+                        summary[f"max_{ai}"] = snapshot_df[ai].max()
+
+                    summary_rows.append(summary)
+
+                # Concatenate all snapshot dataframes into a single history dataframe and save
+                field_history_df = pd.concat(history_frames, ignore_index=True)
+                field_history_df.to_csv(
+                    f"{output_prefix}_field_history.csv", index=False,
                 )
-                pd.DataFrame(summary_rows).to_csv(
-                    "Data-processing/Results/Recharge/recharge_summary_history.csv",
-                    index=False,
+                
+                # Create a summary dataframe with one row per time step and save
+                summary_df = pd.DataFrame(summary_rows)
+                summary_df.to_csv(
+                    f"{output_prefix}_summary_history.csv", index=False,
+                )
+
+                # Store hyperbolicity CSVs
+                pd.DataFrame(_simulation.hyperbolicity_history).to_csv(
+                    "Data-processing/Results/Recharge/recharge_hyperbolicity_history.csv",
+                    index = False,
+                )
+
+                pd.DataFrame(_simulation.hyperbolicity_summary).to_csv(
+                    "Data-processing/Results/Recharge/recharge_hyperbolicity_summary.csv",
+                    index = False,
                 )
 
         stop = timeit.default_timer()
         print('Time: ', stop - start)
+        print(
+            f"RechargeHSWME: {pde_information.getboolean('hyperbolic')}")
         data_frame = pd.DataFrame(data_array)
 
         # Making the plotting call safe
