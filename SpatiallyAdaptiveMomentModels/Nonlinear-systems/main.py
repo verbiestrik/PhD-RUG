@@ -46,7 +46,7 @@ def main():
         tols_refinement = [tol_refinement_model_difference]
     elif type_model_error_estimator == 'heuristics_plus_discretization':
         tols_coarsening = [tol_res1,tol_res2,tol_coarsening_heur]
-        tols_refinement = [tol_refinement_heur_source,tol_refinement_heur_grad]
+        tols_refinement = [tol_refinement_heur_source,tol_refinement_heur_grad,tol_refinement_heur_grad]
 
     smoothing = adaptive_simulation_information.getboolean('smoothing')
     smooth_par = adaptive_simulation_information.getint('smooth_par')
@@ -55,7 +55,7 @@ def main():
     interpolation = adaptive_simulation_information.getboolean('interpolation')
     spatial_discretization_predictor = adaptive_simulation_information['spatial_discretization_predictor']
     spatial_discretization_interface = adaptive_simulation_information['spatial_discretization_interface']
-    two_step_domain_decomposition_evaluation = adaptive_simulation_information['two_step_domain_decomposition_evaluation']
+    two_step_domain_decomposition_evaluation = adaptive_simulation_information.getboolean('two_step_domain_decomposition_evaluation')
     hierarchical = adaptive_simulation_information['hierarchical']
 
     min_order = 0
@@ -88,6 +88,7 @@ def main():
                                 pde_information.getfloat('slipLength'),
                                 False,
                                 linear_source_implicit,
+                                type_model_error_estimator,
                                 pde_information.getfloat('diameter'),
                                 pde_information.getfloat('CD'),
                                 pde_information.getfloat('surface_density'),
@@ -171,108 +172,8 @@ def main():
         _mesh = mesh.UniformRectangularMesh1D([grid_information.getfloat('x1boundary'),grid_information.getfloat('x2boundary')],
                                                grid_information.getint('resolutionX')) #TODO: Implement different grids
 
-        if numerical_method_information['method'] == 'spatially_adaptive':
-            start_order = int(numerical_method_information['start_order'])
 
-            if numerical_method_information['coupling'] == 'nonconservative':
-                _simulation = simulation.NonConservativeAdaptiveSimulation1D(
-                    start_order,
-                    _pde,
-                    _mesh,
-                    numerical_method_information['boundaryCondition'],
-                    pde_information['initialCondition'],
-                    pde_information['breakdown_criterion'],
-                    _spatialDiscretization,
-                    _time_integration
-                )
-            elif numerical_method_information['coupling'] == 'conservative':
-                _simulation = simulation.ConservativeAdaptiveSimulation1D(
-                    start_order,
-                    _pde,
-                    _mesh,
-                    numerical_method_information['boundaryCondition'],
-                    pde_information['initialCondition'],
-                    pde_information['breakdown_criterion'],
-                    _spatialDiscretization,
-                    _time_integration
-                )
-        elif numerical_method_information['method'] == 'smoothedAdaptive':
-            if numerical_method_information['coupling'] == 'nonconservative':
-                start_order = int(numerical_method_information['start_order'])
-                _simulation = simulation.SmoothedConsAdaptiveSimulation1D(
-                    start_order,
-                    _pde,
-                    _mesh,
-                    numerical_method_information['boundaryCondition'],
-                    pde_information['initialCondition'],
-                    pde_information['breakdown_criterion'],
-                    _spatialDiscretization,
-                    _time_integration)
-            elif numerical_method_information['coupling'] == 'nonconservative':
-                start_order = int(numerical_method_information['start_order'])
-                _simulation = simulation.SmoothedNonConsAdaptiveSimulation1D(
-                    start_order,
-                    _pde,
-                    _mesh,
-                    numerical_method_information['boundaryCondition'],
-                    pde_information['initialCondition'],
-                    pde_information['breakdown_criterion'],
-                    _spatialDiscretization,
-                    _time_integration)                
-        elif numerical_method_information['method'] == 'interpolatedAdaptive':
-            start_order = int(numerical_method_information['start_order'])
-            _simulation = simulation.InterpolatedAdaptiveSimulation1D(
-                start_order,
-                _pde,
-                _mesh,
-                numerical_method_information['boundaryCondition'],
-                pde_information['initialCondition'],
-                pde_information['breakdown_criterion'],
-                _spatialDiscretization,
-                _time_integration) 
-        elif numerical_method_information['method'] == 'modelAdaptiveSimulation1D':
-            start_order = int(numerical_method_information['start_order'])
-            _simulation = simulation.ModelAdaptiveSimulation1D(
-                start_order,
-                _pde,
-                _mesh,
-                numerical_method_information['boundaryCondition'],
-                pde_information['initialCondition'],
-                pde_information['breakdown_criterion'],
-                _spatialDiscretization,
-                _time_integration) 
-        elif numerical_method_information['method'] == 'smoothedModelAdaptiveSimulation1D':
-            start_order = int(numerical_method_information['start_order'])
-            _simulation = simulation.SmoothedModelAdaptiveSimulation1D(
-                start_order,
-                _pde,
-                _mesh,
-                numerical_method_information['boundaryCondition'],
-                pde_information['initialCondition'],
-                pde_information['breakdown_criterion'],
-                numerical_method_information.getint('smooth_par'),
-                _spatialDiscretization,
-                spatialDiscretization.Osher(nr_of_quadrature_points,eigenstructure_available,compute_eigenvalues_and_eigenvectors),
-                # spatialDiscretization.LF(numerical_method_information.getint('nr_of_quadrature_points')),
-                spatialDiscretization.LF(1),
-                _time_integration) 
-        elif numerical_method_information['method'] == 'smoothedModelAdaptiveSimulation1DWithInterpolation':
-            start_order = int(adaptive_simulation_information['start_order'])
-            _simulation = simulation.SmoothedModelAdaptiveSimulationWithInterpolation1D(
-                start_order,
-                _pde,
-                _mesh,
-                numerical_method_information['boundaryCondition'],
-                pde_information['initialCondition'],
-                pde_information['breakdown_criterion'],
-                numerical_method_information.getint('smooth_par'),
-                _spatialDiscretization,
-                spatialDiscretization.Osher(numerical_method_information.getint('nr_of_quadrature_points'),
-                                            eigenstructure_available,
-                                            compute_eigenvalues_and_eigenvectors),
-                spatialDiscretization.PRICE(1),
-                _time_integration) 
-        elif numerical_method_information['method'] == 'modelAdaptiveMomentSimulation1D':
+        if numerical_method_information['method'] == 'modelAdaptiveMomentSimulation1D':
             
             start_order = int(adaptive_simulation_information['start_order'])
             _simulation = simulation.ModelAdaptiveMomentSimulation1D(
@@ -306,7 +207,8 @@ def main():
                 numerical_method_information['boundaryCondition'],
                 pde_information['initialCondition'],
                 _spatialDiscretization,
-                _time_integration)
+                _time_integration,
+                CFL_number)
             
         elif numerical_method_information['method'] == 'micro_macro':
             _simulation = simulation.Micro_macro(
@@ -320,24 +222,16 @@ def main():
 
         if pde_information['pde_type'] == 'SWME1D' or pde_information['pde_type'] == 'HSWME1D'\
             or pde_information['pde_type'] == 'VegetationSWME1D':
-            if numerical_method_information['method'] == 'spatially_adaptive' or\
-                numerical_method_information['method'] == 'smoothedAdaptive' or\
-                    numerical_method_information['method'] == 'interpolatedAdaptive' or\
-                        numerical_method_information['method'] == 'modelAdaptiveSimulation1D' or\
-                            numerical_method_information['method'] == 'modelAdaptiveMomentSimulation1D':
-                _plotting = plotting.SWME1DPlotAdaptive(_pde,_mesh,_simulation)
-            elif numerical_method_information['method'] == 'classical':
+            if numerical_method_information['method'] == 'modelAdaptiveMomentSimulation1D':
+                _plotting = plotting.SWME1DPlotAdaptive(_pde,_mesh,_simulation,type_model_error_estimator)
+            elif numerical_method_information['method'] == 'classical' or\
+                    numerical_method_information['method'] == 'micro_macro':
                 _plotting = plotting.SWME1DPlotClassical(_pde,_mesh,_simulation)
         elif pde_information['pde_type'] == 'HME' or pde_information['pde_type'] == 'Grad':
-            if numerical_method_information['method'] == 'spatially_adaptive' or\
-                numerical_method_information['method'] == 'smoothedAdaptive' or\
-                    numerical_method_information['method'] == 'interpolatedAdaptive' or\
-                        numerical_method_information['method'] == 'modelAdaptiveSimulation1D' or\
-                            numerical_method_information['method'] == 'smoothedModelAdaptiveSimulation1D' or\
-                                numerical_method_information['method'] == 'smoothedModelAdaptiveSimulation1DWithInterpolation' or\
-                                    numerical_method_information['method'] == 'modelAdaptiveMomentSimulation1D':
+            if numerical_method_information['method'] == 'modelAdaptiveMomentSimulation1D':
                 _plotting = plotting.HME1DPlotAdaptive(_pde,_mesh,_simulation)
-            elif numerical_method_information['method'] == 'classical':
+            elif numerical_method_information['method'] == 'classical' or\
+                    numerical_method_information['method'] == 'micro_macro':
                 _plotting = plotting.HME1DPlotClassical(_pde,_mesh,_simulation)
     
         start = timeit.default_timer()
@@ -349,21 +243,26 @@ def main():
         _plotting.plot(data_array)
         data_frame_time = pd.DataFrame(time)
 
-        foldername = "Data-processing/Results/KineticMomentEquations/Paper"                               
-        output_dir = Path(foldername)
+        output_information = config['output_information']
+        if output_information.getboolean('export_data'):
 
-        # Create folders if they don't exist
-        output_dir.mkdir(parents=True, exist_ok=True)
+            base_folder = Path("Data-processing/Output")
 
-        # filename = 'smoothPlusDam'+'.csv'
-        filename = 'shockPlusSmooth_order12_t0_Kn0p5.csv'
-        
-        filename_time = 'time_'+filename
+            foldername = output_information['output_folder_name']                               
+            output_dir = base_folder / foldername
 
-        outputname = output_dir / filename
-        outputname_time = output_dir / filename_time
-        # data_frame.to_csv(outputname,index=False,header=False)
-        # data_frame_time.to_csv(outputname_time,index=False,header=False)
+            # Create folders if they don't exist
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            # filename = 'smoothPlusDam'+'.csv'
+            filename = output_information['output_file_name']+'.csv'
+            
+            filename_time = 'time_'+filename
+
+            outputname = output_dir / filename
+            outputname_time = output_dir / filename_time
+            data_frame.to_csv(outputname,index=False,header=False)
+            data_frame_time.to_csv(outputname_time,index=False,header=False)
     else:
         print('2D not implemented yet')
 

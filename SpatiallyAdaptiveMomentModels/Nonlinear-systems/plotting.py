@@ -78,7 +78,8 @@ class Plotting(ABC):
 class SWME1DPlotClassical(Plotting):
 
     """
-    This class represents a plotting object for the plotting of numerical results of the 1D SWME of a classical simulation.
+    This class represents a plotting object for the plotting of numerical results of the 1D SWME 
+    of a classical simulation.
 
     ...
 
@@ -98,7 +99,7 @@ class SWME1DPlotClassical(Plotting):
 
     Methods overriden from abstract parent class 'Plotting
     ------------------------------------------------------
-    def __init__(self,pde_type):
+    def __init__(self,pde_type,mesh,simulation):
         initializes the plotting object
 
     """
@@ -181,12 +182,12 @@ class SWME1DPlotAdaptive(Plotting):
 
     Implemented methods from abstract parent class 'Plotting'
     ---------------------------------------------------------
-    def plot(self):
+    def plot(self,data_array):
         creates a plotting object and plots the simulation results
 
     Methods overriden from abstract parent class 'Plotting
     ------------------------------------------------------
-    def __init__(self,pde_type):
+    def __init__(self,pde_type,mesh,simulation):
         initializes the plotting object
 
     """
@@ -194,8 +195,8 @@ class SWME1DPlotAdaptive(Plotting):
     def __init__(self,
                  pde_type: pde.SWME1D,
                  mesh: mesh.RectangularMesh,
-                 simulation: simulation.SpatiallyAdaptiveSimulation1D,
-                 type_model_error_estimator):
+                 simulation: simulation.ModelAdaptiveMomentSimulation1D,
+                 type_model_error_estimator: str):
         """
         initializes the adaptive SWME1D plotting object
 
@@ -207,6 +208,8 @@ class SWME1DPlotAdaptive(Plotting):
             the numerical simulation mesh
         simulation : SpatiallyAdaptiveSimulation1D
             the adaptive 1D simulation object
+        type_model_error_estimator : str
+            the type of model error estimator that is used for the domain decomposition
 
         Returns
         --------        
@@ -218,7 +221,8 @@ class SWME1DPlotAdaptive(Plotting):
         self.simulation = simulation
         self.type_model_error_estimator = type_model_error_estimator
 
-    def plot(self,data_array):
+    def plot(self,
+             data_array: np.ndarray):
         
         z = np.linspace(0,1,100)
 
@@ -227,7 +231,7 @@ class SWME1DPlotAdaptive(Plotting):
                                                                     z)
         order = self.simulation.max_order
 
-        print('total mass = ',np.sum(data_array[:,1]*data_array[:,2]))
+        print('total mass = ',np.sum(data_array[:,1]))
 
         plt.figure()
         plt.subplot(4,4,1)
@@ -277,9 +281,16 @@ class SWME1DPlotAdaptive(Plotting):
             plt.title('source term last entry')
 
             plt.subplot(4,4,k+6)
-            plt.plot(self.mesh.cell_center_positions,self.simulation.breakdown_estimators[:,2])
-            plt.scatter(self.mesh.cell_center_positions,(data_array[:,-1]*np.max(self.simulation.breakdown_estimators[:,0])+(5-data_array[:,-1])*np.min(self.simulation.breakdown_estimators[:,2]))/5,s=5,color = 'hotpink')
-            plt.title('orders vs height-gradient')
+            plt.plot(self.mesh.cell_center_positions,
+                     order*self.simulation.breakdown_estimators_coarsening[:,-2]/max(np.max(self.simulation.breakdown_estimators_coarsening[:,-2]),0.001))
+            plt.scatter(self.mesh.cell_center_positions,data_array[:,-1],s=order,color = 'hotpink')
+            plt.title('orders vs coars. transp. res.')
+
+            # plt.subplot(4,4,k+6)
+            # plt.plot(self.mesh.cell_center_positions,data_array[:,1])
+            # plt.scatter(self.mesh.cell_center_positions,
+            #             (data_array[:,-1]*np.max(self.simulation.breakdown_estimators_coarsening[:,-2])+(5-data_array[:,-1])*np.min(self.simulation.breakdown_estimators_coarsening[:,-2])),s=5,color = 'hotpink')
+            # plt.title('orders vs coars. transp. res.')
 
         plt.show()
 
@@ -301,12 +312,12 @@ class HME1DPlotClassical(Plotting):
 
     Implemented methods from abstract parent class 'Plotting'
     ---------------------------------------------------------
-    def plot(self):
+    def plot(self,data_array):
         creates a plotting object and plots the simulation results
 
     Methods overriden from abstract parent class 'Plotting
     ------------------------------------------------------
-    def __init__(self,pde_type):
+    def __init__(self,pde_type,mesh,simulation):
         initializes the plotting object
 
     """
@@ -336,7 +347,8 @@ class HME1DPlotClassical(Plotting):
         self.mesh = mesh
         self.simulation = simulation
 
-    def plot(self,data_array):
+    def plot(self,
+             data_array: np.ndarray):
         
         order = self.simulation.order
 
@@ -381,12 +393,12 @@ class HME1DPlotAdaptive(Plotting):
 
     Implemented methods from abstract parent class 'Plotting'
     ---------------------------------------------------------
-    def plot(self):
+    def plot(self,data_array):
         creates a plotting object and plots the simulation results
 
     Methods overriden from abstract parent class 'Plotting
     ------------------------------------------------------
-    def __init__(self,pde_type):
+    def __init__(self,pde_type,mesh,simulation):
         initializes the plotting object
 
     """
@@ -394,7 +406,7 @@ class HME1DPlotAdaptive(Plotting):
     def __init__(self,
                  pde_type: pde.HermiteMomentEquations,
                  mesh: mesh.RectangularMesh,
-                 simulation: simulation.SpatiallyAdaptiveSimulation1D):
+                 simulation: simulation.ModelAdaptiveMomentSimulation1D):
         """
         initializes the adaptive HME1D plotting object
 
@@ -416,18 +428,9 @@ class HME1DPlotAdaptive(Plotting):
         self.mesh = mesh
         self.simulation = simulation
 
-    def plot(self,data_array):
+    def plot(self,
+             data_array: np.ndarray):
         
-        """
-        Creates a plot
-
-        Parameters
-        ----------
-        
-        Returns
-        -------
-
-        """
         order = self.simulation.max_order
 
         plt.figure()
@@ -460,8 +463,9 @@ class HME1DPlotAdaptive(Plotting):
         plt.title('Increase estimator')
 
         plt.subplot(4,4,k+2)
-        plt.plot(self.mesh.cell_center_positions,data_array[:,0])
-        plt.scatter(self.mesh.cell_center_positions,(data_array[:,-1]*np.max(data_array[:,0])+(5-data_array[:,-1])*np.min(data_array[:,0]))/8,s=8,color = 'hotpink')
+        plt.plot(self.mesh.cell_center_positions,data_array[:,1])
+        plt.scatter(self.mesh.cell_center_positions,(data_array[:,-1]*np.max(data_array[:,1])\
+                +(order-data_array[:,-1])*np.min(data_array[:,1]))/order,s=order,color = 'hotpink')
         plt.title('orders vs density')
 
         plt.show()

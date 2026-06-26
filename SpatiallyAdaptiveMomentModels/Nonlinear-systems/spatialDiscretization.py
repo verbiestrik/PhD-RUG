@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 import numpy as np
 from collections.abc import Callable
 import mpmath as mp
+from numpy.polynomial.legendre import leggauss
+from functools import lru_cache
 
 class SpatialDiscretization(ABC):
 
@@ -13,23 +15,23 @@ class SpatialDiscretization(ABC):
     Attributes
     ----------
     None
-
     
+
     Abstract methods
     ----------------
     def compute_fluctuation(self):
         computes a fluctuation between two cells
-
-
-    Instance methods
-    -----------------
     def __init__(self):
-        initializes the object, but does not do anything
-
+        initializes the SpatialDiscretization object
 
     """
 
+    @abstractmethod
     def __init__(self):
+        """
+        Documented in the child classes
+
+        """
         pass
 
     @abstractmethod
@@ -50,10 +52,15 @@ class PVM(SpatialDiscretization,ABC):
 
     Attributes
     ----------
-    None
+    quadrature_nodes: np.ndarray
+        the nodes of the Gauss-Legendre quadrature rule on the interval [0,1]
+    quadrature_weights: np.ndarray
+        the weights of the Gauss-Legendre quadrature rule on the interval [0,1]
 
     Methods implemented from the abstract class SpatialDiscretization
     -----------------------------------------------------------------
+    def __init__(self,nr_of_quadrature_points):
+        initializes the PVM object
     def compute_fluctuation(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         computes the fluctuation between two cells with values value_left and value_right
     
@@ -67,12 +74,24 @@ class PVM(SpatialDiscretization,ABC):
     -------------
     def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         compute the generalized roe matrix and the viscosity matrix between two cells with values value_left and value_right
-            
-
+    def _compute_quadrature_points(self,nr_of_quadrature_points):
+        computes the nodes and the weights for a Gauss-Legendre rule on the interval [0,1]
+        with nr_of_quadrature_points quadrature points
     """
 
-    def __init__(self,nr_of_quadrature_points):
-        self.nr_of_quadrature_points = nr_of_quadrature_points
+    def __init__(self,
+                 nr_of_quadrature_points: int):
+        """
+        Initializes the PVM object and sets the number of quadrature points.
+
+        Parameters
+        ----------
+        nr_of_quadrature_points: int
+            the number of quadrature points used in the numerical integration of the integral appearing in
+            the generalized Roe linearization
+        """
+        self.quadrature_nodes, self.quadrature_weights = self._compute_quadrature_points(
+            nr_of_quadrature_points)
 
     def compute_fluctuation(self,
                             value_left: np.ndarray,
@@ -105,32 +124,11 @@ class PVM(SpatialDiscretization,ABC):
             fluctuation between two cells containing the values value_left and value_right in positive direction
 
         """
-        # # Nodes on [0, 1]
-        # quadrature_nodes = [
-        #     (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
-        #     (1 - (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-        #     1/2,
-        #     (1 + (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-        #     (1 + (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2
-        # ]
-
-        # # Weights on [0, 1]
-        # quadrature_weights = [
-        #     (322 - 13*np.sqrt(70)) / 1800,
-        #     (322 + 13*np.sqrt(70)) / 1800,
-        #     128 / 450,
-        #     (322 + 13*np.sqrt(70)) / 1800,
-        #     (322 - 13*np.sqrt(70)) / 1800
-        # ]
-
-        # # quadrature_nodes = [1/2]
-        # # quadrature_weights = [1]
-
-        quadrature_nodes,quadrature_weights = self._compute_quadrature_points(self.nr_of_quadrature_points)
 
         generalized_roe = 0
-        for i in range(len(quadrature_nodes)):
-            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right))
+        for i in range(len(self.quadrature_nodes)):
+            generalized_roe += self.quadrature_weights[i]*\
+                (system_matrix((1-self.quadrature_nodes[i])*value_left+(self.quadrature_nodes[i])*value_right))
         viscosity = np.dot(self.compute_viscosity(generalized_roe,delta_t,delta_x),value_right-value_left)
         generalized_roe = np.dot(generalized_roe,value_right-value_left)
         fluctuation_min = (generalized_roe - viscosity)/2
@@ -139,11 +137,11 @@ class PVM(SpatialDiscretization,ABC):
         return fluctuation_min, fluctuation_plus
     
     def compute_generalized_roe_and_viscosity(self,
-                                              value_left,
-                                              value_right,
-                                              system_matrix,
-                                              delta_t,
-                                              delta_x):
+                                              value_left: np.ndarray,
+                                              value_right: np.ndarray,
+                                              system_matrix: np.ndarray,
+                                              delta_t: float,
+                                              delta_x: float) -> tuple[np.ndarray,np.ndarray]:
 
         """
         Computes the generalized roe matrix and the viscosity matrix between two cells with values value_left and value_right.
@@ -172,88 +170,42 @@ class PVM(SpatialDiscretization,ABC):
 
         """
 
-        # # # Nodes on [0, 1]
-        # # quadrature_nodes = [
-        # #     (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
-        # #     (1 - (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-        # #     1/2,
-        # #     (1 + (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-        # #     (1 + (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2
-        # # ]
-
-        # # # Weights on [0, 1]
-        # # quadrature_weights = [
-        # #     (322 - 13*np.sqrt(70)) / 1800,
-        # #     (322 + 13*np.sqrt(70)) / 1800,
-        # #     128 / 450,
-        # #     (322 + 13*np.sqrt(70)) / 1800,
-        # #     (322 - 13*np.sqrt(70)) / 1800
-        # # ]
-
-        # # Nodes on [0, 1]
-        # quadrature_nodes = [
-        #     (1 - np.sqrt(3/5)) / 2,
-        #     1/2,
-        #     (1 + np.sqrt(3/5)) / 2
-        # ]
-
-        # # Weights on [0, 1]
-        # quadrature_weights = [
-        #     5/18,   # = (5/9)/2
-        #     4/9,    # = (8/9)/2
-        #     5/18
-        # ]
-
-        # # quadrature_nodes = [1/2]
-        # # quadrature_weights = [1]
-
-        quadrature_nodes,quadrature_weights = self._compute_quadrature_points(self.nr_of_quadrature_points)
-
         generalized_roe = 0
-        for i in range(len(quadrature_nodes)):
-            generalized_roe += quadrature_weights[i]*(system_matrix((1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right))
+        for i in range(len(self.quadrature_nodes)):
+            generalized_roe += self.quadrature_weights[i]*\
+                (system_matrix((1-self.quadrature_nodes[i])*value_left+(self.quadrature_nodes[i])*value_right))
         viscosity = self.compute_viscosity(generalized_roe,delta_t,delta_x)
         fluct_matrix_min = (generalized_roe - viscosity)/2
         fluct_matrix_plus = (generalized_roe + viscosity)/2
 
         return fluct_matrix_min, fluct_matrix_plus
 
-    def _compute_quadrature_points(self,nr_of_quadrature_points):
-        if nr_of_quadrature_points == 1:
-            quadrature_nodes = [1/2]
-            quadrature_weights = [1]
-        elif nr_of_quadrature_points == 3:
-            quadrature_nodes = [
-                (1 - np.sqrt(3/5)) / 2,
-                1/2,
-                (1 + np.sqrt(3/5)) / 2
-            ]
+    def _compute_quadrature_points(self,
+                                   nr_of_quadrature_points: int):
+        """
+        Computes the nodes and the weights for a Gauss-Legendre rule on the interval [0,1]
+        with nr_of_quadrature_points quadrature points.
 
-            # Weights on [0, 1]
-            quadrature_weights = [
-                5/18,   # = (5/9)/2
-                4/9,    # = (8/9)/2
-                5/18
-            ]
-        elif nr_of_quadrature_points == 5:
-            quadrature_nodes = [
-                (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
-                (1 - (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-                1/2,
-                (1 + (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-                (1 + (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2
-            ]
+        Parameters
+        ----------
+        nr_of_quadrature_points: int
+            the number of quadrature points
+        
+        Returns
+        -------
+        quadrature_nodes: np.ndarray
+            the nodes of the quadrature rule
+        quadrature_weights: np.ndarray
+            the weights of the quadrature rule
 
-            quadrature_weights = [
-                (322 - 13*np.sqrt(70)) / 1800,
-                (322 + 13*np.sqrt(70)) / 1800,
-                128 / 450,
-                (322 + 13*np.sqrt(70)) / 1800,
-                (322 - 13*np.sqrt(70)) / 1800
-            ]
-        else:
-            print("This number of quadrature points is not implemented yet!")
-    
+        """
+        # Gauss-Legendre on [-1, 1]
+        x, w = leggauss(nr_of_quadrature_points)
+
+        # Map to [0, 1]
+        quadrature_nodes = 0.5 * (x + 1.0)
+        quadrature_weights = 0.5 * w
+
         return quadrature_nodes, quadrature_weights
 
     @abstractmethod
@@ -292,16 +244,24 @@ class PRICE(PVM):
 
     Attributes
     ----------
-    None
+    quadrature_nodes: np.ndarray
+        the nodes of the Gauss-Legendre quadrature rule on the interval [0,1]
+    quadrature_weights: np.ndarray
+        the weights of the Gauss-Legendre quadrature rule on the interval [0,1]
 
     
     Methods inherited from abtract parent class PVM
     ------------------------------------------------
+    def __init__(self,nr_of_quadrature_points):
+        initializes the PVM object
     def compute_fluctuation(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         computes the fluctuation between two cells with values value_left and value_right
     def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         compute the generalized roe matrix and the viscosity matrix between two cells with values value_left and value_right
-
+    def _compute_quadrature_points(self,nr_of_quadrature_points):
+        computes the nodes and the weights for a Gauss-Legendre rule on the interval [0,1]
+        with nr_of_quadrature_points quadrature points
+    
     Methods implemented from abstract parent class PVM
     def compute_viscosity(self,roe_matrix,delta_t,delta_x):
         computes the viscosity matrix for the PRICE scheme
@@ -324,15 +284,23 @@ class LF(PVM):
 
     Attributes
     ----------
-    None
+    quadrature_nodes: np.ndarray
+        the nodes of the Gauss-Legendre quadrature rule on the interval [0,1]
+    quadrature_weights: np.ndarray
+        the weights of the Gauss-Legendre quadrature rule on the interval [0,1]
 
     
     Methods inherited from abtract parent class PVM
     ------------------------------------------------
+    def __init__(self,nr_of_quadrature_points):
+        initializes the PVM object
     def compute_fluctuation(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         computes the fluctuation between two cells with values value_left and value_right
     def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         compute the generalized roe matrix and the viscosity matrix between two cells with values value_left and value_right
+    def _compute_quadrature_points(self,nr_of_quadrature_points):
+        computes the nodes and the weights for a Gauss-Legendre rule on the interval [0,1]
+        with nr_of_quadrature_points quadrature points
 
     Methods implemented from abstract parent class PVM
     def compute_viscosity(self,roe_matrix,delta_t,delta_x):
@@ -356,15 +324,23 @@ class Roe(PVM):
 
     Attributes
     ----------
-    None
+    quadrature_nodes: np.ndarray
+        the nodes of the Gauss-Legendre quadrature rule on the interval [0,1]
+    quadrature_weights: np.ndarray
+        the weights of the Gauss-Legendre quadrature rule on the interval [0,1]
 
     
     Methods inherited from abtract parent class PVM
     ------------------------------------------------
+    def __init__(self,nr_of_quadrature_points):
+        initializes the PVM object
     def compute_fluctuation(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         computes the fluctuation between two cells with values value_left and value_right
     def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
         compute the generalized roe matrix and the viscosity matrix between two cells with values value_left and value_right
+    def _compute_quadrature_points(self,nr_of_quadrature_points):
+        computes the nodes and the weights for a Gauss-Legendre rule on the interval [0,1]
+        with nr_of_quadrature_points quadrature points
 
     Methods implemented from abstract parent class PVM
     def compute_viscosity(self,roe_matrix,delta_t,delta_x):
@@ -393,12 +369,46 @@ class Roe(PVM):
     
 class Osher(PVM):
     """
-    TODO
+    This class represents the method of Osher and Solomon, a PVM scheme with viscosity function 
+    Q(A) = sum_{i=1}^{nr_of_quadrature_points}weight_i*|A(node_i)|. 
+
+    ...
+
+    Attributes
+    ----------
+    quadrature_nodes: np.ndarray
+        the nodes of the Gauss-Legendre quadrature rule on the interval [0,1]
+    quadrature_weights: np.ndarray
+        the weights of the Gauss-Legendre quadrature rule on the interval [0,1]
+    eigenstructure_available: boolean
+        whether the eigenvalues and eigenvectors are given analytically or not
+    compute_eigenvalues_and_eigenvectors: function
+        the function that evaluates the analytical eigenvalues and the eigenvectors
+    
+
+    Methods inherited from abtract parent class PVM
+    ------------------------------------------------
+    def __init__(self,nr_of_quadrature_points):
+        initializes the PVM object
+    def compute_fluctuation(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
+        computes the fluctuation between two cells with values value_left and value_right
+    def compute_generalized_roe_and_viscosity(self,value_left,value_right,system_matrix,direction,delta_t,delta_x):
+        compute the generalized roe matrix and the viscosity matrix between two cells with values value_left and value_right
+    def _compute_quadrature_points(self,nr_of_quadrature_points):
+        computes the nodes and the weights for a Gauss-Legendre rule on the interval [0,1]
+        with nr_of_quadrature_points quadrature points
+
+    Methods implemented from abstract parent class PVM
+    def compute_viscosity(self,roe_matrix,delta_t,delta_x):
+        computes the viscosity matrix for the Roe scheme
 
     """
 
-    def __init__(self,nr_of_quadrature_points,eigenstructure_available, compute_eigenvalues_and_eigenvectors):
-        self.nr_of_quadrature_points = nr_of_quadrature_points
+    def __init__(self,
+                 nr_of_quadrature_points: int,
+                 eigenstructure_available: bool,
+                 compute_eigenvalues_and_eigenvectors: Callable[...,tuple[np.ndarray,np.ndarray]]):
+        super().__init__(nr_of_quadrature_points)
         self.eigenstructure_available = eigenstructure_available
         self.compute_eigenvalues_and_eigenvectors = compute_eigenvalues_and_eigenvectors
 
@@ -408,52 +418,15 @@ class Osher(PVM):
                             system_matrix: Callable[...,np.ndarray],
                             delta_t: float,
                             delta_x: float) -> tuple[np.ndarray,np.ndarray]:
-        
-        # # # Nodes on [0, 1]
-        # # quadrature_nodes = [
-        # #     (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
-        # #     (1 - (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-        # #     1/2,
-        # #     (1 + (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-        # #     (1 + (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2
-        # # ]
-
-        # # # Weights on [0, 1]
-        # # quadrature_weights = [
-        # #     (322 - 13*np.sqrt(70)) / 1800,
-        # #     (322 + 13*np.sqrt(70)) / 1800,
-        # #     128 / 450,
-        # #     (322 + 13*np.sqrt(70)) / 1800,
-        # #     (322 - 13*np.sqrt(70)) / 1800
-        # # ]
-
-        # # Nodes on [0, 1]
-        # quadrature_nodes = [
-        #     (1 - np.sqrt(3/5)) / 2,
-        #     1/2,
-        #     (1 + np.sqrt(3/5)) / 2
-        # ]
-
-        # # Weights on [0, 1]
-        # quadrature_weights = [
-        #     5/18,   # = (5/9)/2
-        #     4/9,    # = (8/9)/2
-        #     5/18
-        # ]
-
-        # # quadrature_nodes = [1/2]
-        # # quadrature_weights = [1]
-
-        quadrature_nodes,quadrature_weights = self._compute_quadrature_points(self.nr_of_quadrature_points)
 
         generalized_roe = 0
         viscosity = 0
-        for i in range(len(quadrature_nodes)):
-            quadrature_point = (1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right
+        for i in range(len(self.quadrature_nodes)):
+            quadrature_point = (1-self.quadrature_nodes[i])*value_left+(self.quadrature_nodes[i])*value_right
             generalized_roe_point = system_matrix(quadrature_point)
-            generalized_roe += quadrature_weights[i]*generalized_roe_point
+            generalized_roe += self.quadrature_weights[i]*generalized_roe_point
             viscosity_point = self.compute_viscosity(generalized_roe_point,quadrature_point,delta_t,delta_x)
-            viscosity += quadrature_weights[i]*viscosity_point
+            viscosity += self.quadrature_weights[i]*viscosity_point
         viscosity = np.dot(viscosity,value_right-value_left)
         generalized_roe = np.dot(generalized_roe,value_right-value_left)
         fluctuation_min = (generalized_roe - viscosity)/2
@@ -462,46 +435,24 @@ class Osher(PVM):
         return fluctuation_min, fluctuation_plus
     
     def compute_generalized_roe_and_viscosity(self,
-                                              value_left,
-                                              value_right,
-                                              system_matrix,
-                                              delta_t,
-                                              delta_x):
-
-        # Nodes on [0, 1]
-        quadrature_nodes = [
-            (1 - (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2,
-            (1 - (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-            1/2,
-            (1 + (1/3) * np.sqrt((5 - 2*np.sqrt(10/7))/3)) / 2,
-            (1 + (1/3) * np.sqrt((5 + 2*np.sqrt(10/7))/3)) / 2
-        ]
-
-        # Weights on [0, 1]
-        quadrature_weights = [
-            (322 - 13*np.sqrt(70)) / 1800,
-            (322 + 13*np.sqrt(70)) / 1800,
-            128 / 450,
-            (322 + 13*np.sqrt(70)) / 1800,
-            (322 - 13*np.sqrt(70)) / 1800
-        ]
-
-        # quadrature_nodes = [1/2]
-        # quadrature_weights = [1]
+                                              value_left: np.ndarray,
+                                              value_right: np.ndarray,
+                                              system_matrix: np.ndarray,
+                                              delta_t: float,
+                                              delta_x: float):
 
         generalized_roe = 0
         viscosity = 0
-        for i in range(len(quadrature_nodes)):
-            quadrature_point = (1-quadrature_nodes[i])*value_left+(quadrature_nodes[i])*value_right
+        for i in range(len(self.quadrature_nodes)):
+            quadrature_point = (1-self.quadrature_nodes[i])*value_left+(self.quadrature_nodes[i])*value_right
             generalized_roe_point = system_matrix(quadrature_point)
-            generalized_roe += quadrature_weights[i]*generalized_roe_point
+            generalized_roe += self.quadrature_weights[i]*generalized_roe_point
             viscosity_point = self.compute_viscosity(generalized_roe_point,quadrature_point,delta_t,delta_x)
-            viscosity += quadrature_weights[i]*viscosity_point
+            viscosity += self.quadrature_weights[i]*viscosity_point
         fluct_matrix_min = (generalized_roe - viscosity)/2
         fluct_matrix_plus = (generalized_roe + viscosity)/2
 
         return fluct_matrix_min, fluct_matrix_plus
-
 
     def compute_viscosity(self,
                           roe_matrix: np.ndarray,

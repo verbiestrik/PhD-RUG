@@ -33,7 +33,7 @@ name4 = 'damBreak_classical_order4_time1p0'; type4 = 'swme';
 name5 = 'damBreak_classical_order5_time1p0'; type5 = 'swme';
 namePBC = 'damBreak_adaptive_couplingPBC_time1p0'; typePBC = 'swmeAdaptive';
 nameCIF = 'damBreak_adaptive_couplingCIF_time1p0'; typeCIF = 'swmeAdaptive';
-reference_data = load("damBreakLarge_lambda0p1_nu1p0_t1p0_800x200_new.csv");
+reference_data = load("damBreakLarge_lambda0p1_nu1p0_t1p0_800x200_allVars.csv");
 
 time0 = load(strcat("time",name0,".csv"));
 time1 = load(strcat("time",name1,".csv"));
@@ -212,13 +212,21 @@ L2_norm_alpha55 = sqrt(trapz(x_common, (alpha55_interp - alpha5_ref_interp).^2))
 L2_norm_alpha5PBC = sqrt(trapz(x_common, (alpha5PBC_interp - alpha5_ref_interp).^2));
 L2_norm_alpha5CIF = sqrt(trapz(x_common, (alpha5CIF_interp - alpha5_ref_interp).^2));
 
-h_diff_norms = [L2_norm_h0,L2_norm_h1,L2_norm_h2,L2_norm_h3,L2_norm_h4,L2_norm_h5,L2_norm_hPBC,L2_norm_hCIF]/norm(h_ref);
-u_diff_norms = [L2_norm_u0,L2_norm_u1,L2_norm_u2,L2_norm_u3,L2_norm_u4,L2_norm_u5,L2_norm_uPBC,L2_norm_uCIF]/norm(u_ref);
-alpha1_diff_norms = [L2_norm_alpha10,L2_norm_alpha11,L2_norm_alpha12,L2_norm_alpha13,L2_norm_alpha14,L2_norm_alpha15,L2_norm_alpha1PBC,L2_norm_alpha1CIF]/norm(alpha1_ref);
-alpha2_diff_norms = [L2_norm_alpha20,L2_norm_alpha21,L2_norm_alpha22,L2_norm_alpha23,L2_norm_alpha24,L2_norm_alpha25,L2_norm_alpha2PBC,L2_norm_alpha2CIF]/norm(alpha2_ref);
-alpha3_diff_norms = [L2_norm_alpha30,L2_norm_alpha31,L2_norm_alpha32,L2_norm_alpha33,L2_norm_alpha34,L2_norm_alpha35,L2_norm_alpha3PBC,L2_norm_alpha3CIF]/norm(alpha3_ref);
-alpha4_diff_norms = [L2_norm_alpha40,L2_norm_alpha41,L2_norm_alpha42,L2_norm_alpha43,L2_norm_alpha44,L2_norm_alpha45,L2_norm_alpha4PBC,L2_norm_alpha4CIF]/norm(alpha4_ref);
-alpha5_diff_norms = [L2_norm_alpha50,L2_norm_alpha51,L2_norm_alpha52,L2_norm_alpha53,L2_norm_alpha54,L2_norm_alpha55,L2_norm_alpha5PBC,L2_norm_alpha5CIF]/norm(alpha5_ref);
+norm_h_ref = sqrt(trapz(x_common, (h_ref_interp).^2));
+norm_u_ref = sqrt(trapz(x_common, (u_ref_interp).^2));
+norm_alpha1_ref = sqrt(trapz(x_common, (alpha1_ref_interp).^2));
+norm_alpha2_ref = sqrt(trapz(x_common, (alpha2_ref_interp).^2));
+norm_alpha3_ref = sqrt(trapz(x_common, (alpha3_ref_interp).^2));
+norm_alpha4_ref = sqrt(trapz(x_common, (alpha4_ref_interp).^2));
+norm_alpha5_ref = sqrt(trapz(x_common, (alpha5_ref_interp).^2));
+
+h_diff_norms = [L2_norm_h0,L2_norm_h1,L2_norm_h2,L2_norm_h3,L2_norm_h4,L2_norm_h5,L2_norm_hPBC,L2_norm_hCIF]/norm_h_ref;
+u_diff_norms = [L2_norm_u0,L2_norm_u1,L2_norm_u2,L2_norm_u3,L2_norm_u4,L2_norm_u5,L2_norm_uPBC,L2_norm_uCIF]/norm_u_ref;
+alpha1_diff_norms = [L2_norm_alpha10,L2_norm_alpha11,L2_norm_alpha12,L2_norm_alpha13,L2_norm_alpha14,L2_norm_alpha15,L2_norm_alpha1PBC,L2_norm_alpha1CIF]/norm_alpha1_ref;
+alpha2_diff_norms = [L2_norm_alpha20,L2_norm_alpha21,L2_norm_alpha22,L2_norm_alpha23,L2_norm_alpha24,L2_norm_alpha25,L2_norm_alpha2PBC,L2_norm_alpha2CIF]/norm_alpha2_ref;
+alpha3_diff_norms = [L2_norm_alpha30,L2_norm_alpha31,L2_norm_alpha32,L2_norm_alpha33,L2_norm_alpha34,L2_norm_alpha35,L2_norm_alpha3PBC,L2_norm_alpha3CIF]/norm_alpha3_ref;
+alpha4_diff_norms = [L2_norm_alpha40,L2_norm_alpha41,L2_norm_alpha42,L2_norm_alpha43,L2_norm_alpha44,L2_norm_alpha45,L2_norm_alpha4PBC,L2_norm_alpha4CIF]/norm_alpha4_ref;
+alpha5_diff_norms = [L2_norm_alpha50,L2_norm_alpha51,L2_norm_alpha52,L2_norm_alpha53,L2_norm_alpha54,L2_norm_alpha55,L2_norm_alpha5PBC,L2_norm_alpha5CIF]/norm_alpha5_ref;
 
 % writematrix(h_diff_norms,'AdaptiveSWME_Paper\damBreak-and-smooth_linear_lambda1.0_nu0.1_error_h.csv')
 % writematrix(u_diff_norms,'AdaptiveSWME_Paper\damBreak-and-smooth_linear_lambda1.0_nu0.1_error_u.csv')
@@ -242,3 +250,4 @@ alpha4_diff_norms
 alpha5_diff_norms
 
 times_rel
+

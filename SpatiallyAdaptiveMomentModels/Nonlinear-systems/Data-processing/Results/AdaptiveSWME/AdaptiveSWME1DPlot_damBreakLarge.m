@@ -25,8 +25,8 @@ moments_at_Min0p5 = load("timeEvolution_order_at_position_Min0p5_CIF.csv");
 moments_at_Min0p75 = load("timeEvolution_order_at_position_Min0p75_CIF.csv");
 
 % ref = load("damBreakLarge_lambda0p1_nu1p0_t0p4_250x100.csv");
-ref = load("damBreakLarge_lambda0p1_nu1p0_t1p0_800x200.csv");
-x_ref = ref(:,1); h_ref = ref(:,2); u_ref = ref(:,3);alpha1_ref = 3.*ref(:,4); alpha2 = 5.*ref(:,5);
+ref = load("damBreakLarge_lambda0p1_nu1p0_t1p0_800x200_allVars.csv");
+x_ref = ref(:,1); h_ref = ref(:,2); u_ref = ref(:,3);alpha1_ref = 3.*ref(:,4); alpha2_ref = 5.*ref(:,5);
 
 ref0p4 = load("damBreakLarge_lambda0p1_nu1p0_t0p4_250x100.csv");
 ref0p35 = load("damBreakLarge_lambda0p1_nu1p0_t0p35_250x100.csv");
@@ -54,9 +54,10 @@ plotting_mode = 'model_comparison';
 % plotting_mode = 'variables_time_evolution';
 % plotting_mode = 'orders_time_evolution';
 
-plotting = 'h';
+% plotting = 'h';
 % plotting = 'u';
 % plotting = 'alpha1';
+plotting = 'alpha2';
 % plotting = 'number_of_moments';
 % plotting = 'number_of_moments-evolution';
 
@@ -254,7 +255,34 @@ if(strcmp(plotting,'alpha1'))
         set(leg,'FontSize',12); 
     end
 end
-
+if(strcmp(plotting,'alpha2'))
+    if(strcmp(plotting_mode,'model_comparison'))
+        plot1 = plot(x1,alpha21,x2,alpha22,x3,alpha23,x4,alpha24,x_ref,alpha2_ref,'*')
+    
+        axis([-3,2,-0.7,0.12]);
+        xlabel('$x$','FontSize',18, 'Interpreter','latex')
+        ylabel('$\alpha_2$','FontSize',18, 'Interpreter','latex')
+        
+        linewidth1 = 2;
+        set(plot1(1:4),'LineWidth',linewidth1);
+    
+        grey = [0.4,0.4,0.4];
+        set(plot1(1),'LineStyle','-');
+        set(plot1(2),'LineStyle','-.');
+        set(plot1(3),'LineStyle','--');
+        set(plot1(4),'LineStyle',':');
+        set(plot1(1),'Color','r');
+        set(plot1(2),'Color','blue');
+        set(plot1(3),'Color','black');
+        set(plot1(4),'Color','cyan');
+        
+        set(plot1(5),'Color',brown);
+        set(plot1(5),'MarkerSize',3);
+    
+        leg = legend('SWME_0','SWME_5','A-SWME-PBC','A-SWME-PCIF','Reference','Location','best');
+        set(leg,'FontSize',12); 
+    end
+end
 if(strcmp(plotting,'number_of_moments'))
     yyaxis right
     % plot1 = plot(x1,moments1,x2,moments2,x3,moments3,x4,moments4)

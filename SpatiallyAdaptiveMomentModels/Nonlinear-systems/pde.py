@@ -13,14 +13,20 @@ class PDE(ABC):
 
     Attributes
     ----------
-    initial_condition : str
-        initial condition for the partial differential equation
+    model_error_estimator_type : str
+        the type of model error estimator that is used for adaptive simulations
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model coarsening
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model refinement
 
+    Instance methods
+    ----------------
+    def init(self,model_error_estimator_type):
+        initializes the pde object
     
     Abstract methods
     -------
-    def init(self):
-        initializes the pde object
     def compute_system_matrix(self,order,values):
         computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
     def compute_system_matrix_augmented(self,order,values):
@@ -41,15 +47,42 @@ class PDE(ABC):
         compute the maximum wavespeed in the system, used to calculate a timestep that satisfies CFL condition
     def convert_to_primitive(self,order,data_matrix_convective):
         converts the computed values to the values of the primitive variables
-    def compute_breakdown_criteria_full(self):
-        computes breakdown criteria for adaptive simulation
+    def compute_coarsening_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model coarsening
+    def compute_refinement_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model refinement
+    def compute_coarsening_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model coarsening
+    def compute_refinement_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model refinement
+    def compute_eigenvalues_and_eigenvectors(self, values)
+        computes the eigenvalues and the eigenvectors of the system matrix
+    def get_number_of_breakdown_estimators(self,number_of_variables,dom_decomp_criterion_type)
+        computes the number of breakdown estimators
     """
+ 
+    def __init__(self,
+                 model_error_estimator_type: str):
+        """
+        Initializes the coarsening estimator and the refinement estimator for adaptive simulations.
 
-    @abstractmethod
-    def __init__(self):
+        Parameters
+        ----------
+        model_error_estimator_type : str
+            the type of model error estimator that is used
+
+        Returns
+        -------
+
         """
-        Implemented in the child classes
-        """
+
+        self.compute_coarsening_estimator = self.compute_coarsening_estimator_model_difference
+        self.compute_refinement_estimator = self.compute_refinement_estimator_model_difference
+        if model_error_estimator_type == "heuristics_plus_discretization":
+            self.compute_coarsening_estimator = self.compute_coarsening_estimator_heur
+            self.compute_refinement_estimator = self.compute_refinement_estimator_heur
+        else:
+            print("This criterion has not been implemented yet")
 
         pass
 
@@ -88,7 +121,7 @@ class PDE(ABC):
         Parameters
         ----------
         order : int
-            order of the moment model PDE (TODO: create MomentModel as a subclass of PDE)
+            order of the moment model PDE 
         values : numpy 1D array
             values of the variables
 
@@ -112,7 +145,7 @@ class PDE(ABC):
         Parameters
         ----------
         order : int
-            order of the moment model PDE (TODO: create MomentModel as a subclass of PDE)
+            order of the moment model PDE 
         values : numpy 1D array
             values of the variables
         
@@ -138,7 +171,7 @@ class PDE(ABC):
         Parameters
         ----------
         order : int
-            order of the moment model PDE (TODO: create MomentModel as a subclass of PDE)
+            order of the moment model PDE 
         values : numpy 1D array
             values of the variables
         
@@ -146,8 +179,8 @@ class PDE(ABC):
         Returns
         -------
         S_aug: numpy 1D array or numpy 2D array
-            source term vector if the moment model has a non-linear source term, 
-            source term matrix if the moment model has a linear source term
+            augmented source term vector if the moment model has a non-linear source term, 
+            augmented source term matrix if the moment model has a linear source term
 
         """
 
@@ -160,7 +193,8 @@ class PDE(ABC):
                         last_moment_zero: bool) -> np.ndarray:
 
         """
-        Computes the last entry of the source term (in vector form)
+        Computes the last entry of the source term (in vector form).
+        Used as a domain decomposition criterion for adaptive simulations.
 
         Parameters
         ----------
@@ -190,7 +224,7 @@ class PDE(ABC):
         Parameters
         ----------
         order : int
-            order of the moment model PDE (TODO: create MomentModel as a subclass of PDE)
+            order of the moment model PDE 
         initial condition : str
             name of the initial condition
         position : float (if 1D) or numpy 1D array of floats (2D)
@@ -216,7 +250,7 @@ class PDE(ABC):
         Parameters
         ----------
         order : int
-            order of the moment model PDE (TODO: create MomentModel as a subclass of PDE)
+            order of the moment model PDE 
         
         
         Returns
@@ -240,7 +274,7 @@ class PDE(ABC):
         Parameters
         ----------
         order : int
-            order of the moment model PDE (TODO: create MomentModel as a subclass of PDE)
+            order of the moment model PDE 
         values : numpy 1D array
             values of the variables
 
@@ -283,7 +317,8 @@ class PDE(ABC):
                                             order: int) -> float:
         
         """
-        Numerically approximates the model-error for model-coarsening in cell i, using the values in cells i-1,i,i+1
+        Numerically approximates heuristic model-error estimators for model-coarsening in cell i,
+        using the values in cells i-1,i,i+1.
 
         Parameters
         ----------
@@ -298,8 +333,8 @@ class PDE(ABC):
         
         Returns
         -------
-        decrease_quantity : float
-            the numerical approximation of the model-error estimator for model-coarsening
+        coarsening_quantity : float
+            the numerical approximation of the heuristic model-error estimator for model-coarsening
 
         """
 
@@ -311,7 +346,8 @@ class PDE(ABC):
                                             order: int) -> float:
         
         """
-        Numerically approximates the model-error for model-refinement in cell i, using the values in cells i-1,i,i+1
+        Numerically approximates heuristic model-error estimators for model-refinement in cell i,
+        using the values in cells i-1,i,i+1.
 
         Parameters
         ----------
@@ -326,8 +362,8 @@ class PDE(ABC):
         
         Returns
         -------
-        decrease_quantity : float
-            the numerical approximation of the model-error estimator for model-refinement
+        refinement_quantity : float
+            the numerical approximation of the heuristic model-error estimator for model-refinement
 
         """
 
@@ -337,54 +373,62 @@ class PDE(ABC):
                                             value_left: np.ndarray,
                                             value_right: np.ndarray,
                                             order: int) -> float:
+        
+        """
+        Numerically approximates the exact model difference between a higher-order moment model and
+        a lower-order moment model, which results in a model-error estimator for model-coarsening in cell i,
+        using the values in cells i-1,i,i+1.
+
+        Parameters
+        ----------
+        value_central : np.ndarray
+            the values in cell i
+        value_left : np.ndarray
+            the values in cell i-1
+        value_right : np.ndarray
+            the values in cell i+1
+        order: integer
+            the current order in cell i
+        
+        Returns
+        -------
+        coarsening_quantity : float
+            the numerical approximation of the model-difference model-error estimator for model-coarsening
+
+        """
+        
         pass
 
     @abstractmethod
-    def compute_refinement_estimator_model_difference(self,
+    def compute_coarsening_estimator_model_difference(self,
                                             value_central: np.ndarray, 
                                             value_left: np.ndarray,
                                             value_right: np.ndarray,
                                             order: int) -> float:
-        pass
-
-    @abstractmethod
-    def compute_breakdown_criteria_full(self) -> np.ndarray:        
         """
-        Documented in the child classes
-
-        """
-
-    @abstractmethod
-    def decompose_domain(self,
-                        n: int,
-                        max_order: int,
-                        orders_cellwise: np.ndarray,
-                        flags_decrease: np.ndarray,
-                        flags_increase: np.ndarray) -> np.ndarray:       
-        """
-        given the model-error estimators for model-coarsening (flags_decrease) and the model-error estimators 
-        for model-refinement (flags_increase), compute the final domain decomposition
+        Numerically approximates the exact model difference between a higher-order moment model and
+        a lower-order moment model, which results in a model-error estimator for model-refinement in cell i,
+        using the values in cells i-1,i,i+1.
 
         Parameters
         ----------
-        n : integer
-            the mesh resolution
-        max_order : integer
-            the maximum order of the adaptive moment model simulation
-        orders_cellwise : list
-            the cellwise orders (currently)
-        flags_decrease: np.ndarray
-            the computed flags for model-coarsening (decreasing the order)
-        flags_inrease: np.ndarray
-            the computed flags for model-refinement (increasing the order)
-            
+        value_central : np.ndarray
+            the values in cell i
+        value_left : np.ndarray
+            the values in cell i-1
+        value_right : np.ndarray
+            the values in cell i+1
+        order: integer
+            the current order in cell i
+        
         Returns
         -------
-        domain_decomposition_flags : np.ndarray
-            numpy array where entry with index i contains the computed order differen
-            (positive if increase, negative if decrease)
+        refinement_quantity : float
+            the numerical approximation of the model-difference model-error estimator for model-refinement
 
         """
+        
+        pass     
 
     @abstractmethod
     def compute_eigenvalues_and_eigenvectors(self,
@@ -406,40 +450,32 @@ class PDE(ABC):
 
         """
 
-    def compute_refinement_estimator(self,
-                                     criterion_type):
-        
-        if criterion_type == "model_difference":
-            self.compute_refinement_estimator = self.compute_refinement_estimator_model_difference
-        elif criterion_type == "heuristics":
-            self.compute_refinement_estimator = self.compute_refinement_estimator_heur
-        else:
-            print("This criterion has not been implemented yet")
-        
-    def compute_coarsening_estimator(self,
-                                     criterion_type):
-        
-        if criterion_type == "model_difference":
-            self.compute_coarsening_estimator = self.compute_coarsening_estimator_model_difference
-        elif criterion_type == "heuristics":
-            self.compute_coarsening_estimator = self.compute_coarsening_estimator_heur
-        else:
-            print("This criterion has not been implemented yet")
+    @abstractmethod
+    def get_number_of_breakdown_estimators(self,
+                                           number_of_variables: int,
+                                           dom_decomp_criterion_type: str) -> tuple[int,int]:
 
-    def get_number_of_breakdown_estimators(number_of_variables,dom_decomp_criterion_type):
-    
-        number_of_breakdown_estimators_coarsening = 0
-        number_of_breakdown_estimators_refinement = 0
-        if dom_decomp_criterion_type == "model_difference":
-            number_of_breakdown_estimators_coarsening = 1
-            number_of_breakdown_estimators_refinement = 1
-        elif dom_decomp_criterion_type == "heuristics_plus_discretization":
-            number_of_breakdown_estimators_coarsening = 3
-            number_of_breakdown_estimators_refinement = number_of_variables
-        else:
-            print("this breakdwon estimator has not been implemented yet") 
+        """
+        computes the number of model-coarsening estimaotrs and the number of model-refinement estimators
+        for adaptive simulations.
 
-        return number_of_breakdown_estimators_coarsening,number_of_breakdown_estimators_refinement
+        Parameters
+        ----------
+        number_of_variables: integer
+            the number of variables in the moment model
+        dom_decomp_criterion_type: string
+            the type of model error estimator
+            
+        Returns
+        -------
+        number_of_breakdown_estimators_coarsening: integer
+            the number of model-error estimators for model coarsening
+        number_of_breakdown_estimators_refinement: integer
+            the number of model-error estimators for model refinement
+
+        """ 
+
+        pass
 
 class SWME1D(PDE):
 
@@ -461,16 +497,27 @@ class SWME1D(PDE):
     linear_source : boolean
         true if the source term is represented as a constant matrix multiplied by the state vector,
         false if the source term is represented in vector form
-
+    model_error_estimator_type : str
+        the type of model error estimator that is used for model coarsening and model refinement
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model coarsening
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model refinement
+    exact_source_computation : bool
+        whether the source term part of the equation can be solved exactly 
     
     Implemented methods from interface PDE
     ---------------------------------
-    def init(self, initial_condition,viscosity,slip_length,hyperbolic,linear_source,exact_source_computation):
-        initializes the SWME1D object
     def compute_system_matrix(self,order,values):
         computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
+    def compute_system_matrix_augmented(self,order,values):
+        computes the system matrix of the augmented model equation, which is the equation that is solved
+        to predict the defined moments as well as the undefined higher-order moments
     def compute_source_term(self,order,values):
         computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
+    def compute_source_term_augmented(self,order,values):
+        computes the source term of the augmented model equation, which is the equation that is solved
+        to predict the defined moments as well as the undefined higher-order moments
     def compute_source_term_lastentry(self,order,values,last_moment_zero)
         computes the last entry of the source term vector
     def get_initial_values(self,order,initial_condition,position):
@@ -481,12 +528,24 @@ class SWME1D(PDE):
         compute the maximum wavespeed in the system, used to calculate a timestep that satisfies CFL condition
     def convert_to_primitive(self,order,data_matrix_convective):
         converts the computed values to the values of the primitive variables
-    def compute_breakdown_criteria_full(self):
-        computes breakdown criteria for adaptive simulation
+    def compute_coarsening_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model coarsening
+    def compute_refinement_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model refinement
+    def compute_coarsening_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model coarsening
+    def compute_refinement_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model refinement
+    def compute_eigenvalues_and_eigenvectors(self, values)
+        computes the eigenvalues and the eigenvectors of the system matrix
+    def get_number_of_breakdown_estimators(self,number_of_variables,dom_decomp_criterion_type)
+        computes the number of breakdown estimators
 
 
     Instance methods
     ----------------
+    def __init__(self,initial_condition,viscosity,slip_length,hyperbolic,linear_source,model_error_estimator_type)
+        initializes the SWME1D object
     def compute_vertical_velocity_profile(self,values):
         reconstruct the vertical velocity profiles from the moment values
     def _compute_source_matrix_inverse(self,order,values,delta_t,g = 1):
@@ -518,7 +577,10 @@ class SWME1D(PDE):
         linear_source : boolean
             true if the source term is represented as a constant matrix multiplied by the state vector,
             false if the source term is represented in vector form
+        model_error_estimator_type : str
+            the type of model error estimator that is used for model coarsening and model refinement
         """
+
         self.initial_condition = initial_condition
         self.viscosity = viscosity
         self.slip_length = slip_length
@@ -526,11 +588,7 @@ class SWME1D(PDE):
         self.linear_source = linear_source
         self.exact_source_computation = False
         
-        self.compute_coarsening_estimator = self.compute_coarsening_estimator_model_difference
-        self.compute_refinement_estimator = self.compute_refinement_estimator_model_difference
-        if model_error_estimator_type == "heuristics_plus_hierarchical":
-            self.compute_coarsening_estimator = self.compute_coarsening_estimator_heur
-            self.compute_refinement_estimator = self.compute_refinement_estimator_heur
+        super().__init__(model_error_estimator_type)
 
     def compute_system_matrix(self,
                               order: int,
@@ -825,7 +883,7 @@ class SWME1D(PDE):
         values : np.ndarray
             array containing the current values in each grid cell
         g = 1 : float
-            gravitational constant (set to zero, because simulations are based on dimensionless form)
+            gravitational constant (set to one, because simulations are based on dimensionless form)
 
         Returns
         -------
@@ -942,8 +1000,8 @@ class SWME1D(PDE):
         return A_diff
 
     def compute_system_matrix_augmented(self,
-                                        order,
-                                        values):
+                                        order: int,
+                                        values: np.ndarray):
         pass
 
     def compute_source_term(self,
@@ -1060,14 +1118,14 @@ class SWME1D(PDE):
         return S
 
     def compute_source_term_augmented(self,
-                                      order,
-                                      values):
+                                      order: int,
+                                      values: np.ndarray):
         pass
 
     def _compute_source_matrix_inverse(self,
                                       order: int,
                                       values: np.ndarray,
-                                      delta_t,
+                                      delta_t: float,
                                       g = 1) -> np.ndarray:
         """
         The friction step in the SWME can be written as w'(t) = S(h0).w(t). 
@@ -1084,7 +1142,7 @@ class SWME1D(PDE):
         delta_t : float
             current time step
         g = 1 : float
-            gravitational constant (set to zero, because simulations are based on dimensionless form)
+            gravitational constant (set to one, because simulations are based on dimensionless form)
 
         Returns
         -------
@@ -2769,7 +2827,7 @@ class SWME1D(PDE):
                             last_moment_zero: bool,
                             g = 1) -> np.ndarray:
 
-        # the gravitational constant g is set to zero because the simulations are based on the dimensionless equations
+        # the gravitational constant g is set to 1 because the simulations are based on the dimensionless equations
         source_term_lastentry = 0
         h = values[0]
         um = values[1]/values[0]
@@ -2838,6 +2896,7 @@ class SWME1D(PDE):
                            order: int,
                            initial_condition: str,
                            position: float) -> np.ndarray:
+        
         initial_values = np.zeros(self.compute_number_of_variables(order))
         start = -0.4
         end = 0.4
@@ -2876,7 +2935,7 @@ class SWME1D(PDE):
         elif initial_condition == 'damBreak_noVelocity':
             x0 = 0
             if position < x0:
-                initial_values[0] = 5
+                initial_values[0] = 2
                 initial_values[1] = 0*initial_values[0]
                 if order > 0:
                     initial_values[2] = 0 
@@ -3130,8 +3189,8 @@ class SWME1D(PDE):
     def compute_max_wavespeed(self,
                            order: int,
                            values: np.ndarray,
-                           g=1) -> float:
-
+                           g = 1) -> float:
+        # Note that this is an approximation of the wave speeds in the SWME
         wave_speed_sqrt = values[:,0]*int(g)
         for i in range(order):
             wave_speed_sqrt += np.divide(values[:,i+2]*values[:,i+2],values[:,0]*values[:,0])
@@ -3203,102 +3262,6 @@ class SWME1D(PDE):
             data_matrix_primitive[:,j+2] = np.divide(data_matrix_convective[:,j+2],data_matrix_convective[:,0])
 
         return data_matrix_primitive 
-    
-    def compute_breakdown_criteria_full(self,
-                                   values: np.ndarray,
-                                   n: int,
-                                   delta_x: float,
-                                   delta_t: float,
-                                   max_order: int,
-                                   orders_cellwise: list,
-                                   numbers_of_variables_cellwise: list,
-                                   dom_decomp_val_res1: np.ndarray,
-                                   dom_decomp_val_res2: np.ndarray,
-                                   tolerance_up_source = 0.04,
-                                   tolerance_up_height_gradient = 0.5,
-                                   tolerance_up_momentum_gradient = 0.5,
-                                   tolerance_up_moment_gradient = 0.5,
-                                   tolerance_down_last_moment = 0.0001,
-                                   tolerance_down_res1 = 0.0001,
-                                   tolerance_down_res2 = 0.01) -> tuple[np.ndarray,np.ndarray]:        
-        """
-        Computes the breakown criteria adaptive simulation
-
-        Parameters
-        ----------
-        values : list of numpy 1D arrays
-            the values of the variables in each mesh cell
-        n : integer
-            number of grid cells
-        delta_x : float
-            grid cell size
-        delta_t : float
-            time step size
-        max_order : integer
-            maximum order of the model
-        orders_cellwise : list of integers
-            the order in each cell
-        number_of_variables_cellwise : list of integers
-            the number of variables in each cell
-        dom_decomp_val_res1 : np.ndarray
-            numpy array containing the current values of res1
-        dom_decomp_val_res2 : np.ndarray
-            numpy array containing the current values of res2
-        tolerance_up_source : float
-            threshold for the increase-criterion corresponding to the last entry of the source term vector
-        tolerance_up_height_gradient : float
-            threshold for the increase-criterion corresponding to the height gradient
-        tolerance_up_momentum_gradient : float
-            threshold for the increase-criterion corresponding to the momentum gradient       
-        tolerance_up_moment_gradient : float
-            threshold for the increase-criterion corresponding to the moment gradient
-        tolerance_down_last_moment : float
-            threshold for the decrease-criterion corresponding to the last moment
-        tolerance_down_res1 : float
-            threshold for the decrease-criterion corresponding to res1
-        tolerance_down_res2 : float
-            threshold for the decrease-criterion corresponding to res2
-
-        Returns
-        -------
-        breakdown_estimators : np.ndarray
-            values for each breakdown estimator in each grid cell
-        breakdown_criterion_flags : np.ndarray
-            flags for increasing or reducing the order in each grid cell
-            this array is filled with the values of the changes in order in each grid cell
-        """
-        breakdown_criterion_flags = np.zeros(n)
-        breakdown_estimators = np.zeros((n,max_order+4))
-
-        for i in range(n):
-            breakdown_estimators[i,0] = 1*np.abs(self.compute_source_term_lastentry(orders_cellwise[i+1],values[i+1,:numbers_of_variables_cellwise[i+1]],True))
-            breakdown_estimators[i,1] = np.abs(values[i+1,numbers_of_variables_cellwise[i+1]-1]/values[i+1,0])
-            breakdown_estimators[i,2] = 1*np.abs((values[i+2,0] - values[i,0]))/(2*delta_x)
-            breakdown_estimators[i,3] = 1*np.abs((values[i+2,1] - values[i,1]))/(2*delta_x)
-            for j in range(orders_cellwise[i+1]):
-                breakdown_estimators[i,4+j] = 1*np.abs((values[i+2,2+j])-values[i,2+j])/(2*delta_x)
-        breakdown_estimators[0,0] = 1*np.abs(self.compute_source_term_lastentry(orders_cellwise[1],values[1,:numbers_of_variables_cellwise[1]],True))
-        breakdown_estimators[0,2] = 1*np.abs((values[2,0] - values[1,0]))/delta_x
-        breakdown_estimators[0,3] = 1*np.abs((values[2,1] - values[1,1]))/delta_x
-        for j in range(orders_cellwise[i+1]):
-            breakdown_estimators[0,4+j] = 1*np.abs((values[2,2+j])-values[1,2+j])/delta_x    
-
-        for i in range(n):
-            if orders_cellwise[i+1] < max_order and \
-                (breakdown_estimators[i,0] > tolerance_up_source or\
-                    breakdown_estimators[i,2] > tolerance_up_height_gradient or\
-                        breakdown_estimators[i,3] > tolerance_up_momentum_gradient or\
-                            np.any(breakdown_estimators[i,4:orders_cellwise[i+1]+4] > tolerance_up_moment_gradient)):
-                breakdown_criterion_flags[i] = 1
-
-            elif (breakdown_criterion_flags[i] !=1 and\
-                    orders_cellwise[i+1] > 0 and\
-                        dom_decomp_val_res1[i] < tolerance_down_res1\
-                            and dom_decomp_val_res2[i] < tolerance_down_res2\
-                                and breakdown_estimators[i,1] < tolerance_down_last_moment):
-                breakdown_criterion_flags[i] = -1
-        
-        return breakdown_estimators, breakdown_criterion_flags
 
     def compute_refinement_estimator_model_difference(self,
                                     values: np.ndarray,
@@ -3308,7 +3271,7 @@ class SWME1D(PDE):
                                     n: int,
                                     boundary_interfaces: list,
                                     delta_x: float,
-                                    tolerance_increase = 0.0015) -> np.ndarray:
+                                    tolerance_increase = 0.0015) -> float:
         
         pass
 
@@ -3320,7 +3283,7 @@ class SWME1D(PDE):
                                     n: int,
                                     boundary_interfaces: list,
                                     delta_x: float,
-                                    tolerance_increase = 0.0015) -> np.ndarray:
+                                    tolerance_increase = 0.0015) -> float:
         
         pass
 
@@ -3328,261 +3291,56 @@ class SWME1D(PDE):
                                    value_central: np.ndarray, 
                                    value_left: np.ndarray,
                                    value_right: np.ndarray,
-                                   order,
-                                   max_order,
-                                   delta_t,
-                                   delta_x):
+                                   order: int,
+                                   max_order: int,
+                                   delta_t: float,
+                                   delta_x: float) -> float:
         
-        pass
+        refinement_quantity = np.zeros(max_order+3)
+        refinement_quantity[0] = self.compute_source_term_lastentry(order,value_central[:order+2],False)
+
+        refinement_quantity[1] = max(np.abs((value_right[0] - value_central[0])),np.abs((value_central[0] - value_left[0])))/delta_x
+        refinement_quantity[2] = max(np.abs((value_right[1] - value_central[1])),np.abs((value_central[1] - value_left[1])))/delta_x
+        for j in range(order):
+            refinement_quantity[3+j] = max(np.abs((value_right[2+j] - value_central[2+j])),
+                                             np.abs((value_central[2+j] - value_left[2+j])))/delta_x
+        
+        return refinement_quantity
 
     def compute_coarsening_estimator_heur(self,
                                    value_central: np.ndarray, 
                                    value_left: np.ndarray,
                                    value_right: np.ndarray,
-                                   order,
-                                   max_order,
-                                   delta_t,
-                                   delta_x):
-        
-        pass
+                                   order: int,
+                                   max_order: int,
+                                   delta_t: float,
+                                   delta_x: float) -> float:
 
-    def compute_refinement_criterion(self,
-                                    values: np.ndarray,
-                                    orders: list,
-                                    max_order: int,
-                                    numbers_of_variables: list,
-                                    n: int,
-                                    boundary_interfaces: list,
-                                    delta_x: float,
-                                    tolerance_increase = 0.0015) -> np.ndarray:
-        
-        increase_criterion_flags = np.zeros(n,dtype=int)
-        breakdown_estimators_increase = np.zeros(n)
+        coarsening_quantity = np.abs(value_central[order+1]) 
 
-        backward_differences = np.zeros(n)
-        forward_differences = np.zeros(n)
-
-        input_values = np.copy(values) 
-
-        r = 0
-
-        order = orders[0]
-        n_variables = numbers_of_variables[0]
-        for m in range(len(boundary_interfaces)):
-            n_variables_prev = n_variables
-            order = orders[m]
-            n_variables = numbers_of_variables[m]
-            n_variables_next = numbers_of_variables[m+1]
-            l = r+1
-            r = boundary_interfaces[m]  
-
-            n_left = min(n_variables_prev,n_variables)
-            n_right = min(n_variables,n_variables_next)
-
-            left_boundary_value = input_values[l,:]
-            right_boundary_value = input_values[r,:]
-            left_boundary_value[:n_left] = input_values[l-1,:n_left]
-            right_boundary_value[:n_right] = input_values[r+1,:n_right]
-
-            backward_differences[l-1] = np.abs(self.compute_breakdown_quantity_increase(values[l,:],
-                                                                                        left_boundary_value,
-                                                                                        values[l,:],
-                                                                                        order,
-                                                                                        max_order)) 
-            forward_differences[l-1] = np.abs(self.compute_breakdown_quantity_increase(values[l,:],
-                                                                                        values[l,:],
-                                                                                        values[l+1,:],
-                                                                                        order,
-                                                                                        max_order))                  
-                                                    
-            for i in range(l+1,r):
-                backward_differences[i-1] = np.abs(self.compute_breakdown_quantity_increase(values[i,:],
-                                                                                            values[i-1,:],
-                                                                                            values[i,:],
-                                                                                            order,
-                                                                                            max_order)) 
-                forward_differences[i-1] = np.abs(self.compute_breakdown_quantity_increase(values[i,:],
-                                                                                            values[i,:],
-                                                                                            values[i+1,:],
-                                                                                            order,
-                                                                                            max_order))        
-            backward_differences[r-1] = np.abs(self.compute_breakdown_quantity_increase(values[r,:],
-                                                                                        values[r-1,:],
-                                                                                        values[r,:],
-                                                                                        order,
-                                                                                        max_order)) 
-            forward_differences[r-1] = np.abs(self.compute_breakdown_quantity_increase(values[r,:],
-                                                                                        values[r,:],
-                                                                                        right_boundary_value,
-                                                                                        order,
-                                                                                        max_order)) 
-
-        n_variables_prev = n_variables
-        order = orders[-1]
-        n_variables = numbers_of_variables[-1]
-
-        n_left = min(n_variables_prev,n_variables)
-
-        l = r+1  
-
-        left_boundary_value = input_values[l,:]            
-        left_boundary_value[:n_left] = input_values[l-1,:n_left]  
-
-        backward_differences[l-1] = np.abs(self.compute_breakdown_quantity_increase(values[l,:],
-                                                                                    left_boundary_value,
-                                                                                    values[l,:],
-                                                                                    order,
-                                                                                    max_order)) 
-        forward_differences[l-1] = np.abs(self.compute_breakdown_quantity_increase(values[l,:],
-                                                                                    values[l,:],
-                                                                                    values[l+1,:],
-                                                                                    order,
-                                                                                    max_order))                  
-                                                
-        for i in range(l+1,n+1):
-            backward_differences[i-1] = np.abs(self.compute_breakdown_quantity_increase(values[i,:],
-                                                                                        values[i-1,:],
-                                                                                        values[i,:],
-                                                                                        order,
-                                                                                        max_order)) 
-            forward_differences[i-1] = np.abs(self.compute_breakdown_quantity_increase(values[i,:],
-                                                                                        values[i,:],
-                                                                                        values[i+1,:],
-                                                                                        order,
-                                                                                        max_order)) 
-
-        breakdown_estimators_increase = np.maximum(forward_differences,backward_differences)/delta_x
-
-        for i in range(n):
-            if breakdown_estimators_increase[i] > tolerance_increase: 
-                increase_criterion_flags[i] = 2            
-        return breakdown_estimators_increase, increase_criterion_flags
-
-    def compute_coarsening_criterion(self,
-                                    values: np.ndarray,
-                                    orders: list,
-                                    numbers_of_variables: list,
-                                    n: int,
-                                    boundary_interfaces: list,
-                                    delta_x: float,
-                                    increase_criterion_flags: np.ndarray,
-                                    tolerance_decrease = 0.001) -> np.ndarray:
-
-        decrease_criterion_flags = np.zeros(n,dtype=int)
-        breakdown_estimators_decrease = np.zeros(n)
-
-        backward_differences = np.zeros(n)
-        forward_differences = np.zeros(n)
-
-        input_values = np.copy(values)
-
-        r = 0
-
-        order = orders[0]
-        n_variables = numbers_of_variables[0]
-        for m in range(len(boundary_interfaces)):
-            n_variables_prev = n_variables
-            order = orders[m]
-            n_variables = numbers_of_variables[m]
-            n_variables_next = numbers_of_variables[m+1]
-            l = r+1
-            r = boundary_interfaces[m]  
-
-            n_left = min(n_variables_prev,n_variables)
-            n_right = min(n_variables,n_variables_next)
-
-            left_boundary_value = input_values[l,:]
-            right_boundary_value = input_values[r,:]
-            left_boundary_value[:n_left] = input_values[l-1,:n_left]
-            right_boundary_value[:n_right] = input_values[r+1,:n_right]
-
-            if order > 3:
-                backward_differences[l-1] = np.abs(self.compute_breakdown_quantity_decrease(values[l,:],
-                                                                                            left_boundary_value,
-                                                                                            values[l,:],
-                                                                                            order)) 
-                forward_differences[l-1] = np.abs(self.compute_breakdown_quantity_decrease(values[l,:],
-                                                                                            values[l,:],
-                                                                                            values[l+1,:],
-                                                                                            order))                                                        
-                for i in range(l+1,r):
-                    backward_differences[i-1] = np.abs(self.compute_breakdown_quantity_decrease(values[i,:],
-                                                                                                values[i-1,:],
-                                                                                                values[i,:],
-                                                                                                order)) 
-                    forward_differences[i-1] = np.abs(self.compute_breakdown_quantity_decrease(values[i,:],
-                                                                                                values[i,:],
-                                                                                                values[i+1,:],
-                                                                                                order))           
-                backward_differences[r-1] = np.abs(self.compute_breakdown_quantity_decrease(values[r,:],
-                                                                                            values[r-1,:],
-                                                                                            values[r,:],
-                                                                                            order)) 
-                forward_differences[r-1] = np.abs(self.compute_breakdown_quantity_decrease(values[r,:],
-                                                                                            values[r,:],
-                                                                                            right_boundary_value,
-                                                                                            order)) 
-        n_variables_prev = n_variables
-        order = orders[-1]
-        n_variables = numbers_of_variables[-1]
-
-        n_left = min(n_variables_prev,n_variables)
-
-        l = r+1  
-
-        left_boundary_value = input_values[l,:]            
-        left_boundary_value[:n_left] = input_values[l-1,:n_left]  
-
-        if order > 3:
-            backward_differences[l-1] = np.abs(self.compute_breakdown_quantity_decrease(values[l,:],
-                                                                                        left_boundary_value,
-                                                                                        values[l,:],
-                                                                                        order)) 
-            forward_differences[l-1] = np.abs(self.compute_breakdown_quantity_decrease(values[l,:],
-                                                                                        values[l,:],
-                                                                                        values[l+1,:],
-                                                                                        order))                                                        
-            for i in range(l+1,n+1):
-                backward_differences[i-1] = np.abs(self.compute_breakdown_quantity_decrease(values[i,:],
-                                                                                            values[i-1,:],
-                                                                                            values[i,:],
-                                                                                            order)) 
-                forward_differences[i-1] = np.abs(self.compute_breakdown_quantity_decrease(values[i,:],
-                                                                                            values[i,:],
-                                                                                            values[i+1,:],
-                                                                                            order)) 
-
-        breakdown_estimators_decrease = np.maximum(backward_differences,forward_differences)/delta_x
-
-        for i in range(n):
-            if increase_criterion_flags[i] == 0 and breakdown_estimators_decrease[i] < tolerance_decrease:
-                decrease_criterion_flags[i] = -2
-
-        return breakdown_estimators_decrease, decrease_criterion_flags
-
-    def decompose_domain(self,
-                    n: int,
-                    max_order: int,
-                    orders_cellwise: list,
-                    flags_decrease: np.ndarray,
-                    flags_increase: np.ndarray) -> np.ndarray:       
-        
-        domain_decomposition_flags = np.zeros(n,dtype=int)
-        for i in range(n):
-            if flags_increase[i] > 0:
-                if orders_cellwise[i+1] < max_order - 1:
-                    domain_decomposition_flags[i] = flags_increase[i]
-            else:
-                if flags_decrease[i] < 0:
-                    if orders_cellwise[i+1] > 2:
-                        domain_decomposition_flags[i] = flags_decrease[i]
-
-        return domain_decomposition_flags
+        return coarsening_quantity
 
     def compute_eigenvalues_and_eigenvectors(self,
                                              values: np.ndarray) -> tuple[np.ndarray,np.ndarray]:
 
         pass
+
+    def get_number_of_breakdown_estimators(self,
+                                           number_of_variables: int,
+                                           dom_decomp_criterion_type: str) -> int:
+    
+        number_of_breakdown_estimators_coarsening = 0
+        number_of_breakdown_estimators_refinement = 0
+        if dom_decomp_criterion_type == "model_difference":
+            number_of_breakdown_estimators_coarsening = 1
+            number_of_breakdown_estimators_refinement = 1
+        elif dom_decomp_criterion_type == "heuristics_plus_discretization":
+            number_of_breakdown_estimators_coarsening = 3
+            number_of_breakdown_estimators_refinement = 1+number_of_variables
+        else:
+            print("this breakdown estimator has not been implemented yet") 
+
+        return number_of_breakdown_estimators_coarsening,number_of_breakdown_estimators_refinement
 
 class VegetationSWME1D(SWME1D):
     """
@@ -3603,6 +3361,14 @@ class VegetationSWME1D(SWME1D):
     linear_source : boolean
         true if the source term is represented as a constant matrix multiplied by the state vector,
         false if the source term is represented in vector form
+    model_error_estimator_type : str
+        the type of model error estimator that is used for model coarsening and model refinement
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model coarsening
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model refinement
+    exact_source_computation : bool
+        whether the source term part of the equation can be solved exactly 
     diameter : float
         the diameter of the vegetation stem
     CD : float
@@ -3616,7 +3382,13 @@ class VegetationSWME1D(SWME1D):
     Methods inherited from class SWME1D
     ---------------------------------------
     def compute_system_matrix(self,order,values):
-        computes the system matrix of the SWME1D evaluated in the given values, for the given order. 
+        computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
+    def compute_system_matrix_augmented(self,order,values):
+        computes the system matrix of the augmented model equation, which is the equation that is solved
+        to predict the defined moments as well as the undefined higher-order moments
+    def compute_source_term_augmented(self,order,values):
+        computes the source term of the augmented model equation, which is the equation that is solved
+        to predict the defined moments as well as the undefined higher-order moments
     def get_initial_values(self,order,initial_condition,position):
         calculates the initial values for one specific physical position
     def compute_number_of_variables(self,order):
@@ -3625,6 +3397,18 @@ class VegetationSWME1D(SWME1D):
         compute the maximum wavespeed in the system, used to calculate a timestep that satisfies CFL condition
     def convert_to_primitive(self,order,data_matrix_convective):
         converts the computed values to the values of the primitive variables
+    def compute_coarsening_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model coarsening
+    def compute_refinement_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model refinement
+    def compute_coarsening_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model coarsening
+    def compute_refinement_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model refinement
+    def compute_eigenvalues_and_eigenvectors(self, values)
+        computes the eigenvalues and the eigenvectors of the system matrix
+    def get_number_of_breakdown_estimators(self,number_of_variables,dom_decomp_criterion_type)
+        computes the number of breakdown estimators
     def compute_vertical_velocity_profile(self,values):
         reconstruct the vertical velocity profiles from the moment values
     def compute_system_matrix_diff(self,order_low,values,g = 1) -> np.ndarray:
@@ -3632,10 +3416,12 @@ class VegetationSWME1D(SWME1D):
 
     Implemented methods from interface PDE
     --------------------------------------
-    def __init__(self, initial_condition,viscosity,slip_length,hyperbolic,linear_source,diameter,CD,surface_density,h_v):
+    def __init__(self, initial_condition,viscosity,slip_length,hyperbolic,linear_source,model_error_estimator_type,diameter,CD,surface_density,h_v):
         Constructs all the necessary attributes for the VegetationSWME1D object.
     def compute_source_term(self,order,values):
         computes the system matrix of the VegetationSWME1D evaluated in the given values, for the given order.
+    def compute_source_term_lastentry(self,order,values,last_moment_zero)
+        computes the last entry of the source term vector
 
     Instance methods
     ----------------
@@ -3656,6 +3442,7 @@ class VegetationSWME1D(SWME1D):
                 slip_length: float,
                 hyperbolic: bool,
                 linear_source: bool,
+                model_error_estimator_type: str,
                 diameter: float,
                 CD: float,
                 surface_density: float,
@@ -3675,6 +3462,8 @@ class VegetationSWME1D(SWME1D):
             true if hyperbolic, false if not hyperbolic
         linear_source : whether the source term can be written in constantmatrix-vector multiplication form
             true if source term can be written in constantmatrix-vector multiplication form, false if not
+        model_error_estimator_type : str
+            the type of model error estimator that is used for model coarsening and model refinement
         diameter : float
             diameter of a cylindrical vegetation stem
         CD : float
@@ -3682,11 +3471,14 @@ class VegetationSWME1D(SWME1D):
         surface_density : float
             number of vegetation stems per squared meter
         """
-        self.initial_condition = initial_condition
-        self.viscosity = viscosity
-        self.slip_length = slip_length
-        self.hyperbolic = hyperbolic
-        self.linear_source = linear_source
+
+        super().__init__(initial_condition,
+                         viscosity,
+                         slip_length,
+                         hyperbolic,
+                         linear_source,
+                         model_error_estimator_type)
+
         self.diameter = diameter
         self.CD = CD
         self.surface_density = surface_density
@@ -4357,11 +4149,76 @@ class VegetationSWME1D(SWME1D):
         S = S + self.compute_drag_force(order, values)
         return S
 
-    def compute_source_term_lastentry(self):
-        pass
+    def compute_source_term_lastentry(self,
+                            order: int,
+                            values: np.ndarray,
+                            last_moment_zero: bool,
+                            g = 1) -> np.ndarray:
+        #TODO this needs to be changed to the correct source term_lastentry from the vegetationSWME1D
+        # the gravitational constant g is set to 1 because the simulations are based on the dimensionless equations
+        source_term_lastentry = 0
+        h = values[0]
+        um = values[1]/values[0]
+        if order == 1:
+            alpha1 = values[2]/values[0]
+            if last_moment_zero:
+                alpha1 = 0
 
-    def compute_breakdown_criteria_full():
-        pass
+            source_term_lastentry = -3*self.viscosity/self.slip_length*(um + (1 + 4*self.slip_length/h)*alpha1)
+        if order == 2:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            if last_moment_zero:
+                alpha2 = 0
+
+            source_term_lastentry = -5*self.viscosity/self.slip_length*(um + alpha1 + (1 + 12*self.slip_length/h)*alpha2)
+        if order == 3:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            if last_moment_zero:
+                alpha3 = 0
+
+            source_term_lastentry = -7*self.viscosity/self.slip_length*((h + 4*self.slip_length)*alpha1 + h*(um + alpha2) + (h + 24*self.slip_length)*alpha3)/h
+        if order == 4:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            if last_moment_zero:
+                alpha4 = 0
+
+            source_term_lastentry = (-9*self.viscosity*(um + alpha1 + alpha3 + alpha4 + ((h + \
+            12*self.slip_length)*alpha2 + \
+            40*self.slip_length*alpha4)/h))/self.slip_length
+        if order == 5:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            alpha5 = values[6]/values[0]
+            if last_moment_zero:
+                alpha5 = 0
+
+            source_term_lastentry = (-11*self.viscosity*(h*um + (h + 4*self.slip_length)*alpha1 + \
+            h*alpha2 + (h + 24*self.slip_length)*alpha3 + h*alpha4 + (h + \
+            60*self.slip_length)*alpha5))/(h*self.slip_length)
+        if order == 6:
+            alpha1 = values[2]/values[0]
+            alpha2 = values[3]/values[0]
+            alpha3 = values[4]/values[0]
+            alpha4 = values[5]/values[0]
+            alpha5 = values[6]/values[0]
+            alpha6 = values[7]/values[0]
+            if last_moment_zero:
+                alpha6 = 0
+
+            source_term_lastentry = (-13*self.viscosity*(um + alpha1 + alpha3 + alpha4 + alpha5 + \
+            alpha6 + ((h + 12*self.slip_length)*alpha2 + \
+            40*self.slip_length*alpha4 + \
+            84*self.slip_length*alpha6)/h))/self.slip_length
+
+        return np.abs(source_term_lastentry)
 
 class HermiteMomentEquations(PDE):
 
@@ -4385,33 +4242,54 @@ class HermiteMomentEquations(PDE):
     exact_source_computation : boolean
         whether the source term is computed exactly
         true if the source term is computed exactly, false if not
-    
+    model_error_estimator_type : str
+        the type of model error estimator that is used for model coarsening and model refinement
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model coarsening
+    compute_coarsening_estimator : function
+        function that computes the local estimator for model refinement
+        
     Implemented methods from interface PDE
     ---------------------------------
-    def __init__(self, initial_condition,relaxation_time,hyperbolic,linear_source,exact_source_computation):
-        Constructs all the necessary attributes for the HermiteMomentEquations1D object.
     def compute_system_matrix(self,order,values):
-        computes the system matrix of the Hermite moment equations evaluated in the given values, for the given order. 
+        computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
+    def compute_system_matrix_augmented(self,order,values):
+        computes the system matrix of the augmented model equation, which is the equation that is solved
+        to predict the defined moments as well as the undefined higher-order moments
     def compute_source_term(self,order,values):
-        computes the source term of the Hermite moment equations evaluated in the given values, for the given order.
+        computes the system matrix of the partial differential equation evaluated in the given values, for the given order.
+    def compute_source_term_augmented(self,order,values):
+        computes the source term of the augmented model equation, which is the equation that is solved
+        to predict the defined moments as well as the undefined higher-order moments
     def compute_source_term_lastentry(self,order,values,last_moment_zero)
-        computes the last entry of the source term vector (BGK model)
+        computes the last entry of the source term vector
     def get_initial_values(self,order,initial_condition,position):
         calculates the initial values for one specific physical position
     def compute_number_of_variables(self,order):
-        computes the number of state variables in the Hermite moment equations given the order of the moment model
+        computes the number of state variables in the PDE given the order of the moment model
     def compute_max_wavespeed(self,order,values):
-        compute the maximum wavespeed in the Hermite moment equations system, 
-        used to calculate a timestep that satisfies CFL condition
+        compute the maximum wavespeed in the system, used to calculate a timestep that satisfies CFL condition
     def convert_to_primitive(self,order,data_matrix_convective):
         converts the computed values to the values of the primitive variables
-    def compute_breakdown_criteria_full(self):
-        computes breakdown criteria for the Hermite moment equations for adaptive simulation        
+    def compute_coarsening_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model coarsening
+    def compute_refinement_estimator_heur(self,value_central,value_left,value_right,order)
+        computes the heuristic model error estimator for model refinement
+    def compute_coarsening_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model coarsening
+    def compute_refinement_estimator_model_difference(self,value_central,value_left,value_right,order)
+        computes the model error estimator based on the exact model difference for model refinement
+    def compute_eigenvalues_and_eigenvectors(self, values)
+        computes the eigenvalues and the eigenvectors of the system matrix
+    def get_number_of_breakdown_estimators(self,number_of_variables,dom_decomp_criterion_type)
+        computes the number of breakdown estimators       
 
     Instance methods
     ----------------
     def _compute_source_exact(self,order,initial_values,delta_t):
         exact solution of w'(t) = S_matrix.w, with constant matrix S_matrix
+    def _compute_source_exact_augmented(self,order,values,delta_t):
+        exact solution of the augmented source term equation for adaptive simulation
 
     """
 
@@ -4441,6 +4319,8 @@ class HermiteMomentEquations(PDE):
         exact_source_computation : boolean
             whether the source term is computed exactly
             true if the source term is computed exactly, false if not
+        model_error_estimator_type : str
+            the type of model error estimator that is used for model coarsening and model refinement
         """
         self.initial_condition = initial_condition
         self.relaxation_time = relaxation_time
@@ -4448,11 +4328,7 @@ class HermiteMomentEquations(PDE):
         self.linear_source = linear_source
         self.exact_source_computation = exact_source_computation
 
-        self.compute_coarsening_estimator = self.compute_coarsening_estimator_model_difference
-        self.compute_refinement_estimator = self.compute_refinement_estimator_model_difference
-        if model_error_estimator_type == "heuristics_plus_hierarchical":
-            self.compute_coarsening_estimator = self.compute_coarsening_estimator_heur
-            self.compute_refinement_estimator = self.compute_refinement_estimator_heur
+        super().__init__(model_error_estimator_type)
 
     def compute_system_matrix(self,
                               order: int,
@@ -6571,6 +6447,29 @@ class HermiteMomentEquations(PDE):
                                order: int,
                                values: np.ndarray,
                                delta_t: float) -> np.ndarray:
+        
+        """
+        Exactly solves the ordinary differential equation w_{aug}'(t) = S_matrix_aug.w_{aug}(t),
+        with initial condition w_{aug}^n, for the augmented system. This function may be used for
+        adaptive simulation.
+
+        Parameters
+        ----------
+        order : integer
+            order of the model
+        values : numpy array
+            values of the variables before the source term step
+        delta_t : float
+            current time step
+        
+        Returns
+        -------
+        S_exact_augmented: numpy 1D array
+            solution of the ordinary differential equation w_{aug}'(t) = S_matrix_aug.w_{aug}(t),
+            with initial condition w_{aug}^n, at time w^n+1
+
+        """
+        
         if order < 15:
             order = order+1
 
@@ -6583,18 +6482,6 @@ class HermiteMomentEquations(PDE):
             S_exact_augmented[i] = values[i]*np.exp(-1.0/(self.relaxation_time/values[0])*delta_t)
 
         return S_exact_augmented
-
-    def _compute_source_matrix_inverse(self,
-                                      order: int,
-                                      values: np.ndarray,
-                                      delta_t) -> np.ndarray:
-        pass
-
-    def _compute_source_matrix_inverse_augmented(self,
-                                      order: int,
-                                      values: np.ndarray,
-                                      delta_t) -> np.ndarray:
-        pass
 
     def compute_source_term_lastentry(self,
                             order: int,
@@ -6712,8 +6599,8 @@ class HermiteMomentEquations(PDE):
             if order > 9:
                 initial_values[10] = 0.1
         elif initial_condition == 'symmetric_shockTube':
-            x0 = -0.3
-            x1 = 0.3
+            x0 = -0.2
+            x1 = 0.2
             if x0 < position < x1:
                 initial_values[0] = 1
                 initial_values[1] = 0
@@ -6973,136 +6860,82 @@ class HermiteMomentEquations(PDE):
                                    value_central: np.ndarray, 
                                    value_left: np.ndarray,
                                    value_right: np.ndarray,
-                                   order,
-                                   max_order,
-                                   delta_t,
-                                   delta_x):
+                                   order: int,
+                                   max_order: int,
+                                   delta_t: float,
+                                   delta_x: float) -> float:
         
-        gradient_approximations = np.abs(value_right-value_left),
-        source_higher_order_moments = np.abs(self.compute_source_term_lastentry(order,value_central,True))
-
-        return gradient_approximations, source_higher_order_moments
+        pass
 
     def compute_heuristics_coarsening(self,
                                    value_central: np.ndarray, 
                                    value_left: np.ndarray,
                                    value_right: np.ndarray,
-                                   order,
-                                   max_order,
-                                   delta_t,
-                                   delta_x):
+                                   order: int,
+                                   max_order: int,
+                                   delta_t: float,
+                                   delta_x: float):
         
         pass
-
-    def compute_coarsening_estimator_model_difference_old(self,
-                                            value_central: np.ndarray, 
-                                            value_left: np.ndarray,
-                                            value_right: np.ndarray,
-                                            order: int,
-                                            delta_t: float,
-                                            delta_x: float) -> float:
-        
-        decrease_quantity = 0
-    
-        if order == 4:
-            decrease_quantity = 6/value_central[0]*(value_right[3]-value_left[3])
-        elif order == 5:
-            decrease_quantity = 4*value_central[3]*(value_right[1]-value_left[1])+4*(value_right[4]-value_left[4])
-            # decrease_quantity = 4*value_central[3]*(value_right[1]-value_left[1])
-        else:
-            decrease_quantity = (order-1)*(value_right[order-1]-value_left[order-1])+\
-                                (order-1)/2*(2*value_central[order-2]*(value_right[1]-value_left[1])+\
-                                value_central[order-3]*(value_right[2]-value_left[2]))
-            # decrease_quantity = (order-1)/2*(2*value_central[order-2]*(value_right[1]-value_left[1])+\
-            #                     value_central[order-3]*(value_right[2]-value_left[2]))
-
-        decrease_quantity = decrease_quantity/delta_x
-
-        return decrease_quantity
 
     def compute_coarsening_estimator_model_difference(self,
                                             value_left: np.ndarray, 
                                             value_central: np.ndarray,
                                             value_right: np.ndarray,
                                             order: int,
+                                            max_order: int,
                                             delta_t: float,
-                                            delta_x: float) -> tuple[float,int]:
+                                            delta_x: float) -> float:
         
-        decrease_quantity = 0
+        coarsening_quantity = 0
     
         if order == 4:
-            decrease_quantity = max(abs(6/value_central[0]*(value_central[3]-value_left[3])),
+            coarsening_quantity = max(abs(6/value_central[0]*(value_central[3]-value_left[3])),
                                     abs(6/value_central[0]*(value_right[3]-value_central[3])))
         elif order == 5:
-            decrease_quantity = max(abs(4*value_central[3]*(value_central[1]-value_left[1])+4*(value_central[4]-value_left[4])),
+            coarsening_quantity = max(abs(4*value_central[3]*(value_central[1]-value_left[1])+4*(value_central[4]-value_left[4])),
                                     abs(4*value_central[3]*(value_right[1]-value_central[1])+4*(value_right[4]-value_central[4])))
-            # decrease_quantity = 4*value_central[3]*(value_right[1]-value_left[1])
+            # coarsening_quantity = 4*value_central[3]*(value_right[1]-value_left[1])
         else:
-            decrease_quantity = max(abs((order-1)*(value_central[order-1]-value_left[order-1])+\
+            coarsening_quantity = max(abs((order-1)*(value_central[order-1]-value_left[order-1])+\
                                 (order-1)/2*(2*value_central[order-2]*(value_central[1]-value_left[1])+\
                                 value_central[order-3]*(value_central[2]-value_left[2]))),
                                 abs((order-1)*(value_right[order-1]-value_central[order-1])+\
                                 (order-1)/2*(2*value_central[order-2]*(value_right[1]-value_central[1])+\
                                 value_central[order-3]*(value_right[2]-value_central[2]))))
-            # decrease_quantity = (order-1)/2*(2*value_central[order-2]*(value_right[1]-value_left[1])+\
+            # coarsening_quantity = (order-1)/2*(2*value_central[order-2]*(value_right[1]-value_left[1])+\
             #                     value_central[order-3]*(value_right[2]-value_left[2]))
 
-        decrease_quantity = decrease_quantity/delta_x
+        coarsening_quantity = coarsening_quantity/delta_x
 
-        return decrease_quantity
-
-    def compute_refinement_estimator_model_difference_old(self,
-                                   value_central: np.ndarray, 
-                                   value_left: np.ndarray,
-                                   value_right: np.ndarray,
-                                   order,
-                                   max_order,
-                                   delta_t: float,
-                                   delta_x: float):
-        
-        increase_quantity = 0
-        if order == 2:
-            increase_quantity = 6/value_central[0]*(value_right[3]-value_left[3])
-        elif order == 3:
-            increase_quantity = 4*value_central[3]*(value_right[1]-value_left[1])+4*(value_right[4]-value_left[4])
-        elif order == max_order:
-            increase_quantity = (order+1)/2*(2*value_central[order]*(value_right[1]-value_left[1])+\
-                                value_central[order-1]*(value_right[2]-value_left[2]))  
-        else:
-            increase_quantity = (order+1)*(value_right[order+1]-value_left[order+1])+\
-                                (order+1)/2*(2*value_central[order]*(value_right[1]-value_left[1])+\
-                                value_central[order-1]*(value_right[2]-value_left[2]))
-        
-        increase_quantity = increase_quantity/delta_x
-        
-        return increase_quantity
+        return coarsening_quantity
 
     def compute_refinement_estimator_model_difference(self,
                                    value_left: np.ndarray, 
                                    value_central: np.ndarray,
                                    value_right: np.ndarray,
-                                   order,
-                                   max_order,
+                                   order: int,
+                                   max_order: int,
                                    delta_t: float,
-                                   delta_x: float):
+                                   delta_x: float) -> float:
         
-        increase_quantity = 0
+        refinement_quantity = 0
 
         if order == 2:
-            increase_quantity = max(abs(6/value_central[0]*(value_central[3]-value_left[3])),
+            refinement_quantity = max(abs(6/value_central[0]*(value_central[3]-value_left[3])),
                                     abs(6/value_central[0]*(value_right[3]-value_central[3])))
         elif order == 3:
-            increase_quantity = max(abs(4*value_central[3]*(value_central[1]-value_left[1])+4*(value_central[4]-value_left[4])),
+            refinement_quantity = max(abs(4*value_central[3]*(value_central[1]-value_left[1])+4*(value_central[4]-value_left[4])),
                                     abs(4*value_central[3]*(value_right[1]-value_central[1])+4*(value_right[4]-value_central[4])))
         elif order == max_order:
-            increase_quantity = max(
+            refinement_quantity = max(
                                     abs((order+1)/2*(2*value_central[order]*(value_central[1]-value_left[1])+\
                                         value_central[order-1]*(value_central[2]-value_left[2]))),
                                     abs((order+1)/2*(2*value_central[order]*(value_right[1]-value_central[1])+\
                                         value_central[order-1]*(value_right[2]-value_central[2])))
                                 )  
         else:
-            increase_quantity = max(
+            refinement_quantity = max(
                                     abs((order+1)*(value_central[order+1]-value_left[order+1])+\
                                         (order+1)/2*(2*value_central[order]*(value_central[1]-value_left[1])+\
                                         value_central[order-1]*(value_central[2]-value_left[2]))),
@@ -7111,485 +6944,14 @@ class HermiteMomentEquations(PDE):
                                         value_central[order-1]*(value_right[2]-value_central[2])))
                                 )
         
-        increase_quantity = increase_quantity/delta_x
+        refinement_quantity = refinement_quantity/delta_x
 
-        return increase_quantity
+        return refinement_quantity
 
     def compute_coarsening_estimator_heur(self):
         pass
 
     def compute_refinement_estimator_heur(self):
-        pass
-
-    def compute_refinement_criterion_old(self,
-                                    values: np.ndarray,
-                                    orders: list,
-                                    max_order: int,
-                                    numbers_of_variables: list,
-                                    n: int,
-                                    boundary_interfaces: list,
-                                    delta_t: float,
-                                    delta_x: float,
-                                    tolerance_increase = 0.0015) -> np.ndarray:
-        
-        increase_criterion_flags = np.zeros(n,dtype=int)
-        breakdown_estimators_increase = np.zeros(n)
-
-        backward_differences = np.zeros(n)
-        forward_differences = np.zeros(n)
-
-        input_values = np.copy(values) 
-
-        r = 0
-
-        order = orders[0]
-        n_variables = numbers_of_variables[0]
-        for m in range(len(boundary_interfaces)):
-            n_variables_prev = n_variables
-            order = orders[m]
-            n_variables = numbers_of_variables[m]
-            n_variables_next = numbers_of_variables[m+1]
-            l = r+1
-            r = boundary_interfaces[m]  
-
-            n_left = min(n_variables_prev,n_variables)
-            n_right = min(n_variables,n_variables_next)
-
-            left_boundary_value = input_values[l,:]
-            right_boundary_value = input_values[r,:]
-            left_boundary_value[:n_left] = input_values[l-1,:n_left]
-            right_boundary_value[:n_right] = input_values[r+1,:n_right]
-
-            backward_differences[l-1] = np.abs(self.compute_refinement_estimator(values[l,:],
-                                                                                        left_boundary_value,
-                                                                                        values[l,:],
-                                                                                        order,
-                                                                                        max_order,
-                                                                                        delta_t,
-                                                                                        delta_x)) 
-            forward_differences[l-1] = np.abs(self.compute_refinement_estimator(values[l,:],
-                                                                                        values[l,:],
-                                                                                        values[l+1,:],
-                                                                                        order,
-                                                                                        max_order,
-                                                                                        delta_t,
-                                                                                        delta_x))                  
-                                                    
-            for i in range(l+1,r):
-                backward_differences[i-1] = np.abs(self.compute_refinement_estimator(values[i,:],
-                                                                                            values[i-1,:],
-                                                                                            values[i,:],
-                                                                                            order,
-                                                                                            max_order,
-                                                                                            delta_t,
-                                                                                            delta_x)) 
-                forward_differences[i-1] = np.abs(self.compute_refinement_estimator(values[i,:],
-                                                                                            values[i,:],
-                                                                                            values[i+1,:],
-                                                                                            order,
-                                                                                            max_order,
-                                                                                            delta_t,
-                                                                                            delta_x))        
-            backward_differences[r-1] = np.abs(self.compute_refinement_estimator(values[r,:],
-                                                                                        values[r-1,:],
-                                                                                        values[r,:],
-                                                                                        order,
-                                                                                        max_order,
-                                                                                        delta_t,
-                                                                                        delta_x)) 
-            forward_differences[r-1] = np.abs(self.compute_refinement_estimator(values[r,:],
-                                                                                        values[r,:],
-                                                                                        right_boundary_value,
-                                                                                        order,
-                                                                                        max_order,
-                                                                                        delta_t,
-                                                                                        delta_x)) 
-
-        n_variables_prev = n_variables
-        order = orders[-1]
-        n_variables = numbers_of_variables[-1]
-
-        n_left = min(n_variables_prev,n_variables)
-
-        l = r+1  
-
-        left_boundary_value = input_values[l,:]            
-        left_boundary_value[:n_left] = input_values[l-1,:n_left]  
-
-        backward_differences[l-1] = np.abs(self.compute_refinement_estimator(values[l,:],
-                                                                                    left_boundary_value,
-                                                                                    values[l,:],
-                                                                                    order,
-                                                                                    max_order,
-                                                                                    delta_t,
-                                                                                    delta_x)) 
-        forward_differences[l-1] = np.abs(self.compute_refinement_estimator(values[l,:],
-                                                                                    values[l,:],
-                                                                                    values[l+1,:],
-                                                                                    order,
-                                                                                    max_order,
-                                                                                    delta_t,
-                                                                                    delta_x))                  
-                                                
-        for i in range(l+1,n+1):
-            backward_differences[i-1] = np.abs(self.compute_refinement_estimator(values[i,:],
-                                                                                        values[i-1,:],
-                                                                                        values[i,:],
-                                                                                        order,
-                                                                                        max_order,
-                                                                                        delta_t,
-                                                                                        delta_x)) 
-            forward_differences[i-1] = np.abs(self.compute_refinement_estimator(values[i,:],
-                                                                                        values[i,:],
-                                                                                        values[i+1,:],
-                                                                                        order,
-                                                                                        max_order,
-                                                                                        delta_t,
-                                                                                        delta_x)) 
-
-        breakdown_estimators_increase = np.maximum(forward_differences,backward_differences)
-
-        for i in range(n):
-            if breakdown_estimators_increase[i] > tolerance_increase: 
-                increase_criterion_flags[i] = 2            
-        return breakdown_estimators_increase, increase_criterion_flags
-
-    def compute_refinement_criterion(self,
-                                    values: np.ndarray,
-                                    orders: list,
-                                    max_order: int,
-                                    numbers_of_variables: list,
-                                    n: int,
-                                    boundary_interfaces: list,
-                                    delta_t: float,
-                                    delta_x: float,
-                                    tols_refinement) -> np.ndarray:
-
-        increase_criterion_flags = np.zeros(n,dtype=int)
-        model_error_estimators_increase = np.zeros(n)
-
-        input_values = np.copy(values) 
-
-        r = 0
-
-        order = orders[0]
-        n_variables = numbers_of_variables[0]
-        for m in range(len(boundary_interfaces)):
-            n_variables_prev = n_variables
-            order = orders[m]
-            n_variables = numbers_of_variables[m]
-            n_variables_next = numbers_of_variables[m+1]
-            l = r+1
-            r = boundary_interfaces[m]  
-
-            n_left = min(n_variables_prev,n_variables)
-            n_right = min(n_variables,n_variables_next)
-
-            left_boundary_value = input_values[l,:]
-            right_boundary_value = input_values[r,:]
-            left_boundary_value[:n_left] = input_values[l-1,:n_left]
-            right_boundary_value[:n_right] = input_values[r+1,:n_right]
-
-            model_error_estimators_increase[l-1], increase_criterion_flags[l-1] = self.compute_refinement_estimator(
-                                                                                    left_boundary_value,
-                                                                                    values[l,:],
-                                                                                    values[l+1,:],
-                                                                                    order,
-                                                                                    max_order,
-                                                                                    delta_t,
-                                                                                    delta_x,
-                                                                                    tols_refinement) 
-
-            for i in range(l+1,r):
-                model_error_estimators_increase[i-1], increase_criterion_flags[i-1] = self.compute_refinement_estimator(values[i-1,:],
-                                                                                            values[i,:],
-                                                                                            values[i+1,:],
-                                                                                            order,
-                                                                                            max_order,
-                                                                                            delta_t,
-                                                                                            delta_x,
-                                                                                            tols_refinement)     
-            model_error_estimators_increase[r-1], increase_criterion_flags[r-1] = self.compute_refinement_estimator(values[r-1,:],
-                                                                                        values[r,:],
-                                                                                        right_boundary_value,
-                                                                                        order,
-                                                                                        max_order,
-                                                                                        delta_t,
-                                                                                        delta_x,
-                                                                                        tols_refinement) 
-
-        n_variables_prev = n_variables
-        order = orders[-1]
-        n_variables = numbers_of_variables[-1]
-
-        n_left = min(n_variables_prev,n_variables)
-
-        l = r+1  
-
-        left_boundary_value = input_values[l,:]            
-        left_boundary_value[:n_left] = input_values[l-1,:n_left]  
-
-        model_error_estimators_increase[l-1], increase_criterion_flags[l-1] = self.compute_refinement_estimator(left_boundary_value,
-                                                                                values[l,:],
-                                                                                values[l+1,:],
-                                                                                order,
-                                                                                max_order,
-                                                                                delta_t,
-                                                                                delta_x,
-                                                                                tols_refinement)                 
-                                                
-        for i in range(l+1,n+1):
-            model_error_estimators_increase[i-1], increase_criterion_flags[i-1] = self.compute_refinement_estimator(values[i-1,:],
-                                                                        values[i,:],
-                                                                        values[i+1,:],
-                                                                        order,
-                                                                        max_order,
-                                                                        delta_t,
-                                                                        delta_x,
-                                                                        tols_refinement) 
-            
-        model_error_estimators_increase = model_error_estimators_increase/delta_x
-           
-        return model_error_estimators_increase, increase_criterion_flags
-
-    def compute_coarsening_criterion_old(self,
-                                    values: np.ndarray,
-                                    delta_t: float,
-                                    delta_x: float,
-                                    orders: list,
-                                    max_order: int,
-                                    numbers_of_variables: list,
-                                    n: int,
-                                    boundary_interfaces: list,
-                                    tols_decrease,
-                                    increase_criterion_flags: np.ndarray) -> np.ndarray:
-
-        decrease_criterion_flags = np.zeros(n,dtype=int)
-        breakdown_estimators_decrease = np.zeros(n)
-
-        backward_differences = np.zeros(n)
-        forward_differences = np.zeros(n)
-
-        input_values = np.copy(values)
-
-        r = 0
-
-        order = orders[0]
-        n_variables = numbers_of_variables[0]
-        for m in range(len(boundary_interfaces)):
-            n_variables_prev = n_variables
-            order = orders[m]
-            n_variables = numbers_of_variables[m]
-            n_variables_next = numbers_of_variables[m+1]
-            l = r+1
-            r = boundary_interfaces[m]  
-
-            n_left = min(n_variables_prev,n_variables)
-            n_right = min(n_variables,n_variables_next)
-
-            left_boundary_value = input_values[l,:]
-            right_boundary_value = input_values[r,:]
-            left_boundary_value[:n_left] = input_values[l-1,:n_left]
-            right_boundary_value[:n_right] = input_values[r+1,:n_right]
-
-            if order > 3:
-                backward_differences[l-1] = np.abs(self.compute_coarsening_estimator(values[l,:],
-                                                                                            left_boundary_value,
-                                                                                            values[l,:],
-                                                                                            order,
-                                                                                            delta_t,
-                                                                                            delta_x)) 
-                forward_differences[l-1] = np.abs(self.compute_coarsening_estimator(values[l,:],
-                                                                                            values[l,:],
-                                                                                            values[l+1,:],
-                                                                                            order,
-                                                                                            delta_t,
-                                                                                            delta_x))                                                        
-                for i in range(l+1,r):
-                    backward_differences[i-1] = np.abs(self.compute_coarsening_estimator(values[i,:],
-                                                                                                values[i-1,:],
-                                                                                                values[i,:],
-                                                                                                order,
-                                                                                                delta_t,
-                                                                                                delta_x)) 
-                    forward_differences[i-1] = np.abs(self.compute_coarsening_estimator(values[i,:],
-                                                                                                values[i,:],
-                                                                                                values[i+1,:],
-                                                                                                order))           
-                backward_differences[r-1] = np.abs(self.compute_coarsening_estimator(values[r,:],
-                                                                                            values[r-1,:],
-                                                                                            values[r,:],
-                                                                                            order,
-                                                                                            delta_t,
-                                                                                            delta_x)) 
-                forward_differences[r-1] = np.abs(self.compute_coarsening_estimator(values[r,:],
-                                                                                            values[r,:],
-                                                                                            right_boundary_value,
-                                                                                            order,
-                                                                                            delta_t,
-                                                                                            delta_x)) 
-        n_variables_prev = n_variables
-        order = orders[-1]
-        n_variables = numbers_of_variables[-1]
-
-        n_left = min(n_variables_prev,n_variables)
-
-        l = r+1  
-
-        left_boundary_value = input_values[l,:]            
-        left_boundary_value[:n_left] = input_values[l-1,:n_left]  
-
-        if order > 3:
-            backward_differences[l-1] = np.abs(self.compute_coarsening_estimator(values[l,:],
-                                                                                        left_boundary_value,
-                                                                                        values[l,:],
-                                                                                        order,
-                                                                                        delta_t,
-                                                                                        delta_x)) 
-            forward_differences[l-1] = np.abs(self.compute_coarsening_estimator(values[l,:],
-                                                                                        values[l,:],
-                                                                                        values[l+1,:],
-                                                                                        order,
-                                                                                        delta_t,
-                                                                                        delta_x))                                                        
-            for i in range(l+1,n+1):
-                backward_differences[i-1] = np.abs(self.compute_coarsening_estimator(values[i,:],
-                                                                                            values[i-1,:],
-                                                                                            values[i,:],
-                                                                                            order,
-                                                                                            delta_t,
-                                                                                            delta_x)) 
-                forward_differences[i-1] = np.abs(self.compute_coarsening_estimator(values[i,:],
-                                                                                            values[i,:],
-                                                                                            values[i+1,:],
-                                                                                            order,
-                                                                                            delta_t,
-                                                                                            delta_x)) 
-
-        breakdown_estimators_decrease = np.maximum(backward_differences,forward_differences)
-
-        for i in range(n):
-            if increase_criterion_flags[i] == 0 and breakdown_estimators_decrease[i] < tols_decrease:
-                decrease_criterion_flags[i] = -2
-
-        return breakdown_estimators_decrease, decrease_criterion_flags
-
-    def compute_coarsening_criterion(self,
-                                    values: np.ndarray,
-                                    delta_t: float,
-                                    delta_x: float,
-                                    orders: list,
-                                    max_order: int,
-                                    numbers_of_variables: list,
-                                    n: int,
-                                    boundary_interfaces: list,
-                                    tols_coarsening,
-                                    increase_criterion_flags: np.ndarray) -> np.ndarray:
-
-        decrease_criterion_flags = np.zeros(n,dtype=int)
-        model_error_estimators_decrease = np.zeros(n)
-
-        input_values = np.copy(values)
-
-        r = 0
-
-        order = orders[0]
-        n_variables = numbers_of_variables[0]
-        for m in range(len(boundary_interfaces)):
-            n_variables_prev = n_variables
-            order = orders[m]
-            n_variables = numbers_of_variables[m]
-            n_variables_next = numbers_of_variables[m+1]
-            l = r+1
-            r = boundary_interfaces[m]  
-
-            n_left = min(n_variables_prev,n_variables)
-            n_right = min(n_variables,n_variables_next)
-
-            left_boundary_value = input_values[l,:]
-            right_boundary_value = input_values[r,:]
-            left_boundary_value[:n_left] = input_values[l-1,:n_left]
-            right_boundary_value[:n_right] = input_values[r+1,:n_right]
-
-            if order > 3:
-                if increase_criterion_flags[l-1] == 0:
-                    model_error_estimators_decrease[l-1], decrease_criterion_flags[l-1] = self.compute_coarsening_estimator(left_boundary_value,
-                                                                                                values[l,:],
-                                                                                                values[l+1,:],
-                                                                                                order,
-                                                                                                delta_t,
-                                                                                                delta_x,
-                                                                                                tols_coarsening)                                                       
-                for i in range(l+1,r):
-                    if increase_criterion_flags[i-1] == 0:
-                        model_error_estimators_decrease[i-1], decrease_criterion_flags[i-1] = self.compute_coarsening_estimator(values[i-1,:],
-                                                                                                    values[i,:],
-                                                                                                    values[i+1,:],
-                                                                                                    order,
-                                                                                                    delta_t,
-                                                                                                    delta_x,
-                                                                                                    tols_coarsening)          
-                if increase_criterion_flags[r-1] == 0:
-                    model_error_estimators_decrease[r-1], decrease_criterion_flags[r-1] = self.compute_coarsening_estimator(values[r-1,:],
-                                                                                                values[r,:],
-                                                                                                right_boundary_value,
-                                                                                                order,
-                                                                                                delta_t,
-                                                                                                delta_x,
-                                                                                                tols_coarsening) 
-        n_variables_prev = n_variables
-        order = orders[-1]
-        n_variables = numbers_of_variables[-1]
-
-        n_left = min(n_variables_prev,n_variables)
-
-        l = r+1  
-
-        left_boundary_value = input_values[l,:]            
-        left_boundary_value[:n_left] = input_values[l-1,:n_left]  
-
-        if order > 3:
-            if increase_criterion_flags[l-1] == 0:
-                model_error_estimators_decrease[l-1], decrease_criterion_flags[l-1] = self.compute_coarsening_estimator(
-                                                                                            left_boundary_value,
-                                                                                            values[l,:],
-                                                                                            values[l+1,:],
-                                                                                            order,
-                                                                                            delta_t,
-                                                                                            delta_x,
-                                                                                            tols_coarsening)                                                      
-            for i in range(l+1,n+1):
-                if increase_criterion_flags[i-1] == 0:
-                    model_error_estimators_decrease[i-1], decrease_criterion_flags[i-1] = self.compute_coarsening_estimator(values[i-1,:],
-                                                                                                values[i,:],
-                                                                                                values[i+1,:],
-                                                                                                order,
-                                                                                                delta_t,
-                                                                                                delta_x,
-                                                                                                tols_coarsening) 
-
-        return model_error_estimators_decrease, decrease_criterion_flags
-
-    def decompose_domain(self,
-                        n: int,
-                        max_order: int,
-                        orders_cellwise: list,
-                        flags_decrease: np.ndarray,
-                        flags_increase: np.ndarray) -> np.ndarray:       
-        
-        domain_decomposition_flags = np.zeros(n,dtype=int)
-        for i in range(n):
-            if flags_increase[i] > 0:
-                if orders_cellwise[i+1] < max_order - 1:
-                    domain_decomposition_flags[i] = flags_increase[i]
-            else:
-                if flags_decrease[i] < 0:
-                    if orders_cellwise[i+1] > 2:
-                        domain_decomposition_flags[i] = flags_decrease[i]
-
-        return domain_decomposition_flags
-
-    def compute_breakdown_criteria_full(self):
         pass
 
     def compute_eigenvalues_and_eigenvectors(self,
@@ -7618,7 +6980,9 @@ class HermiteMomentEquations(PDE):
                                    
         return eigenvalues, eigenvectors
         
-    def get_number_of_breakdown_estimators(self,number_of_variables,dom_decomp_criterion_type):
+    def get_number_of_breakdown_estimators(self,
+                                           number_of_variables: int,
+                                           dom_decomp_criterion_type: str) -> tuple[int,int]:
     
         number_of_breakdown_estimators_coarsening = 0
         number_of_breakdown_estimators_refinement = 0
@@ -7626,8 +6990,8 @@ class HermiteMomentEquations(PDE):
             number_of_breakdown_estimators_coarsening = 1
             number_of_breakdown_estimators_refinement = 1
         elif dom_decomp_criterion_type == "heuristics_plus_discretization":
-            print("this breakdwon estimator has not been implemented yet")
+            print("this breakdown estimator has not been implemented yet")
         else:
-            print("this breakdwon estimator has not been implemented yet") 
+            print("this breakdown estimator has not been implemented yet") 
 
         return number_of_breakdown_estimators_coarsening,number_of_breakdown_estimators_refinement

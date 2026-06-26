@@ -75,6 +75,18 @@ class Implicit(TimeIntegration):
 
     def __init__(self,
                  linear: bool):
+        """
+        Initializes the implicit time integrator.
+
+        Parameters
+        ----------
+        linear : bool
+            whether the to-be-integrated equations can be written in linear form
+
+        """
+        pass
+
+
         self.linear = linear
 
     def integrate(self,

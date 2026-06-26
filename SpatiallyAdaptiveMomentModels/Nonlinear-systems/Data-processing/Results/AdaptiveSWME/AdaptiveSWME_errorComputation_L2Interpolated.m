@@ -15,11 +15,11 @@ format long
 %%%%%%%%%%%% Specify the used simulation files %%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% name1 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_order2_t5_10000'; type1 = 'swme';
-% name2 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_order5_t5_10000'; type2 = 'swme';
-% name3 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_adaptiveNonConservative_t5_10000'; type3 = 'swmeAdaptive';
-% name4 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_adaptiveConservative_t5_10000'; type4 = 'swmeAdaptive';
-% reference_data = load("damBreak-and-smooth_linear_lambda0.1_nu1.0_t5_2000x200.csv");
+name1 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_order2_t5_10000'; type1 = 'swme';
+name2 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_order5_t5_10000'; type2 = 'swme';
+name3 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_adaptiveNonConservative_t5_10000'; type3 = 'swmeAdaptive';
+name4 = 'damBreak-and-smooth_linear_lambda0.1_nu1.0_adaptiveConservative_t5_10000'; type4 = 'swmeAdaptive';
+reference_data = load("damBreak-and-smooth_linear_lambda0.1_nu1.0_t5_2000x200.csv");
 
 % name1 = 'damBreak-and-smooth_linear_lambda0.1_nu0.1_order1_t5_10000'; type1 = 'swme';
 % name2 = 'damBreak-and-smooth_linear_lambda0.1_nu0.1_order5_t5_10000'; type2 = 'swme';
@@ -27,11 +27,11 @@ format long
 % name4 = 'damBreak-and-smooth_linear_lambda0.1_nu0.1_adaptiveConservative_t5_10000'; type4 = 'swmeAdaptive';
 % reference_data = load("damBreak-and-smooth_linear_lambda0.1_nu0.1_t5_2000x200.csv");
 
-name1 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_order1_t5_10000'; type1 = 'swme';
-name2 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_order5_t5_10000'; type2 = 'swme';
-name3 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_adaptiveNonConservative_t5_10000'; type3 = 'swmeAdaptive';
-name4 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_adaptiveConservative_t5_10000'; type4 = 'swmeAdaptive';
-reference_data = load("damBreak-and-smooth_linear_lambda1.0_nu0.1_t5_2000x200.csv");
+% name1 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_order1_t5_10000'; type1 = 'swme';
+% name2 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_order5_t5_10000'; type2 = 'swme';
+% name3 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_adaptiveNonConservative_t5_10000'; type3 = 'swmeAdaptive';
+% name4 = 'damBreak-and-smooth_linear_lambda1.0_nu0.1_adaptiveConservative_t5_10000'; type4 = 'swmeAdaptive';
+% reference_data = load("damBreak-and-smooth_linear_lambda1.0_nu0.1_t5_2000x200.csv");
 
 
 % Moment model data
@@ -123,10 +123,15 @@ L2_norm_alpha22 = sqrt(trapz(x_common, (alpha22_interp - alpha2_ref_interp).^2))
 L2_norm_alpha23 = sqrt(trapz(x_common, (alpha23_interp - alpha2_ref_interp).^2));
 L2_norm_alpha24 = sqrt(trapz(x_common, (alpha24_interp - alpha2_ref_interp).^2));
 
-h_diff_norms = [L2_norm_h1,L2_norm_h2,L2_norm_h3,L2_norm_h4];
-u_diff_norms = [L2_norm_u1,L2_norm_u2,L2_norm_u3,L2_norm_u4]/norm(u_ref);
-alpha1_diff_norms = [L2_norm_alpha11,L2_norm_alpha12,L2_norm_alpha13,L2_norm_alpha14]/norm(alpha1_ref);
-alpha2_diff_norms = [L2_norm_alpha21,L2_norm_alpha22,L2_norm_alpha23,L2_norm_alpha24]/norm(alpha2_ref);
+norm_h_ref = sqrt(trapz(x_common, (h_ref_interp).^2));
+norm_u_ref = sqrt(trapz(x_common, (u_ref_interp).^2));
+norm_alpha1_ref = sqrt(trapz(x_common, (alpha1_ref_interp).^2));
+norm_alpha2_ref = sqrt(trapz(x_common, (alpha2_ref_interp).^2));
+
+h_diff_norms = [L2_norm_h1,L2_norm_h2,L2_norm_h3,L2_norm_h4]/norm_h_ref;
+u_diff_norms = [L2_norm_u1,L2_norm_u2,L2_norm_u3,L2_norm_u4]/norm_u_ref;
+alpha1_diff_norms = [L2_norm_alpha11,L2_norm_alpha12,L2_norm_alpha13,L2_norm_alpha14]/norm_alpha1_ref;
+alpha2_diff_norms = [L2_norm_alpha21,L2_norm_alpha22,L2_norm_alpha23,L2_norm_alpha24]/norm_alpha2_ref;
  
 % writematrix(h_diff_norms,'AdaptiveSWME_Paper\damBreak-and-smooth_linear_lambda1.0_nu0.1_error_h.csv')
 % writematrix(u_diff_norms,'AdaptiveSWME_Paper\damBreak-and-smooth_linear_lambda1.0_nu0.1_error_u.csv')
@@ -135,4 +140,10 @@ alpha2_diff_norms = [L2_norm_alpha21,L2_norm_alpha22,L2_norm_alpha23,L2_norm_alp
 
 x_axis = [0,1,2,3];
 
+h_diff_norms
+
+u_diff_norms
+
 alpha1_diff_norms
+
+alpha2_diff_norms
