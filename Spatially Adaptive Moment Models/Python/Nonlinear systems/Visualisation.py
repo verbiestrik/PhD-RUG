@@ -121,6 +121,7 @@ def visualisation(pde_type: PDE.PDE,
             h_var = np.var([data_array[n,:,1] for n in range(n_MC)], axis=0)
             um_exp = np.average([data_array[n,:,2] for n in range(n_MC)], axis=0)
             um_var = np.var([data_array[n,:,2] for n in range(n_MC)], axis=0)
+            SG_order = 1 # Must be bigger than 0 for later
 
             x = data_array[0,:,0]
         
@@ -203,11 +204,12 @@ def visualisation(pde_type: PDE.PDE,
                 fig, (ax1, ax2, ax3) = plt.subplots(1,3)
 
                 ax3.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-                if fill == True:
-                    ax3.fill_between(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-                else:
-                    ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label).format(label), color=color_2, linestyle=ls, linewidth=lw)
-                    ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+                if SG_order > 0:
+                    if fill == True:
+                        ax3.fill_between(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+                    else:
+                        ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label).format(label), color=color_2, linestyle=ls, linewidth=lw)
+                        ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
                 ax3.set_xlabel('x')
                 ax3.legend()
                 ax3.grid()
@@ -219,14 +221,15 @@ def visualisation(pde_type: PDE.PDE,
 
                 ax3.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
                 ax4.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-                if fill == True:
-                    ax3.fill_between(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-                    ax4.fill_between(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-                else:
-                    ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label).format(label), color=color_2, linestyle=ls, linewidth=lw)
-                    ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
-                    ax4.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label).format(label), color=color_2, linestyle=ls, linewidth=lw)
-                    ax4.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+                if SG_order > 0:
+                    if fill == True:
+                        ax3.fill_between(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+                        ax4.fill_between(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+                    else:
+                        ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label).format(label), color=color_2, linestyle=ls, linewidth=lw)
+                        ax3.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+                        ax4.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label).format(label), color=color_2, linestyle=ls, linewidth=lw)
+                        ax4.plot(data_array[int(crop_l*resolutionX):int(crop_r*resolutionX),0], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
                 ax3.set_xlabel('x')
                 ax4.set_xlabel('x')
                 ax3.legend()
@@ -256,21 +259,23 @@ def visualisation(pde_type: PDE.PDE,
         #ax1.legend()
         
         ax1.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-        if fill == True:
-            ax1.fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-        else:
-            ax1.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
-            ax1.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+        if SG_order > 0:
+            if fill == True:
+                ax1.fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+            else:
+                ax1.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                ax1.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
         ax1.set_xlabel('x')
         ax1.legend()
         ax1.grid()
         
         ax2.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-        if fill == True:
-            ax2.fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-        else:
-            ax2.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
-            ax2.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+        if SG_order > 0:
+            if fill == True:
+                ax2.fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+            else:
+                ax2.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                ax2.plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
         ax2.set_xlabel('x')
         ax2.legend()
         ax2.grid()
@@ -372,6 +377,7 @@ def visualisation_add(ax_arr,
             h_var = np.var([data_array[n,:,1] for n in range(n_MC)], axis=0)
             um_exp = np.average([data_array[n,:,2] for n in range(n_MC)], axis=0)
             um_var = np.var([data_array[n,:,2] for n in range(n_MC)], axis=0)
+            SG_order = 1 # Must be bigger than 0 for later
             
             x = data_array[0,:,0]
 
@@ -431,24 +437,26 @@ def visualisation_add(ax_arr,
 
             if mom_order == 1:
                 ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-                if fill == True:
-                    ax_arr[2].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-                else:
-                    ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
-                    ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+                if SG_order > 0:
+                    if fill == True:
+                        ax_arr[2].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+                    else:
+                        ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                        ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
                 ax_arr[2].legend()
 
             elif mom_order == 2:
                 ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
                 ax_arr[3].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-                if fill == True:
-                    ax_arr[2].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-                    ax_arr[3].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-                else:
-                    ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
-                    ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
-                    ax_arr[3].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
-                    ax_arr[3].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+                if SG_order > 0:
+                    if fill == True:
+                        ax_arr[2].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+                        ax_arr[3].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var)[int(crop_l*resolutionX):int(crop_r*resolutionX)], label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+                    else:
+                        ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                        ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha1_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+                        ax_arr[3].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                        ax_arr[3].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha2_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(alpha2_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
                 ax_arr[2].legend()
                 ax_arr[3].legend()
             
@@ -465,20 +473,22 @@ def visualisation_add(ax_arr,
         #ax_arr[0].legend()
  
         ax_arr[0].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-        if fill == True:
-            ax_arr[0].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-        else:
-            ax_arr[0].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
-            ax_arr[0].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
-        ax_arr[0].legend()
+        if SG_order > 0:
+            if fill == True:
+                ax_arr[0].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+            else:
+                ax_arr[0].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                ax_arr[0].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], h_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(h_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+            ax_arr[0].legend()
         
         ax_arr[1].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
-        if fill == True:
-            ax_arr[1].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
-        else:
-            ax_arr[1].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
-            ax_arr[1].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
-        ax_arr[1].legend()
+        if SG_order > 0:
+            if fill == True:
+                ax_arr[1].fill_between(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_1, alpha=0.2)
+            else:
+                ax_arr[1].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] - np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), label=r'{}, $\pm1$ std dev'.format(label), color=color_2, linestyle=ls, linewidth=lw)
+                ax_arr[1].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], um_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)] + np.sqrt(um_var[int(crop_l*resolutionX):int(crop_r*resolutionX)]), color=color_3, linestyle=ls, linewidth=lw)
+            ax_arr[1].legend()
     
     else:
         print("Spatial adaptivity is not available for a monte carlo loop or stochastic Galerkin yet")
