@@ -5077,10 +5077,10 @@ class SGSWLME1D(PDE):
                     h1 = 0
                     h2 = 0
                     q0 = values[3]
-                    q1 = values[4]
+                    q1 = 0
                     q2 = 0
                     r0 = values[6]
-                    r1 = values[7]
+                    r1 = 0
                     r2 = 0
 
                 if self.distr == "normal":
@@ -6153,13 +6153,13 @@ class SGSWLME1D(PDE):
                     h1 = 0
                     h2 = 0
                     q0 = values[3]
-                    q1 = values[4]
+                    q1 = 0
                     q2 = 0
                     r0 = values[6]
-                    r1 = values[7]
+                    r1 = 0
                     r2 = 0
                     s0 = values[9]
-                    s1 = values[10]
+                    s1 = 0
                     s2 = 0
 
                 if self.distr == "normal":
@@ -7142,34 +7142,19 @@ class SGSWLME1D(PDE):
                     print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
             
             elif SG_order == 2:
-                if self.hyperbolic == False:
-                    h0 = values[0]
-                    h1 = values[1]
-                    h2 = values[2]
-                    q0 = values[3]
-                    q1 = values[4]
-                    q2 = values[5]
-                    r0 = values[6]
-                    r1 = values[7]
-                    r2 = values[8]
-                    s0 = values[9]
-                    s1 = values[10]
-                    s2 = values[11]
+                h0 = values[0]
+                h1 = values[1]
+                h2 = values[2]
+                q0 = values[3]
+                q1 = values[4]
+                q2 = values[5]
+                r0 = values[6]
+                r1 = values[7]
+                r2 = values[8]
+                s0 = values[9]
+                s1 = values[10]
+                s2 = values[11]
                 
-                else:
-                    h0 = values[0]
-                    h1 = 0
-                    h2 = 0
-                    q0 = values[3]
-                    q1 = values[4]
-                    q2 = 0
-                    r0 = values[6]
-                    r1 = values[7]
-                    r2 = 0
-                    s0 = values[9]
-                    s1 = values[10]
-                    s2 = 0
-
                 if self.distr == "normal":
                     print("This distribution is not implemented yet for mom_order=2 and SG_order=2")
                 
