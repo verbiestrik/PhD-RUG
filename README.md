@@ -16,7 +16,9 @@ The software was developed as part of my PhD project in numerical and computatio
 **Installation**
 
 git clone https://github.com/verbiestrik/PhD-RUG.git
+
 cd PhD-RUG 
+
 pip install -r requirements.txt
 
 **Usage**
