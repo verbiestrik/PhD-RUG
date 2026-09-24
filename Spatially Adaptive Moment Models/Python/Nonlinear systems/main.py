@@ -60,7 +60,8 @@ def main(config_file):
                             pde_information.getfloat('mu'),
                             pde_information.getfloat('sigma'),
                             pde_information.getfloat('slipLength'),
-                            hyperbolic=False)
+                            hyperbolic=False,
+                            linear_source=linear_source_implicit)
     
     elif pde_information['pde_type'] == 'HSGSWLME1D' and numerical_method_information.getboolean('stochasticGalerkin') and not numerical_method_information['method'] == 'spatially_adaptive' and not numerical_method_information['method'] == 'micro_macro' and not numerical_method_information.getboolean('monteCarlo'):
         _pde = PDE.SGSWLME1D(pde_information['initialCondition'],
@@ -68,7 +69,8 @@ def main(config_file):
                             pde_information.getfloat('mu'),
                             pde_information.getfloat('sigma'),
                             pde_information.getfloat('slipLength'),
-                            hyperbolic=True)
+                            hyperbolic=True,
+                            linearsource=linear_source_implicit)
     
     elif pde_information['pde_type'] == 'SGSWLME1D' or pde_information['pde_type'] == 'HSGSWLME1D':
         print("pde_type can only be SGSWLME1D if stochasticGalerkin is True and spatially_adaptive, micro_macro and monteCarlo are False.")
