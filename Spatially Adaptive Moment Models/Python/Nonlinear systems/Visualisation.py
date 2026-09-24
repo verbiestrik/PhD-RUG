@@ -435,7 +435,10 @@ def visualisation_add(ax_arr,
             
             x = data_array[:,0]
 
-            if mom_order == 1:
+            if mom_order == 0:
+                pass
+
+            elif mom_order == 1:
                 ax_arr[2].plot(x[int(crop_l*resolutionX):int(crop_r*resolutionX)], alpha1_exp[int(crop_l*resolutionX):int(crop_r*resolutionX)], label='{}, mean'.format(label), color=color_1, linestyle=ls, linewidth=lw)
                 if SG_order > 0:
                     if fill == True:
