@@ -13,14 +13,14 @@ show_difm     = False
 show_difv     = False
 display_title = False
 
-IC_A = 'smoothWave_linearVelocity'
-IC_B = 'smoothWave_linearVelocity'
-IC_C = 'smoothWave_linearVelocity'
-IC_D = 'smoothWave_linearVelocity'
-pde_type_A = 'SWLME1D'
-pde_type_B = 'SWLME1D'
-pde_type_C = 'SWLME1D'
-pde_type_D = 'SWLME1D'
+IC_A = 'lowDamBreak_linearVelocity'
+IC_B = 'lowDamBreak_linearVelocity'
+IC_C = 'lowDamBreak_linearVelocity'
+IC_D = 'lowDamBreak_linearVelocity'
+pde_type_A = 'SGSWLME1D'
+pde_type_B = 'SGSWLME1D'
+pde_type_C = 'SGSWLME1D'
+pde_type_D = 'SGSWLME1D'
 
 method_A = 'classical'
 method_B = 'classical'
@@ -43,14 +43,14 @@ slip_length_B = 0.1
 slip_length_C = 0.1
 slip_length_D = 0.1
 
-linear_source_implicit_A = False
+linear_source_implicit_A = True
 linear_source_implicit_B = False
 linear_source_implicit_C = False
 linear_source_implicit_D = False
-monte_carlo_A = True
-monte_carlo_B = True
-monte_carlo_C = True
-monte_carlo_D = True
+monte_carlo_A = False
+monte_carlo_B = False
+monte_carlo_C = False
+monte_carlo_D = False
 distr_A = "uniform"
 distr_B = "uniform"
 distr_C = "uniform"
@@ -72,25 +72,25 @@ sigma_B = 0.05
 sigma_C = 0.05
 sigma_D = 0.05
 
-stochastic_Galerkin_A = False
-stochastic_Galerkin_B = False
-stochastic_Galerkin_C = False
-stochastic_Galerkin_D = False
-mom_order_A = 2
-mom_order_B = 2
-mom_order_C = 2
-mom_order_D = 2
-SG_order_A = 0
-SG_order_B = 0
+stochastic_Galerkin_A = True
+stochastic_Galerkin_B = True
+stochastic_Galerkin_C = True
+stochastic_Galerkin_D = True
+mom_order_A = 0
+mom_order_B = 0
+mom_order_C = 0
+mom_order_D = 0
+SG_order_A = 2
+SG_order_B = 2
 SG_order_C = 1
-SG_order_D = 2
+SG_order_D = 0
 
-title = 'Low Dam Break with Linear Velocity, SWLME N=1 MC'
-t_end = 2.0
+title = 'Smooth Wave with Linear Velocity, SWLME N=1 MC'
+t_end = 0.2
 
-label_A = 'S=1500'
-label_B = 'S=800'
-label_C = 'S=900'
+label_A = 'Standard'
+label_B = 'Hyperbolic'
+label_C = 'Hyperbolic new'
 label_D = 'SG K=2'
 color_1_A = 'black'
 color_2_A = 'gray'
@@ -129,9 +129,9 @@ if no_lines > 0:
     elif pde_type_A == 'VegetationSWME1D':
         _pde_A = PDE.VegetationSWME1D(IC_A, viscosity_A, slip_length_A, False, False, linear_source_implicit_A, 0.008, 1, 264)
     elif pde_type_A == 'SGSWLME1D' and stochastic_Galerkin_A and not method_A == 'spatially_adaptive' and not method_A == 'micro_macro' and not monte_carlo_A:
-        _pde_A = PDE.SGSWLME1D(IC_A, distr_A, mu_A, sigma_A, slip_length_A, hyperbolic=False)
+        _pde_A = PDE.SGSWLME1D(IC_A, distr_A, mu_A, sigma_A, slip_length_A, hyperbolic=False, linear_source=linear_source_implicit_A)
     elif pde_type_A == 'HSGSWLME1D' and stochastic_Galerkin_A and not method_A == 'spatially_adaptive' and not method_A == 'micro_macro' and not monte_carlo_A:
-        _pde_A = PDE.SGSWLME1D(IC_A, distr_A, mu_A, sigma_A, slip_length_A, hyperbolic=True)
+        _pde_A = PDE.SGSWLME1D(IC_A, distr_A, mu_A, sigma_A, slip_length_A, hyperbolic=True, linear_source=linear_source_implicit_A)
     elif pde_type_A == 'SGSWLME1D' or pde_type_A == 'HSGSWLME1D':
         print("pde_type can only be SGSWLME1D if stochastic_Galerkin is True and spatially_adaptive, micro_macro and monte_carlo are False")
     else:
@@ -147,9 +147,9 @@ if no_lines > 1:
     elif pde_type_B == 'VegetationSWME1D':
         _pde_B = PDE.VegetationSWME1D(IC_B, viscosity_B, slip_length_B, False, False, linear_source_implicit_B, 0.008, 1, 264)
     elif pde_type_B == 'SGSWLME1D' and stochastic_Galerkin_B and not method_B == 'spatially_adaptive' and not method_B == 'micro_macro' and not monte_carlo_B:
-        _pde_B = PDE.SGSWLME1D(IC_B, distr_B, mu_B, sigma_B, slip_length_B, hyperbolic=False)
+        _pde_B = PDE.SGSWLME1D(IC_B, distr_B, mu_B, sigma_B, slip_length_B, hyperbolic=False, linear_source=linear_source_implicit_B)
     elif pde_type_B == 'HSGSWLME1D' and stochastic_Galerkin_B and not method_B == 'spatially_adaptive' and not method_B == 'micro_macro' and not monte_carlo_B:
-        _pde_B = PDE.SGSWLME1D(IC_B, distr_B, mu_B, sigma_B, slip_length_B, hyperbolic=True)
+        _pde_B = PDE.SGSWLME1D(IC_B, distr_B, mu_B, sigma_B, slip_length_B, hyperbolic=True, linear_source=linear_source_implicit_B)
     elif pde_type_B == 'SGSWLME1D' or pde_type_B == 'HSGSWLME1D':
         print("pde_type can only be SGSWLME1D if stochastic_Galerkin is True and spatially_adaptive, micro_macro and monte_carlo are False")
     else:
@@ -165,9 +165,9 @@ if no_lines > 2:
     elif pde_type_C == 'VegetationSWME1D':
         _pde_C = PDE.VegetationSWME1D(IC_C, viscosity_C, slip_length_C, False, False, linear_source_implicit_C, 0.008, 1, 264)
     elif pde_type_C == 'SGSWLME1D' and stochastic_Galerkin_C and not method_C == 'spatially_adaptive' and not method_C == 'micro_macro' and not monte_carlo_C:
-        _pde_C = PDE.SGSWLME1D(IC_C, distr_C, mu_C, sigma_C, slip_length_C, hyperbolic=False)
+        _pde_C = PDE.SGSWLME1D(IC_C, distr_C, mu_C, sigma_C, slip_length_C, hyperbolic=False, linear_source=linear_source_implicit_C)
     elif pde_type_C == 'HSGSWLME1D' and stochastic_Galerkin_C and not method_C == 'spatially_adaptive' and not method_C == 'micro_macro' and not monte_carlo_C:
-        _pde_C = PDE.SGSWLME1D(IC_C, distr_C, mu_C, sigma_C, slip_length_C, hyperbolic=True)
+        _pde_C = PDE.SGSWLME1D(IC_C, distr_C, mu_C, sigma_C, slip_length_C, hyperbolic=True, linear_source=linear_source_implicit_C)
     elif pde_type_C == 'SGSWLME1D' or pde_type_C == 'HSGSWLME1D':
         print("pde_type can only be SGSWLME1D if stochastic_Galerkin is True and spatially_adaptive, micro_macro and monte_carlo are False")
     else:
@@ -183,9 +183,9 @@ if no_lines > 3:
     elif pde_type_D == 'VegetationSWME1D':
         _pde_D = PDE.VegetationSWME1D(IC_D, viscosity_D, slip_length_D, False, False, linear_source_implicit_D, 0.008, 1, 264)
     elif pde_type_D == 'SGSWLME1D' and stochastic_Galerkin_D and not method_D == 'spatially_adaptive' and not method_D == 'micro_macro' and not monte_carlo_D:
-        _pde_D = PDE.SGSWLME1D(IC_D, distr_D, mu_D, sigma_D, slip_length_D, hyperbolic=False)
+        _pde_D = PDE.SGSWLME1D(IC_D, distr_D, mu_D, sigma_D, slip_length_D, hyperbolic=False, linear_source=linear_source_implicit_D)
     elif pde_type_D == 'HSGSWLME1D' and stochastic_Galerkin_D and not method_D == 'spatially_adaptive' and not method_D == 'micro_macro' and not monte_carlo_D:
-        _pde_D = PDE.SGSWLME1D(IC_D, distr_D, mu_D, sigma_D, slip_length_D, hyperbolic=True)
+        _pde_D = PDE.SGSWLME1D(IC_D, distr_D, mu_D, sigma_D, slip_length_D, hyperbolic=True, linear_source=linear_source_implicit_C)
     elif pde_type_D == 'SGSWLME1D' or pde_type_D == 'HSGSWLME1D':
         print("pde_type can only be SGSWLME1D if stochastic_Galerkin is True and spatially_adaptive, micro_macro and monte_carlo are False")
     else:
