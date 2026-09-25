@@ -8,7 +8,6 @@ import configparser
 import timeit
 
 def main(config_file):
-
     config = configparser.ConfigParser()
     config.read('Config-Files/{0}'.format(config_file))
     pde_information = config['pde_information']
