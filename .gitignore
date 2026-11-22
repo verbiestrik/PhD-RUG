@@ -1,4 +1,60 @@
-# Compiled source #
-###################
-*.pyc
-*.txt
+
+# Python bytecode and cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python testing and analysis caches
+.pytest_cache/
+.ipynb_checkpoints/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Build and packaging artefacts
+build/
+dist/
+*.egg-info/
+
+# IDE and editor-specific files
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs and temporary/backup files
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# Local credentials and environment-specific files
+.env
+.env.*
+!.env.example
+Github_Token.txt
+github_token.txt
+.secrets/
