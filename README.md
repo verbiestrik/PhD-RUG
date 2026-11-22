@@ -51,10 +51,16 @@ Config-files/config.txt
 
 Specify the desired simulation settings in this file, including the initial conditions, boundary conditions and numerical method used to solve the governing differential equations.
 
-An example configuration file for the **adaptive 1D Shallow water moment equations** is available in:
+An example configuration file for the **adaptive 1D Shallow Water Moment Equations** is available in:
 
 ```text
 Config-files/ConfigSWME1D/
+```
+
+An example configuration file for the **adaptive 1D Hyperbolic Moment Equations** is available in:
+
+```text
+Config-files/ConfigHME1D/
 ```
 
 ### 2. Run the simulation
