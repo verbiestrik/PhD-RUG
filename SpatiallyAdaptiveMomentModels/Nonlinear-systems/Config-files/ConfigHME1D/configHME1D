@@ -1,0 +1,101 @@
+##############################
+###### PDE INFORMATION #######
+##############################
+
+[pde_information]
+
+### True: one-dimensional, False: two-dimensional
+1D = True
+
+pde_type = HME
+
+# Relaxation time
+relaxation_time = 0.5
+
+# The HME model has a linear source term
+linear_source = True
+
+# Specify initial conditions. 
+    ### constantDensity_noVelocity, constantDensity_constantVelocity, shockTube_noVelocity,
+    ### smooth_densityWave_noVelocity, symmetric_shockTube, symmetric_shockTube_constantVelocity
+    ### colliding_shockTube, smooth_and_dam, smooth_expit_rightgoing, smooth_expit_leftgoing
+initialCondition = symmetric_shockTube
+
+###############################
+###### GRID INFORMATION #######
+###############################
+
+[grid_information]
+
+### Only structured grids implemented currently
+structuredGrid = True
+
+    # structuredGrid #
+    # Number of grid points in x-direction and y-direction (if the simulation is 1D: only resolutionX is used)
+resolutionX = 500
+resolutionY = 800
+    # Physical boundaries of the domain (if the simulation is 1D: only x1boundary and x2boundary are used)
+x1boundary = -0.75
+x2boundary = 0.75
+y1boundary = -2
+y2boundary = 2
+
+
+#########################################
+##### Numerical method information ######
+#########################################
+
+[numerical_method_information]
+# End time
+t_end =  0.2
+
+CFL = 0.7
+
+# classical, micro_macro, modelAdaptiveMomentSimulation1D
+method = modelAdaptiveMomentSimulation1D
+order = 12
+
+
+# Finite volume method type. Implemented: PVM
+fvm_type = PVM
+
+    # PVM #
+    # Polynomial viscosity method. Implemented: PRICE, LF, Roe, Osher
+pvm = PRICE
+# number of quadrature points
+nr_of_quadrature_points = 1
+
+# Time integration for source term. Implemented for HME: ExplicitEuler, ImplicitEuler, Exact
+timeIntegrator = Exact
+
+# Boundary condition. Implemented: INFLOW_OUTFLOW, PERIODIC
+boundaryCondition = PERIODIC
+
+[adaptive_simulation_information]
+smoothing = True
+smooth_par = 50
+path_conservation = True
+start_order = 12
+interpolation = False
+spatial_discretization_predictor = PRICE
+spatial_discretization_interface = PRICE
+two_step_domain_decomposition_evaluation = True
+hierarchical = False
+# heuristics_plus_discretization, model_difference
+type_model_error_estimator = model_difference
+time_step_splitting = True
+
+tol_coarsening_model_difference = 0.0001
+tol_refinement_model_difference = 0.00015
+
+tol_coarsening_heur = 0.001
+tol_refinement_heur_source = 0.001
+tol_refinement_heur_grad = 0.001 
+
+tol_res1 = 0.001
+tol_res2 = 0.001
+
+[output_information]
+export_data = True
+output_folder_name = HME1D
+output_file_name = test
