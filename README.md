@@ -12,7 +12,7 @@ The repository is organized into three main components:
 
 Contains Wolfram Mathematica files (`.nb` and `.m`) used to run reference simulations.
 
-These codes provide reference solutions and numerical results for the mathematical models investigated in the research.
+These codes provide reference solutions and numerical results for the mathematical models for shallow free-surface flows investigated in the research. The reference solutions were obtained using a modified version of the software accompanying the paper J. Kowalski and M. Torrilhon, Moment Approximations and Model Cascades for Shallow Flow, Commun. Comput. Phys. 25, 669 (2019), https://doi.org/10.4208/cicp.OA-20170263.
 
 ### 2. `moment-model-derivations/`
 
