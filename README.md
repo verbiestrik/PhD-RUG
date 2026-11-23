@@ -75,6 +75,34 @@ The simulation will run using the settings specified in `config-files/config.txt
 
 Make sure that Python and the packages required by the simulation are installed in your environment before running the program.
 
+## Representative simulation results
+
+The following figures illustrate numerical simulations of adaptive moment
+models for shallow free-surface flows and rarefied gas dynamics.
+
+<p align="center">
+  <img src="assets/readme/im1.jpg"
+       alt="Adaptive-order simulation of a shallow-water dam-break and smooth-flow problem"
+       width="31%">
+  <img src="assets/readme/im2.jpg"
+       alt="Adaptive kinetic moment simulation showing macroscopic profiles and local moment order"
+       width="31%">
+  <img src="assets/readme/im3.jpg"
+       alt="Adaptive and classical kinetic moment simulation comparison"
+       width="31%">
+</p>
+
+<p align="center">
+  <em>
+    Left: Shallow-water simulation comparing adaptive moment models with a
+    reference solution.
+    Middle: Rarefied-gas simulation showing macroscopic profiles and the
+    spatially varying moment order.
+    Right: Rarefied-gas simulation showing macroscopic profiles for 
+    adaptive simulations and classical simulations.
+  </em>
+</p>
+
 ## Scientific Background
 
 The software in this repository was developed as part of the PhD research:
