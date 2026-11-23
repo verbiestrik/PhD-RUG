@@ -8,7 +8,7 @@ The research focuses on the derivation, analysis and numerical simulation of ada
 
 The repository is organized into three main components:
 
-### 1. `Reference-codes/`
+### 1. `reference-codes/`
 
 Contains Wolfram Mathematica files (`.nb` and `.m`) used to run reference simulations.
 
@@ -20,16 +20,16 @@ Contains Wolfram Mathematica notebooks (`.nb`) with analytical derivations of th
 
 These notebooks document the mathematical development of the models considered throughout the research.
 
-### 3. `SpatiallyAdaptiveMomentModels/`
+### 3. `spatially-adaptive-moment-models/`
 
 Contains the main numerical software developed for the simulation of spatially adaptive moment models. It is divided into separate components for linear and nonlinear systems, together with additional supporting material.
 
 The two main components are:
 
-- **`Linear-systems/`** – Contains Wolfram Mathematica notebooks and associated images related to linear moment systems.
-- **`Nonlinear-systems/`** – Contains the Python implementation for the numerical simulation of nonlinear moment models.
+- **`linear-systems/`** – Contains Wolfram Mathematica notebooks and associated images related to linear moment systems.
+- **`nonlinear-systems/`** – Contains the Python implementation for the numerical simulation of nonlinear moment models.
 
-The `Nonlinear-systems/` directory is the main entry point for running the Python simulations.
+The `nonlinear-systems/` directory is the main entry point for running the Python simulations.
 
 ## Running a Simulation
 
@@ -40,13 +40,13 @@ The nonlinear moment-model simulations are executed through `main.py`.
 Navigate to:
 
 ```text
-SpatiallyAdaptiveMomentModels/Nonlinear-systems/
+spatially-adaptive-moment-models/nonlinear-systems/
 ```
 
 Before running a simulation, open:
 
 ```text
-Config-files/config.txt
+config-files/config.txt
 ```
 
 Specify the desired simulation settings in this file, including the initial conditions, boundary conditions and numerical method used to solve the governing differential equations.
@@ -54,24 +54,24 @@ Specify the desired simulation settings in this file, including the initial cond
 An example configuration file for the **adaptive 1D Shallow Water Moment Equations** is available in:
 
 ```text
-Config-files/ConfigSWME1D/
+config-files/ConfigSWME1D/
 ```
 
 An example configuration file for the **adaptive 1D Hyperbolic Moment Equations** is available in:
 
 ```text
-Config-files/ConfigHME1D/
+config-files/ConfigHME1D/
 ```
 
 ### 2. Run the simulation
 
-From the `Nonlinear-systems/` directory, execute:
+From the `nonlinear-systems/` directory, execute:
 
 ```bash
 python main.py
 ```
 
-The simulation will run using the settings specified in `Config-files/config.txt`.
+The simulation will run using the settings specified in `config-files/config.txt`.
 
 Make sure that Python and the packages required by the simulation are installed in your environment before running the program.
 
