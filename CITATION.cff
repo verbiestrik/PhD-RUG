@@ -1,0 +1,45 @@
+cff-version: 1.2.0
+message: >-
+  If you use the code or mathematical derivations in this repository, please
+  cite the software using the metadata below. When referring to the scientific
+  methods, model derivations, or research findings, also cite the associated
+  PhD thesis listed under references.
+title: "PhD-RUG – Spatially Adaptive Moment Models"
+type: software
+authors:
+  - family-names: Verbiest
+    given-names: Rik
+    affiliation: University of Groningen
+abstract: >-
+  Research software and mathematical derivations developed as part of doctoral
+  research on model-adaptive simulation of hierarchical moment models, with
+  applications to shallow free-surface flows and rarefied gas dynamics. The
+  repository includes Wolfram Mathematica notebooks for analytical derivations
+  and reference simulations, along with Python software for simulating
+  nonlinear moment models.
+keywords:
+  - adaptive moment models
+  - model adaptivity
+  - numerical simulation
+  - shallow free-surface flows
+  - rarefied gas dynamics
+  - Wolfram Mathematica
+  - Python
+repository-code: "https://github.com/verbiestrik/PhD-RUG"
+references:
+  - type: thesis
+    thesis-type: "Doctor of Philosophy"
+    authors:
+      - family-names: Verbiest
+        given-names: Rik
+    title: "Model-adaptive simulation of moment models with applications in shallow free-surface flows and rarefied gases"
+    institution: University of Groningen
+    publisher: University of Groningen
+    location: Groningen, The Netherlands
+    year: 2026
+    doi: "10.33612/diss.1569659608"
+    url: "https://research.rug.nl/en/publications/model-adaptive-simulation-of-moment-models-with-applications-in-s/"
+    scope: >-
+      Cite this thesis when referring to the scientific methods, model
+      derivations, or research findings associated with the software.
+    notes: "Award date: 26 October 2026."
